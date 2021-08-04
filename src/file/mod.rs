@@ -39,6 +39,7 @@ pub struct Registry {
 
 impl Registry {
     fn size(&self) -> usize {
+		 // NOTE: This is a method and note a static|associated function
         self.entries_count * RegistryEntry::size()
     }
 }
