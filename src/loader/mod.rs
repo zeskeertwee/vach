@@ -2,61 +2,114 @@
 #![allow(unused_variables)]
 
 use std::{
-    fmt::{self},
+    fmt,
     fs::File,
-    io::{BufReader, Read},
+    io::{BufReader, Read, Seek, SeekFrom},
     str,
 };
+
 #[derive(Debug)]
 pub struct Header {
-    magic: [u8; ArchiveConfig::DEFAULT_MAGIC_LENGTH], // VfACH
+    magic: [u8; ArchiveConfig::DEFAULT_MAGIC_LENGTH],
+    version: u16, // VfACH
+    flags: u32,
+}
 
-    flags: u16,
-    content_version: u16,
-
-    uses_compressed: bool,
+impl Header {
+    pub fn new(
+        magic: &[u8; ArchiveConfig::DEFAULT_MAGIC_LENGTH],
+        flags: &u32,
+        version: &u16,
+    ) -> Self {
+        Self {
+            magic: magic.clone(),
+            flags: flags.clone(),
+            version: version.clone(),
+        }
+    }
+    pub fn empty() -> Self {
+        Self {
+            magic: ArchiveConfig::DEFAULT_MAGIC.clone(),
+            flags: 0,
+            version: 0
+        }
+    }
 }
 
 impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // write!(f, "{}", 5u32);
-        unimplemented!();
+        write!(
+            f,
+            "[Archive Header] Version: {}, Magic: {}",
+            5u32,
+            str::from_utf8(&self.magic).unwrap()
+        )
     }
 }
 
 #[derive(Debug)]
 pub struct Archive {
     header: Header,
-    config: ArchiveConfig,
-	 data: Box<[u8]>,
+    registry: Registry,
+    data: File,
 }
 
 impl Archive {
-    pub fn new(file: File) -> Self {
+    pub fn new(file: File) -> Result<Archive, String> {
         Archive::with_options(file, ArchiveConfig::default())
     }
-    pub fn with_options(file: File, options: ArchiveConfig) -> Self {
-        unimplemented!()
+    pub fn with_options(file: File, config: ArchiveConfig) -> Result<Archive, String> {
+        match Archive::validate(&file, &config) {
+            Ok(_) => {
+                let mut reader = BufReader::new(file);
+                let mut buffer = [0; ArchiveConfig::DEFAULT_MAGIC_LENGTH];
+
+                // Construct header
+                let mut empty_header = Header::empty();
+                reader.read(&mut buffer).unwrap();
+                empty_header.magic = buffer.clone();
+
+                unimplemented!()
+            }
+            Err(error) => Err(error),
+        }
     }
 
-    pub fn validate(file: File, config: ArchiveConfig) -> Result<bool, String> {
+    pub fn validate(file: &File, config: &ArchiveConfig) -> Result<bool, String> {
         let mut reader = BufReader::new(file);
-        let mut buffer = [0; 5];
+        let mut buffer = [0; ArchiveConfig::DEFAULT_MAGIC_LENGTH];
 
         reader.read(&mut buffer).unwrap();
 
         match str::from_utf8(&buffer) {
-            Ok(magic) => match magic == str::from_utf8(&config.magic).unwrap() {
-                true => Result::Ok(true),
-                false => Result::Err(format!("Invalid magic found in archive: {}", magic)),
-            },
-            Err(error) => Result::Err(error.to_string()),
-        }
-    }
+            Ok(magic) => {
+                if magic != str::from_utf8(&config.magic).unwrap() {
+                    return Result::Err(format!("Invalid magic found in archive: {}", magic));
+                }
+            }
+            Err(error) => return Err(error.to_string()),
+        };
 
-	 pub fn fetch(){ unimplemented!() }
-	 pub fn add_resource(){ unimplemented!() }
-	 pub fn write_to_file() {}
+        let mut buffer = [0; 2];
+        match reader.seek(SeekFrom::Start(ArchiveConfig::DEFAULT_MAGIC_LENGTH as u64)) {
+            Ok(_) => {
+                reader.read(&mut buffer).unwrap();
+
+                // NOTE: Respect the OS's endianness
+                let archive_version = if cfg!(target_endian = "big") {
+                    u16::from_be_bytes(buffer)
+                } else {
+                    u16::from_le_bytes(buffer)
+                };
+                dbg!(archive_version);
+                if config.minimum_version > archive_version {
+                    return Err(format!("Minimum Version requirement not met. Version found: {}, Minimum version: {}", archive_version, config.minimum_version));
+                };
+            }
+            Err(error) => return Err(error.to_string()),
+        };
+        Ok(true)
+    }
 }
 
 impl fmt::Display for Archive {
@@ -68,7 +121,6 @@ impl fmt::Display for Archive {
 #[derive(Debug)]
 pub struct ArchiveConfig {
     pub magic: [u8; 5],
-    pub flags: u16,
     pub minimum_version: u16,
 }
 
@@ -76,26 +128,18 @@ impl ArchiveConfig {
     const DEFAULT_MAGIC: &'static [u8; 5] = b"VfACH";
     const DEFAULT_MAGIC_LENGTH: usize = 5;
 
-    pub fn new(magic: [u8; 5], flags: u16, minimum_version: u16) -> Self {
+    pub fn new(magic: [u8; 5], minimum_version: u16) -> Self {
         ArchiveConfig {
             magic,
-            flags,
             minimum_version,
         }
     }
     pub fn default() -> Self {
-        ArchiveConfig::new(ArchiveConfig::DEFAULT_MAGIC.clone(), 0, 0)
+        ArchiveConfig::new(ArchiveConfig::DEFAULT_MAGIC.clone(), 0)
     }
-
-    pub fn set_flags(&mut self, flag: u16) {
-        self.flags = flag;
-    }
-
-    pub fn toggle_flag(&mut self, input: u16, mode: bool) {
-        match mode {
-            true => self.flags = self.flags | input,
-            false => self.flags = !self.flags & input,
-        };
+    pub fn set_minimum_version(mut self, version: &u16) -> Self {
+        self.minimum_version = version.clone();
+        self
     }
 }
 
@@ -103,40 +147,33 @@ impl fmt::Display for ArchiveConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[ArchiveConfig] flags: {:#016b}, magic: {}, minimum_version: {}",
-            self.flags,
+            "[ArchiveConfig] magic: {}, minimum_version: {}",
             str::from_utf8(&self.magic).unwrap(),
             self.minimum_version
         )
     }
 }
 
-// Basically data obtained from the archive
 #[derive(Debug)]
-struct ArchiveEntry {
-    // Supports 65535 mime types which is more than enough
+// INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
+pub struct Registry {
+    entries_count: usize,
+    entries: Box<[RegistryEntry]>,
+}
+
+#[derive(Debug)]
+pub struct RegistryEntry {
+    content_version: u32,
+    path_name_start: u64,
+    path_name_end: u64,
+
+    is_compressed: bool,
+
+    is_signed: bool,
+    signature: u32,
+
+    index: u64,
+    byte_offset: u64,
+
     mime_type: u16,
-    data: Box<[u8]>,
-}
-
-impl fmt::Display for ArchiveEntry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "[ArchiveEntry] mime_type: {m_type}, size: {length}",
-            m_type = self.mime_type,
-            length = self.data.len()
-        )
-    }
-}
-
-trait Parse {
-    fn parse_from_binary() {}
-	 fn parse_from_location() {}
-}
-
-impl ArchiveEntry {
-    fn generate() {
-        unimplemented!()
-    }
 }
