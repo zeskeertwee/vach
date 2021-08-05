@@ -13,15 +13,12 @@ pub trait ConstantSize {
 struct Archive {
     header: Header,
     registry: Box<Registry>,
-    data: Box<u8>,
+    data: Box<[u8]>,
 }
 
 pub struct Header {
-    magic: [u8; MAGIC_LENGTH], // VfACH 
+    magic: [u8; MAGIC_LENGTH], // VfACH
     flags: u16,
-    content_version: u16,
-
-    uses_compressed: bool,
 }
 
 impl ConstantSize for Header {
@@ -38,12 +35,13 @@ pub struct Registry {
 
 impl Registry {
     fn size(&self) -> usize {
-		 // NOTE: This is a method and note a static|associated function
+        // NOTE: This is a method and note a static|associated function
         self.entries_count * RegistryEntry::size()
     }
 }
 
 pub struct RegistryEntry {
+    content_version: u32,
     path_name_start: u64,
     path_name_end: u64,
 
