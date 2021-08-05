@@ -17,8 +17,7 @@ struct Archive {
 }
 
 pub struct Header {
-    magic: [u8; MAGIC_LENGTH], // VfACH
-
+    magic: [u8; MAGIC_LENGTH], // VfACH 
     flags: u16,
     content_version: u16,
 
