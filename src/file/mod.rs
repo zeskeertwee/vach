@@ -1,8 +1,8 @@
-#![allow(dead_code)]
+// =============== THE ABOVE CODE IS NOT USED ANYWHERE WITHIN THIS CRATE, IT IS FOR DEMONSTRATION PURPOSES ===============
 
 // Below constants are subject to change
 const MAGIC_LENGTH: usize = 5;
-const SIGNATURE_LENGTH: usize = 16;
+const SIGNATURE_LENGTH: usize = 4;
 
 // INFO: Any struct that implements ConstantSize always has a fixed size within the file
 pub trait ConstantSize {
@@ -19,6 +19,7 @@ struct Archive {
 pub struct Header {
     magic: [u8; MAGIC_LENGTH], // VfACH
     flags: u16,
+    entry_count: usize
 }
 
 impl ConstantSize for Header {
@@ -29,8 +30,7 @@ impl ConstantSize for Header {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 pub struct Registry {
-    entries_count: usize,
-    entries: [RegistryEntry],
+    entries: vec![RegistryEntry]
 }
 
 impl Registry {

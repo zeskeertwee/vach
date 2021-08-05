@@ -9,6 +9,8 @@ fn main(){
 		let file = File::open("me.vach").unwrap();
 		format!("{}", &archive_opt);
 
+		let _header = loader::Header::from_file(&file, &false);
+
 		loader::Archive::validate(&file, &archive_opt).unwrap();
 	}
 }
