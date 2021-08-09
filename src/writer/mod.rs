@@ -1,4 +1,4 @@
-
+use std::fmt;
 
 trait FileSystem {
 	fn parse_from_binary() {}
