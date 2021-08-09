@@ -6,34 +6,34 @@ use std::{
 };
 
 #[derive(Debug)]
-pub struct Config {
+pub struct HeaderConfig {
     pub magic: [u8; 5],
     pub minimum_version: u16,
 }
 
-impl Config {
+impl HeaderConfig {
     pub const MAGIC: &'static [u8; 5] = b"VfACH";
     pub const MAGIC_LENGTH: usize = 5;
-    pub const FLAG_SIZE: usize = 4;
+    pub const FLAG_SIZE: usize = 2;
     pub const VERSION_SIZE: usize = 2;
     pub const ENTRY_SIZE: usize = 2;
 
-    pub fn new(magic: [u8; 5], minimum_version: u16) -> Config {
-        Config {
+    pub fn new(magic: [u8; 5], minimum_version: u16) -> HeaderConfig {
+        HeaderConfig {
             magic,
             minimum_version,
         }
     }
-    pub fn default() -> Config {
-        Config::new(Config::MAGIC.clone(), 0)
+    pub fn default() -> HeaderConfig {
+        HeaderConfig::new(HeaderConfig::MAGIC.clone(), 0)
     }
-    pub fn set_minimum_version(mut self, version: &u16) -> Config {
+    pub fn set_minimum_version(mut self, version: &u16) -> HeaderConfig {
         self.minimum_version = version.clone();
         self
     }
 }
 
-impl fmt::Display for Config {
+impl fmt::Display for HeaderConfig {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -46,22 +46,22 @@ impl fmt::Display for Config {
 
 #[derive(Debug)]
 pub struct Header {
-    magic: [u8; Config::MAGIC_LENGTH], // VfACH
-    version: u16,
-    flags: u32,
-    entries: u16,
+    pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
+    pub version: u16,
+    pub flags: u16,
+    pub entries: u16,
 }
 
 impl Header {
     pub fn empty() -> Header {
         Header {
-            magic: Config::MAGIC.clone(),
+            magic: HeaderConfig::MAGIC.clone(),
             flags: 0,
             version: 0,
             entries: 0,
         }
     }
-    pub fn from_file(file: &File, big_endian: &bool) -> Result<Header, String> {
+    pub fn from_file(file: &File) -> Result<Header, String> {
         let mut reader = BufReader::new(file);
 
         // Construct header
@@ -69,39 +69,37 @@ impl Header {
         // TODO: Remove this repetitive garbage
 
         // Read magic
-        let mut buffer = [0; Config::MAGIC_LENGTH];
+        let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
         reader.read(&mut buffer).unwrap();
         header.magic = buffer.clone();
 
         // Read flags, u32 from [u8;4]
-        let mut buffer = [0; Config::FLAG_SIZE];
+        let mut buffer = [0; HeaderConfig::FLAG_SIZE];
         reader.read(&mut buffer).unwrap();
-        header.flags = if *big_endian {
-            u32::from_be_bytes(buffer)
-        } else {
-            u32::from_le_bytes(buffer)
-        };
+        header.flags = u16::from_ne_bytes(buffer);
 
         // Read version, u16 from [u8;2]
-        let mut buffer = [0; Config::VERSION_SIZE];
+        let mut buffer = [0; HeaderConfig::VERSION_SIZE];
         reader.read(&mut buffer).unwrap();
-        header.version = if *big_endian {
-            u16::from_be_bytes(buffer)
-        } else {
-            u16::from_le_bytes(buffer)
-        };
+        header.version = u16::from_ne_bytes(buffer);
 
         // Read number of entries, u16 from [u8;2]
-        let mut buffer = [0; Config::ENTRY_SIZE];
+        let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
         reader.read(&mut buffer).unwrap();
-        header.entries = if *big_endian {
-            u16::from_be_bytes(buffer)
-        } else {
-            u16::from_le_bytes(buffer)
-        };
+        header.entries = u16::from_ne_bytes(buffer);
 
         Result::Ok(header)
     }
+
+	 pub fn bytes(&self) -> Vec<u8> {
+		 let mut buffer: Vec<u8> = vec![];
+		 buffer.extend_from_slice(&self.magic);
+		 buffer.extend_from_slice(&self.flags.to_ne_bytes());
+		 buffer.extend_from_slice(&self.version.to_ne_bytes());
+		 buffer.extend_from_slice(&self.entries.to_ne_bytes());
+		 
+		 buffer
+	 }
 }
 
 impl fmt::Display for Header {
