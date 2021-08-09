@@ -49,7 +49,7 @@ pub struct Header {
     pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
     pub version: u16,
     pub flags: u16,
-    pub entries: u16,
+    pub capacity: u16,
 }
 
 impl Header {
@@ -58,7 +58,7 @@ impl Header {
             magic: HeaderConfig::MAGIC.clone(),
             flags: 0,
             version: 0,
-            entries: 0,
+            capacity: 0,
         }
     }
     pub fn from_file(file: &File) -> Result<Header, String> {
@@ -86,7 +86,7 @@ impl Header {
         // Read number of entries, u16 from [u8;2]
         let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
         reader.read(&mut buffer).unwrap();
-        header.entries = u16::from_ne_bytes(buffer);
+        header.capacity = u16::from_ne_bytes(buffer);
 
         Result::Ok(header)
     }
@@ -96,7 +96,7 @@ impl Header {
 		 buffer.extend_from_slice(&self.magic);
 		 buffer.extend_from_slice(&self.flags.to_ne_bytes());
 		 buffer.extend_from_slice(&self.version.to_ne_bytes());
-		 buffer.extend_from_slice(&self.entries.to_ne_bytes());
+		 buffer.extend_from_slice(&self.capacity.to_ne_bytes());
 		 
 		 buffer
 	 }
