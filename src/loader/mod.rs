@@ -2,6 +2,7 @@ use crate::global::{
     header::{Header, HeaderConfig},
     registry::Registry,
 };
+use anyhow;
 use std::{
     fmt,
     fs::File,
@@ -26,14 +27,14 @@ impl Archive {
             data: None,
         }
     }
-    pub fn from_file(file: File) -> Result<Archive, String> {
+    pub fn from_file(file: File) -> anyhow::Result<Archive> {
         Archive::with_config(file, &HeaderConfig::default())
     }
-    pub fn with_config(file: File, config: &HeaderConfig) -> Result<Archive, String> {
+    pub fn with_config(file: File, config: &HeaderConfig) -> anyhow::Result<Archive> {
         match Archive::validate(&file, config) {
             Ok(_) => {
-                let header = Header::from_file(&file).unwrap();
-                let registry = Registry::from_file(&file, &header).unwrap();
+                let header = Header::from_file(&file)?;
+                let registry = Registry::from_file(&file, &header)?;
                 Result::Ok(Archive {
                     header,
                     registry,
@@ -44,28 +45,32 @@ impl Archive {
         }
     }
 
-    pub fn validate(file: &File, config: &HeaderConfig) -> Result<bool, String> {
+    pub fn validate(file: &File, config: &HeaderConfig) -> anyhow::Result<bool> {
         let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(0)).unwrap();
+        reader.seek(SeekFrom::Start(0))?;
 
         let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
 
-        reader.read(&mut buffer).unwrap();
+        reader.read(&mut buffer)?;
+
         if &buffer != &config.magic {
-            return Result::Err(format!("Invalid magic found in archive: {}", str::from_utf8(&buffer).unwrap_or("<Error parsing string>")));
+            return Result::Err(anyhow::Error::msg(format!(
+                "Invalid magic found in archive: {}",
+                str::from_utf8(&buffer)?
+            )));
         };
 
         let mut buffer = [0; HeaderConfig::VERSION_SIZE];
-        reader.read(&mut buffer).unwrap();
+        reader.read(&mut buffer)?;
 
         let archive_version = u16::from_ne_bytes(buffer);
         if config.minimum_version > archive_version {
-            return Result::Err(format!(
+            return Result::Err(anyhow::Error::msg(format!(
                 "Minimum Version requirement not met. Version found: {}, Minimum version: {}",
                 archive_version, config.minimum_version
-            ));
+            )));
         };
-        
+
         Result::Ok(true)
     }
 }

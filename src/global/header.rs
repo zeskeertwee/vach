@@ -4,6 +4,7 @@ use std::{
     io::{BufReader, Read},
     str,
 };
+use anyhow;
 
 #[derive(Debug)]
 pub struct HeaderConfig {
@@ -73,7 +74,7 @@ impl Header {
             capacity: 0,
         }
     }
-    pub fn from_file(file: &File) -> Result<Header, String> {
+    pub fn from_file(file: &File) -> anyhow::Result<Header> {
         let mut reader = BufReader::new(file);
 
         // Construct header
@@ -82,22 +83,22 @@ impl Header {
 
         // Read magic
         let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
-        reader.read(&mut buffer).unwrap();
+        reader.read(&mut buffer)?;
         header.magic = buffer.clone();
 
         // Read flags, u32 from [u8;4]
         let mut buffer = [0; HeaderConfig::FLAG_SIZE];
-        reader.read(&mut buffer).unwrap();
+        reader.read(&mut buffer)?;
         header.flags = u16::from_ne_bytes(buffer);
 
         // Read version, u16 from [u8;2]
         let mut buffer = [0; HeaderConfig::VERSION_SIZE];
-        reader.read(&mut buffer).unwrap();
+        reader.read(&mut buffer)?;
         header.version = u16::from_ne_bytes(buffer);
 
         // Read number of entries, u16 from [u8;2]
         let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
-        reader.read(&mut buffer).unwrap();
+        reader.read(&mut buffer)?;
         header.capacity = u16::from_ne_bytes(buffer);
 
         Result::Ok(header)

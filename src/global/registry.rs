@@ -14,7 +14,7 @@ impl Registry {
             entries: vec![],
         }
     }
-    pub fn from_file(file: &File, header: &Header) -> Result<Registry, String> {
+    pub fn from_file(file: &File, header: &Header) -> anyhow::Result<Registry> {
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(HeaderConfig::SIZE as u64));
         
@@ -22,9 +22,9 @@ impl Registry {
         for i in 0..header.capacity{
             let mut buffer = [0; RegistryEntry::SIZE];
             reader.read(&mut buffer);
-            entries.push(RegistryEntry::from_bytes(buffer));
+            entries.push(RegistryEntry::from_bytes(buffer)?);
         };
-        dbg!(reader.stream_position().unwrap());
+        dbg!(reader.stream_position()?);
         Result::Ok(Registry { entries })
     }
     pub fn bytes(&self) -> Vec<u8> {
@@ -53,17 +53,17 @@ pub struct RegistryEntry {
 
 impl RegistryEntry {
     pub const SIZE: usize = 41;
-    pub fn from_bytes(buffer: [u8; Self::SIZE]) -> RegistryEntry {
-        RegistryEntry{
-            flags: u16::from_ne_bytes(buffer[0..2].try_into().unwrap()),
-            mime_type: u16::from_ne_bytes(buffer[2..4].try_into().unwrap()),
-            content_version: buffer[4],
-            signature: u32::from_ne_bytes(buffer[5..9].try_into().unwrap()),
-            path_name_start: RegisterType::from_ne_bytes(buffer[9..17].try_into().unwrap()),
-            path_name_end: RegisterType::from_ne_bytes( buffer[17..25].try_into().unwrap()),
-            index: RegisterType::from_ne_bytes(buffer[25..33].try_into().unwrap()),
-            offset: RegisterType::from_ne_bytes(buffer[33..41].try_into().unwrap())
-        }
+    pub fn from_bytes(buffer: [u8; Self::SIZE]) -> anyhow::Result<RegistryEntry> {
+        Ok(RegistryEntry{
+            flags: u16::from_ne_bytes(buffer[0..2].try_into()?),
+            mime_type: u16::from_ne_bytes(buffer[2..4].try_into()?),
+            content_version: *buffer.get(4).ok_or(anyhow::Error::msg("Out of bounds error"))?,
+            signature: u32::from_ne_bytes(buffer[5..9].try_into()?),
+            path_name_start: RegisterType::from_ne_bytes(buffer[9..17].try_into()?),
+            path_name_end: RegisterType::from_ne_bytes( buffer[17..25].try_into()?),
+            index: RegisterType::from_ne_bytes(buffer[25..33].try_into()?),
+            offset: RegisterType::from_ne_bytes(buffer[33..41].try_into()?)
+        })
     }
     pub fn empty() -> RegistryEntry {
         RegistryEntry{
