@@ -7,7 +7,7 @@ use std::{
 
 #[derive(Debug)]
 pub struct HeaderConfig {
-    pub magic: [u8; 5],
+    pub magic: [u8; HeaderConfig::MAGIC_LENGTH],
     pub minimum_version: u16,
 }
 
@@ -17,6 +17,7 @@ impl HeaderConfig {
     pub const FLAG_SIZE: usize = 2;
     pub const VERSION_SIZE: usize = 2;
     pub const ENTRY_SIZE: usize = 2;
+    pub const SIZE: usize = 11;
 
     pub fn new(magic: [u8; 5], minimum_version: u16) -> HeaderConfig {
         HeaderConfig {
@@ -27,8 +28,19 @@ impl HeaderConfig {
     pub fn default() -> HeaderConfig {
         HeaderConfig::new(HeaderConfig::MAGIC.clone(), 0)
     }
+    pub fn empty() -> HeaderConfig {
+        HeaderConfig{
+            magic: [0;HeaderConfig::MAGIC_LENGTH],
+            minimum_version: 0
+        }
+    }
+
     pub fn set_minimum_version(mut self, version: &u16) -> HeaderConfig {
         self.minimum_version = version.clone();
+        self
+    }
+    pub fn set_magic(mut self, magic: [u8; 5]) -> HeaderConfig {
+        self.magic = magic;
         self
     }
 }
