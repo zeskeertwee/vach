@@ -19,7 +19,8 @@ mod test {
         let _registry = registry::Registry::empty();
         let _registry_entry = registry::RegistryEntry::empty();
     }
-    #[test]
+
+	 #[test]
     fn header_config() {
         let config = header::HeaderConfig::new(*b"VfACH", 0u16);
         let file = File::open("me.vach").unwrap();
@@ -44,6 +45,7 @@ mod test {
 		  let vector: Vec<&[u8]> = vector.windows(registry::RegistryEntry::SIZE).collect();
 		  assert_eq!(vector.get(0).unwrap().len(), registry::RegistryEntry::SIZE);
     }
+
     #[test]
     fn write_example_file() {
         let file = File::create("me.vach").unwrap();
