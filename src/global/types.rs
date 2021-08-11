@@ -1,0 +1,1 @@
+pub type RegisterType = u64;
