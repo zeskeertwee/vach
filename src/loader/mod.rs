@@ -1,8 +1,9 @@
-use crate::global::{
-    header::{Header, HeaderConfig},
-    registry::Registry,
-};
 use anyhow;
+use crate::global::{
+    storage::Storage,
+    header::{Header, HeaderConfig},
+    registry::{Registry, RegistryEntry},
+};
 use std::{
     fmt,
     fs::File,
@@ -11,11 +12,15 @@ use std::{
     sync::Arc,
 };
 
+pub mod resource;
+use resource::Resource;
+
+
 #[derive(Debug)]
 pub struct Archive {
     header: Header,
     registry: Registry,
-    data: Option<File>,
+    storage: Storage,
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
@@ -24,7 +29,7 @@ impl Archive {
         Archive {
             header: Header::empty(),
             registry: Registry::empty(),
-            data: None,
+            storage: Storage::Vector(vec![]),
         }
     }
     pub fn from_file(file: File) -> anyhow::Result<Archive> {
@@ -38,7 +43,7 @@ impl Archive {
                 Result::Ok(Archive {
                     header,
                     registry,
-                    data: Some(file),
+                    storage: Storage::File(file),
                 })
             }
             Err(error) => Result::Err(error),
@@ -72,6 +77,26 @@ impl Archive {
         };
 
         Result::Ok(true)
+    }
+
+    // Filesystem functions
+    pub fn fetch(&self, path: &String) -> anyhow::Result<Resource> {
+        let entry = self.registry.fetch(path, &self.storage)?;
+
+        match &self.storage {
+            Storage::File(file) => {
+                unimplemented!();
+            },
+            Storage::Vector(vector) => {
+                unimplemented!();
+            }
+        }
+    }
+    pub fn append(&self, resource: &Resource, path: &String) -> anyhow::Result<()> {
+        unimplemented!()
+    }
+    pub fn delete(&mut self, path: &String) -> anyhow::Result<()>{
+        unimplemented!()
     }
 }
 
