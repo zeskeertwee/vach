@@ -51,7 +51,7 @@ impl fmt::Display for HeaderConfig {
         write!(
             f,
             "[HeaderConfig] magic: {}, minimum_version: {}",
-            str::from_utf8(&self.magic).unwrap(),
+            str::from_utf8(&self.magic).expect("Error constructing str from HeaderConfig::Magic"),
             self.minimum_version
         )
     }
@@ -121,7 +121,7 @@ impl fmt::Display for Header {
             f,
             "[Archive Header] Version: {}, Magic: {}",
             5u32,
-            str::from_utf8(&self.magic).unwrap()
+            str::from_utf8(&self.magic).expect("Error constructing str from Header::Magic")
         )
     }
 }
