@@ -34,3 +34,8 @@ ENTRIES: (x) * HEADER::NUMBER_OF_ENTRIES
 INCLUDES:
 	PATH_NAMES
 	BINARY_DATA
+
+NB:
+	Do NOT CREATE A NEW BufReader every time a Resource is loaded
+	Switch from Vec to Box<[]>
+	Use iterators when possible
