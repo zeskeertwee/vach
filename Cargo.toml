@@ -1,4 +1,7 @@
-[workspace]
-members = [
-	"virtfs-ach"
-]
+[package]
+name = "vf"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.42"
