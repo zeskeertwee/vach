@@ -7,7 +7,6 @@ use crate::global::{
 };
 use std::{
     fmt,
-    fs::File,
     io::{BufReader, Read, Seek, SeekFrom},
     str,
     sync::Arc,

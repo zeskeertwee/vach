@@ -8,7 +8,6 @@ use crate::{
 };
 use std::{
     convert::TryInto,
-    fs::File,
     io::{BufReader, Read, Seek, SeekFrom},
 };
 
