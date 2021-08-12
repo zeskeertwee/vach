@@ -1,7 +1,7 @@
 use virtfs_ach::AchFile;
 use virtfs_ach::FileHeader;
 use std::fs::File;
-use ed25519_dalek::{Keypair, SecretKey, PublicKey};
+use ed25519_dalek::{Keypair, SecretKey, PublicKey, Signature, Signer};
 use rand::rngs::OsRng;
 use std::io::Write;
 
@@ -11,14 +11,15 @@ const PRV_BYTES: &[u8] = include_bytes!("../test-data/key.prv");
 const ACH_BYTES: &[u8] = include_bytes!("../test-data/test.ach");
 
 fn main() {
-    // let keypair = build_keypair();
-    // let mut builder = FileHeader::builder();
-    // builder.set_content_version(0);
-    // builder.add_file("data/text.txt", DATA.to_owned());
-    // let mut file = File::create("./test.ach").unwrap();
-    // builder.write_to(&mut file, &keypair).unwrap();
-
-
+    let keypair = build_keypair();
+        
+    let mut builder = FileHeader::builder();
+    builder.set_content_version(0);
+    builder.add_file("data/text.txt", DATA.to_owned());
+    let mut file = File::create("./test.ach").unwrap();
+    builder.write_to(&mut file, &keypair).unwrap();
+    
+    
     let keypair = build_keypair();
     let mut data = std::io::Cursor::new(ACH_BYTES);
     let mut ach = AchFile::read_from(&mut data, keypair.public).unwrap();
