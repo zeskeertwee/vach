@@ -1,9 +1,9 @@
 use std::fmt;
+use crate::global::registry::RegistryEntry;
 
-// Basically data obtained from the archive
+// Basically data obtained from an archive
 #[derive(Debug)]
 pub struct Resource {
-    // INFO: Supports 65535 mime types which is more than enough
     pub mime_type: u16,
     pub data: Vec<u8>,
     pub flags: u16,
@@ -11,8 +11,13 @@ pub struct Resource {
 }
 
 impl Resource {
-    pub fn new(data: &[u8], mime_type: u16) -> Resource {
-        unimplemented!()
+    pub fn new(data: &[u8], entry: &RegistryEntry) -> Resource {
+        Resource{
+            mime_type: entry.mime_type.clone(),
+            data: Vec::from(data),
+            flags: entry.flags.clone(),
+            content_version: entry.content_version.clone()
+        }
     }
     pub fn empty() -> Resource {
         Resource {
@@ -32,7 +37,7 @@ impl fmt::Display for Resource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[ArchiveEntry] mime_type: {m_type}, size: {length}",
+            "[Resource] mime_type: {m_type}, size: {length}",
             m_type = self.mime_type,
             length = self.data.len()
         )
