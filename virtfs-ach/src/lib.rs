@@ -106,9 +106,12 @@ impl FileHeaderBuilder {
         offset += 2;
         writer.write_all(&self.content_version.to_le_bytes())?;
         offset += 2;
-        
+
         writer.write_all(&(self.table.len() as u16).to_le_bytes())?;
         offset += 2;
+
+        // compensate for signature
+        offset += SIGNATURE_LENGTH;
         
         let mut table_buf = std::io::Cursor::new(Vec::new()); // buffer for table because we sign it
 
@@ -157,15 +160,12 @@ impl FileHeaderBuilder {
         // write signature to writer
         let signature = signer.sign(table_buf.get_ref());
         let signature_bytes = signature.as_bytes();
-        println!("Signature computed over table of size {}, signature: {:?}", table_buf.get_ref().len(), signature_bytes);
+        
         if signature_bytes.len() != SIGNATURE_LENGTH {
             return Err(std::io::Error::new(std::io::ErrorKind::Other, "Signature length does not match expected length!"));
         }
-        assert_eq!(signature_bytes, EXPECTED_TABLE_SIGNATURE);
-        println!("Writing signature at stream position {}", writer.stream_position().unwrap());
         writer.write_all(signature_bytes)?;
         writer.write_all(table_buf.get_ref())?;
-        assert_eq!(table_buf.get_ref(), EXPECTED_TABLE);
 
         for data in data.iter() {
             writer.write_all(&data)?;
@@ -204,14 +204,12 @@ impl<R: Read + Seek> AchFile<R> {
         let archive_version = u16::from_le_bytes([version_buf[0], version_buf[1]]);
         let content_version = u16::from_le_bytes([version_buf[2], version_buf[3]]);
 
-        println!("Reading signature from position {}", reader.stream_position().unwrap());
-        let mut expected_table_signature_bytes = [0u8; SIGNATURE_LENGTH];
-        reader.read_exact(&mut expected_table_signature_bytes)?;
-
         let mut table_size_buf = [0u8; 2];
         reader.read_exact(&mut table_size_buf)?;
         let table_size = u16::from_le_bytes(table_size_buf);
-        println!("Table size: {}", table_size);
+
+        let mut expected_table_signature_bytes = [0u8; SIGNATURE_LENGTH];
+        reader.read_exact(&mut expected_table_signature_bytes)?;
 
         let mut table = Vec::new();
         let mut table_buf = Vec::new();
@@ -251,14 +249,9 @@ impl<R: Read + Seek> AchFile<R> {
                 compressed_size,
                 offset
             });
-
-            println!("{:?}", table[i as usize]);
         }
 
-        assert_eq!(&table_buf, EXPECTED_TABLE);
         let expected_table_signature: ed25519_dalek::Signature = Signature::from_bytes(&expected_table_signature_bytes).map_err(|e| AchError::InvalidSignature(e))?;
-        assert_eq!(expected_table_signature_bytes, EXPECTED_TABLE_SIGNATURE);
-        dbg!(table_buf.len());
         if key.verify(&table_buf, &expected_table_signature).is_err() {
             return Err(AchError::InvalidTableSignature);
         } else {
@@ -271,6 +264,13 @@ impl<R: Read + Seek> AchFile<R> {
             table,
             reader,
         })
+    }
+
+    pub fn list_files(&self) {
+        for file in self.table.iter() {
+            let compressed = file.compressed_size != file.uncompressed_size;
+            println!("{} is {}, and is {} bytes in the ach file", file.path, if compressed { "compressed" } else { "not compressed" }, file.compressed_size);
+        }
     }
 
     pub fn read_file_at_index(&mut self, index: usize) -> Result<Vec<u8>, AchError> {
@@ -288,102 +288,3 @@ impl<R: Read + Seek> AchFile<R> {
         }
     }
 }
-
-const EXPECTED_TABLE_SIGNATURE: &[u8] = &[180, 35, 104, 70, 211, 1, 77, 118, 5, 11, 34, 95, 22, 180, 139, 209, 124, 160, 29, 4, 167, 178, 207, 16, 5, 62, 63, 59, 1, 51, 177, 113, 127, 165, 126, 65, 111, 27, 53, 53, 214, 14, 201, 203, 174, 171, 86, 180, 94, 124, 190, 152, 229, 127, 94, 176, 66, 219, 96, 32, 76, 162, 232, 0];
-
-const EXPECTED_TABLE: &[u8] = &[
-    13,
-    100,
-    97,
-    116,
-    97,
-    47,
-    116,
-    101,
-    120,
-    116,
-    46,
-    116,
-    120,
-    116,
-    24,
-    0,
-    0,
-    0,
-    24,
-    0,
-    0,
-    0,
-    218,
-    207,
-    126,
-    134,
-    10,
-    113,
-    87,
-    93,
-    153,
-    150,
-    181,
-    195,
-    216,
-    51,
-    253,
-    159,
-    87,
-    49,
-    84,
-    132,
-    252,
-    72,
-    138,
-    251,
-    211,
-    7,
-    17,
-    184,
-    149,
-    78,
-    150,
-    255,
-    207,
-    214,
-    76,
-    104,
-    217,
-    35,
-    128,
-    171,
-    180,
-    202,
-    90,
-    182,
-    178,
-    118,
-    23,
-    79,
-    115,
-    253,
-    185,
-    148,
-    221,
-    238,
-    152,
-    204,
-    190,
-    250,
-    0,
-    32,
-    108,
-    211,
-    72,
-    10,
-    105,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-];

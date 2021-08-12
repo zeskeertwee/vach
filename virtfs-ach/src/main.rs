@@ -6,9 +6,9 @@ use rand::rngs::OsRng;
 use std::io::Write;
 
 const DATA: &[u8] = include_bytes!("../test-data/data.txt");
+const IPSUM_DATA: &[u8] = include_bytes!("../test-data/ipsum.txt");
 const PUB_BYTES: &[u8] = include_bytes!("../test-data/key.pub");
 const PRV_BYTES: &[u8] = include_bytes!("../test-data/key.prv");
-const ACH_BYTES: &[u8] = include_bytes!("../test-data/test.ach");
 
 fn main() {
     let keypair = build_keypair();
@@ -16,15 +16,20 @@ fn main() {
     let mut builder = FileHeader::builder();
     builder.set_content_version(0);
     builder.add_file("data/text.txt", DATA.to_owned());
-    let mut file = File::create("./test.ach").unwrap();
+    builder.add_file("data/ipsum.txt", IPSUM_DATA.to_owned());
+    let mut file = File::create("./virtfs-ach/test-data/test.ach").unwrap();
     builder.write_to(&mut file, &keypair).unwrap();
-    
-    
+    drop(file);
+
+    let mut file = File::open("./virtfs-ach/test-data/test.ach").unwrap();
     let keypair = build_keypair();
-    let mut data = std::io::Cursor::new(ACH_BYTES);
-    let mut ach = AchFile::read_from(&mut data, keypair.public).unwrap();
+    let mut ach = AchFile::read_from(&mut file, keypair.public).unwrap();
     let data = ach.read_file_at_index(0).unwrap();
-    println!("{}", String::from_utf8(data).unwrap());
+
+    ach.list_files();
+    
+    assert_eq!(ach.read_file_at_index(0).unwrap(), DATA);
+    assert_eq!(ach.read_file_at_index(1).unwrap(), IPSUM_DATA);
 }
 
 fn build_keypair() -> Keypair {
