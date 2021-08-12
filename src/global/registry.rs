@@ -48,6 +48,8 @@ impl Registry {
         });
         unimplemented!()
     }
+    pub fn append(&mut self, path: &String, len: usize,store: &Storage) -> anyhow::Result<RegistryEntry> { unimplemented!() }
+    pub fn delete() -> anyhow::Result<()> { unimplemented!() }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -60,8 +62,8 @@ pub struct RegistryEntry {
     path_name_start: RegisterType,
     path_name_end: RegisterType,
 
-    index: RegisterType,
-    offset: RegisterType,
+    location: RegisterType,
+    length: RegisterType,
 }
 
 impl RegistryEntry {
@@ -76,8 +78,8 @@ impl RegistryEntry {
             signature: u32::from_ne_bytes(buffer[5..9].try_into()?),
             path_name_start: RegisterType::from_ne_bytes(buffer[9..17].try_into()?),
             path_name_end: RegisterType::from_ne_bytes(buffer[17..25].try_into()?),
-            index: RegisterType::from_ne_bytes(buffer[25..33].try_into()?),
-            offset: RegisterType::from_ne_bytes(buffer[33..41].try_into()?),
+            location: RegisterType::from_ne_bytes(buffer[25..33].try_into()?),
+            length: RegisterType::from_ne_bytes(buffer[33..41].try_into()?),
         })
     }
     pub fn empty() -> RegistryEntry {
@@ -88,8 +90,8 @@ impl RegistryEntry {
             signature: 0,
             path_name_start: 0,
             path_name_end: 0,
-            index: 0,
-            offset: 0,
+            location: 0,
+            length: 0,
         }
     }
     pub fn bytes(&self) -> Vec<u8> {
@@ -100,8 +102,8 @@ impl RegistryEntry {
         buffer.extend_from_slice(&self.signature.to_ne_bytes());
         buffer.extend_from_slice(&self.path_name_start.to_ne_bytes());
         buffer.extend_from_slice(&self.path_name_end.to_ne_bytes());
-        buffer.extend_from_slice(&self.index.to_ne_bytes());
-        buffer.extend_from_slice(&self.offset.to_ne_bytes());
+        buffer.extend_from_slice(&self.location.to_ne_bytes());
+        buffer.extend_from_slice(&self.length.to_ne_bytes());
 
         buffer
     }
