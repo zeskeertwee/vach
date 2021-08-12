@@ -92,7 +92,8 @@ impl Archive {
             }
         }
     }
-    pub fn append(&self, resource: &Resource, path: &String) -> anyhow::Result<()> {
+    pub fn append(&mut self, resource: &Resource, path: &String) -> anyhow::Result<()> {
+        let entry = self.registry.append(path, resource.data.len(), &mut self.storage)?;
         unimplemented!()
     }
     pub fn delete(&mut self, path: &String) -> anyhow::Result<()>{
