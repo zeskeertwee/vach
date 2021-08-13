@@ -110,16 +110,4 @@ mod test {
         let array = [2u8, 2u8];
         assert_eq!(num, u16::from_ne_bytes(array));
     }
-
-    #[test]
-    fn registry_tests() -> anyhow::Result<()> {
-        let mut registry = Registry::empty();
-        let entries = 2;
-
-        for i in 0..entries {
-            registry.entries.push(RegistryEntry::empty());
-        }
-
-        Ok(())
-    }
 }
