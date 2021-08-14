@@ -1,5 +1,9 @@
-use std::{fmt, io::{BufReader, Read, Seek}, str};
 use anyhow;
+use std::{
+    fmt,
+    io::{BufReader, Read, Seek},
+    str,
+};
 
 #[derive(Debug)]
 pub struct HeaderConfig {
@@ -25,9 +29,9 @@ impl HeaderConfig {
         HeaderConfig::new(HeaderConfig::MAGIC.clone(), 0)
     }
     pub fn empty() -> HeaderConfig {
-        HeaderConfig{
-            magic: [0;HeaderConfig::MAGIC_LENGTH],
-            minimum_version: 0
+        HeaderConfig {
+            magic: [0; HeaderConfig::MAGIC_LENGTH],
+            minimum_version: 0,
         }
     }
 
@@ -69,43 +73,48 @@ impl Header {
             capacity: 0,
         }
     }
-    pub fn from<T: Read + Seek>(reader: &mut BufReader<T>) -> anyhow::Result<Header> {
-            // Construct header
-            let mut header = Header::empty();
-            // TODO: Remove this repetitive garbage
-    
-            // Read magic
-            let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
-            reader.read(&mut buffer)?;
-            header.magic = buffer;
-    
-            // Read flags, u32 from [u8;4]
-            let mut buffer = [0; HeaderConfig::FLAG_SIZE];
-            reader.read(&mut buffer)?;
-            header.flags = u16::from_ne_bytes(buffer);
-    
-            // Read version, u16 from [u8;2]
-            let mut buffer = [0; HeaderConfig::VERSION_SIZE];
-            reader.read(&mut buffer)?;
-            header.version = u16::from_ne_bytes(buffer);
-    
-            // Read number of entries, u16 from [u8;2]
-            let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
-            reader.read(&mut buffer)?;
-            header.capacity = u16::from_ne_bytes(buffer);
-    
-            Result::Ok(header)
-    }
 
-	 pub fn bytes(&self) -> Vec<u8> {
-		 let mut buffer: Vec<u8> = vec![];
-		 buffer.extend_from_slice(&self.magic);
-		 buffer.extend_from_slice(&self.flags.to_ne_bytes());
-		 buffer.extend_from_slice(&self.version.to_ne_bytes());
-		 buffer.extend_from_slice(&self.capacity.to_ne_bytes());
-		 
-		 buffer
-	 }
+    pub fn bytes(&self) -> Vec<u8> {
+        let mut buffer: Vec<u8> = vec![];
+        buffer.extend_from_slice(&self.magic);
+        buffer.extend_from_slice(&self.flags.to_ne_bytes());
+        buffer.extend_from_slice(&self.version.to_ne_bytes());
+        buffer.extend_from_slice(&self.capacity.to_ne_bytes());
+
+        buffer
+    }
+}
+
+impl Header {
+    pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<Header> {
+        let mut reader = BufReader::new(handle);
+
+        // Construct header
+        let mut header = Header::empty();
+        // TODO: Remove this repetitive garbage
+
+        // Read magic
+        let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
+        reader.read(&mut buffer)?;
+        header.magic = buffer;
+
+        // Read flags, u32 from [u8;4]
+        let mut buffer = [0; HeaderConfig::FLAG_SIZE];
+        reader.read(&mut buffer)?;
+        header.flags = u16::from_ne_bytes(buffer);
+
+        // Read version, u16 from [u8;2]
+        let mut buffer = [0; HeaderConfig::VERSION_SIZE];
+        reader.read(&mut buffer)?;
+        header.version = u16::from_ne_bytes(buffer);
+
+        // Read number of entries, u16 from [u8;2]
+        let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
+        reader.read(&mut buffer)?;
+        header.capacity = u16::from_ne_bytes(buffer);
+
+        Result::Ok(header)
+    }
 }
 
 impl fmt::Display for Header {

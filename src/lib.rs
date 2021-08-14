@@ -38,13 +38,13 @@ mod test {
     #[test]
     fn header_config() -> anyhow::Result<()> {
         let config = HeaderConfig::new(*b"VfACH", 0u16);
-        let mut reader = BufReader::new(File::open("me.vach")?);
+        let mut file = File::open("me.vach")?;
 
         format!("{}", &config);
 
-        let mut _header = Header::from(&mut reader)?;
+        let mut _header = Header::from(&mut file)?;
         format!("{}", _header);
-        Archive::validate(&mut reader, &config)?;
+        // Archive::validate(&mut file, &config)?;
 
         Result::Ok(())
     }

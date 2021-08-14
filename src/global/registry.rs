@@ -5,7 +5,7 @@ use crate::{
     },
     loader::resource::Resource,
 };
-use std::{convert::TryInto, io::{BufReader, Cursor, Read, Seek, SeekFrom}};
+use std::{convert::TryInto, io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write}};
 
 #[derive(Debug)]
 pub struct Registry {
@@ -16,7 +16,19 @@ impl Registry {
     pub fn empty() -> Registry {
         Registry { entries: vec![] }
     }
-    pub fn from<T: Seek + Read>(reader: &mut BufReader<T>, header: &Header) -> anyhow::Result<Registry> {
+    pub fn bytes(&self) -> Vec<u8> {
+        let mut buffer = vec![];
+        self.entries.iter().for_each(|entry| {
+            buffer.append(&mut entry.bytes());
+        });
+
+        buffer
+    }
+}
+
+impl Registry {
+    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header) -> anyhow::Result<Registry> {
+        let mut reader = BufReader::new(handle);
         reader.seek(SeekFrom::Start(HeaderConfig::SIZE as u64));
 
         let mut entries: Vec<RegistryEntry> = vec![];
@@ -27,18 +39,6 @@ impl Registry {
         }
         Result::Ok(Registry { entries })
     }
-    pub fn bytes(&self) -> Vec<u8> {
-        let mut buffer = vec![];
-        self.entries.iter().for_each(|entry| {
-            buffer.append(&mut entry.bytes());
-        });
-
-        buffer
-    }
-
-    pub fn fetch_entry<T: Seek + Read>(&self, path: &String, reader: &BufReader<T>) -> Option<&RegistryEntry> {
-        unimplemented!()
-    }
     pub fn fetch<T: Seek + Read>(&self, path: &String, reader: &BufReader<T>) -> anyhow::Result<&Resource> {
         let iter = self.entries.iter();
         let mut found = self
@@ -46,10 +46,16 @@ impl Registry {
             .ok_or(anyhow::Error::msg(format!("Resource not found: {}", path)))?;
         unimplemented!()
     }
-    pub fn append<T: Seek + Read>( &mut self, path: &String, resource: &Resource, reader: &mut BufReader<T>, ) -> anyhow::Result<RegistryEntry> {
+    pub fn fetch_entry<T: Seek + Read>(&self, path: &String, reader: &BufReader<T>) -> Option<&RegistryEntry> {
         unimplemented!()
     }
-    pub fn delete<T: Seek + Read>(&mut self, path: &String, reader: &mut BufReader<T>) -> anyhow::Result<()> {
+}
+
+impl Registry {
+    pub fn append<T: Seek + Read + Write>(&mut self, path: &String, resource: &Resource, reader: &mut BufWriter<T>, ) -> anyhow::Result<RegistryEntry> {
+        unimplemented!()
+    }
+    pub fn delete<T: Seek + Read + Write>(&mut self, path: &String, reader: &mut BufWriter<T>) -> anyhow::Result<()> {
         unimplemented!()
     }
 }
