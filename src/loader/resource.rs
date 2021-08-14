@@ -28,9 +28,8 @@ impl Resource {
         }
     }
 
-    pub fn set_flags(&mut self, ) {}
-    pub fn toggle_flag(&mut self, flag: u16, toggle: bool) {}
-    pub fn set_version(&mut self, ) {}
+    pub fn set_flags(mut self, flags: u16) -> Self { self.flags = flags; self }
+    pub fn set_version(mut self, version: u8) -> Self { self.content_version = version; self }
 }
 
 impl fmt::Display for Resource {
