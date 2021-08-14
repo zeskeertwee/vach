@@ -14,7 +14,7 @@ pub(crate) mod prelude {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use crate::{
         global::{
             header::{Header, HeaderConfig},
@@ -48,7 +48,7 @@ mod test {
 
         Result::Ok(())
     }
-
+    
     #[test]
     fn to_bytes() -> anyhow::Result<()> {
         let mut reader = BufReader::new(File::open("me.vach")?);
