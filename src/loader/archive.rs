@@ -66,19 +66,19 @@ impl<T: Seek + Read> Archive<T> {
     }
 
     // Filesystem functions
-    pub fn fetch(&self, path: &String) -> anyhow::Result<&Resource> {
-        let reader = BufReader::new(self.storage);
+    pub fn fetch(&mut self, path: &String) -> anyhow::Result<&Resource> {
+        let reader = BufReader::new(&mut self.storage);
         self.registry.fetch(path, &reader)
     }
 }
 
 impl<T: Read + Seek + Write> Archive<T> {
     pub fn append(&mut self, resource: &Resource, path: &String) -> anyhow::Result<RegistryEntry> {
-        let mut writer = BufWriter::new(self.storage);
+        let mut writer = BufWriter::new(&mut self.storage);
         self.registry.append(path, resource, &mut writer)
     }
     pub fn delete(&mut self, path: &String) -> anyhow::Result<()> {
-        let mut writer = BufWriter::new(self.storage);
+        let mut writer = BufWriter::new(&mut self.storage);
         self.registry.delete(path, &mut writer)
     }
 }
