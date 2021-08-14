@@ -36,6 +36,28 @@ mod tests {
     }
 
     #[test]
+    fn write_example_file() -> anyhow::Result<()> {
+        let file = File::create("me.vach")?;
+        let mut writer = BufWriter::new(file);
+        {
+            let mut header = Header::empty();
+            let mut registry = Registry::empty();
+            let entries = 2;
+            header.capacity = entries;
+
+            for i in 0..entries {
+                registry.entries.push(RegistryEntry::empty());
+            }
+
+            writer.write(header.bytes().as_slice())?;
+            writer.write(&registry.bytes().as_slice());
+        };
+        writer.flush()?;
+
+        Result::Ok(())
+    }
+
+    #[test]
     fn header_config() -> anyhow::Result<()> {
         let config = HeaderConfig::new(*b"VfACH", 0u16);
         let mut file = File::open("me.vach")?;
@@ -68,28 +90,6 @@ mod tests {
                 .len(),
             RegistryEntry::SIZE
         );
-        Result::Ok(())
-    }
-
-    #[test]
-    fn write_example_file() -> anyhow::Result<()> {
-        let file = File::create("me.vach")?;
-        let mut writer = BufWriter::new(file);
-        {
-            let mut header = Header::empty();
-            let mut registry = Registry::empty();
-            let entries = 2;
-            header.capacity = entries;
-
-            for i in 0..entries {
-                registry.entries.push(RegistryEntry::empty());
-            }
-
-            writer.write(header.bytes().as_slice())?;
-            writer.write(&registry.bytes().as_slice());
-        };
-        writer.flush()?;
-
         Result::Ok(())
     }
 
