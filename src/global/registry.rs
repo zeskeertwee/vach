@@ -39,14 +39,14 @@ impl Registry {
         }
         Result::Ok(Registry { entries })
     }
-    pub fn fetch<T: Seek + Read>(&self, path: &String, reader: &BufReader<T>) -> anyhow::Result<&Resource> {
+    pub fn fetch<T: Seek + Read>(&self, path: &String, reader: &mut BufReader<T>) -> anyhow::Result<&Resource> {
         let iter = self.entries.iter();
         let mut found = self
             .fetch_entry(path, reader)
             .ok_or(anyhow::Error::msg(format!("Resource not found: {}", path)))?;
         unimplemented!()
     }
-    pub fn fetch_entry<T: Seek + Read>(&self, path: &String, reader: &BufReader<T>) -> Option<&RegistryEntry> {
+    pub fn fetch_entry<T: Seek + Read>(&self, path: &String, reader: &mut BufReader<T>) -> Option<&RegistryEntry> {
         unimplemented!()
     }
 }
