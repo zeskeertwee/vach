@@ -29,7 +29,7 @@ impl<T: Seek + Read> Archive<T> {
         Archive::with_config(storage, &HeaderConfig::default())
     }
     pub fn with_config(mut storage: T, config: &HeaderConfig) -> anyhow::Result<Archive<T>> {
-        match Archive::<T>::validate(&mut storage, config) {
+        match Archive::validate(&mut storage, config) {
             Ok(_) => {
                 let header = Header::from(&mut storage)?;
                 let registry = Registry::from(&mut storage, &header)?;
@@ -67,8 +67,8 @@ impl<T: Seek + Read> Archive<T> {
 
     // Filesystem functions
     pub fn fetch(&mut self, path: &String) -> anyhow::Result<&Resource> {
-        let reader = BufReader::new(&mut self.storage);
-        self.registry.fetch(path, &reader)
+        let mut reader = BufReader::new(&mut self.storage);
+        self.registry.fetch(path, &mut reader)
     }
 }
 
