@@ -1,15 +1,11 @@
 use crate::{
     global::{
         header::{Header, HeaderConfig},
-        storage::Storage,
         types::RegisterType,
     },
     loader::resource::Resource,
 };
-use std::{
-    convert::TryInto,
-    io::{BufReader, Read, Seek, SeekFrom},
-};
+use std::{convert::TryInto, io::{BufReader, Cursor, Read, Seek, SeekFrom}};
 
 #[derive(Debug)]
 pub struct Registry {
@@ -20,24 +16,16 @@ impl Registry {
     pub fn empty() -> Registry {
         Registry { entries: vec![] }
     }
-    pub fn from_storage(store: &Storage, header: &Header) -> anyhow::Result<Registry> {
-        match store {
-            Storage::File(file) => {
-                let mut reader = BufReader::new(file);
-                reader.seek(SeekFrom::Start(HeaderConfig::SIZE as u64));
+    pub fn from<T: Seek + Read>(reader: &mut BufReader<T>, header: &Header) -> anyhow::Result<Registry> {
+        reader.seek(SeekFrom::Start(HeaderConfig::SIZE as u64));
 
-                let mut entries: Vec<RegistryEntry> = vec![];
-                for i in 0..header.capacity {
-                    let mut buffer = [0; RegistryEntry::SIZE];
-                    reader.read(&mut buffer);
-                    entries.push(RegistryEntry::from_bytes(buffer)?);
-                }
-                Result::Ok(Registry { entries })
-            }
-            Storage::Vector(vector) => {
-                unimplemented!()
-            }
+        let mut entries: Vec<RegistryEntry> = vec![];
+        for i in 0..header.capacity {
+            let mut buffer = [0; RegistryEntry::SIZE];
+            reader.read(&mut buffer);
+            entries.push(RegistryEntry::from_bytes(buffer)?);
         }
+        Result::Ok(Registry { entries })
     }
     pub fn bytes(&self) -> Vec<u8> {
         let mut buffer = vec![];
@@ -48,27 +36,20 @@ impl Registry {
         buffer
     }
 
-    pub fn fetch_entry(&self, path: &String, store: &Storage) -> Option<&RegistryEntry> {
-        match store {
-            Storage::File(file) => {
-                unimplemented!()
-            }
-            Storage::Vector(vector) => {
-                unimplemented!()
-            }
-        }
+    pub fn fetch_entry<T: Seek + Read>(&self, path: &String, reader: &BufReader<T>) -> Option<&RegistryEntry> {
+        unimplemented!()
     }
-    pub fn fetch(&self, path: &String, store: &Storage) -> anyhow::Result<&Resource> {
+    pub fn fetch<T: Seek + Read>(&self, path: &String, reader: &BufReader<T>) -> anyhow::Result<&Resource> {
         let iter = self.entries.iter();
         let mut found = self
-            .fetch_entry(path, store)
+            .fetch_entry(path, reader)
             .ok_or(anyhow::Error::msg(format!("Resource not found: {}", path)))?;
         unimplemented!()
     }
-    pub fn append( &mut self, path: &String, resource: &Resource, store: &mut Storage, ) -> anyhow::Result<RegistryEntry> {
+    pub fn append<T: Seek + Read>( &mut self, path: &String, resource: &Resource, reader: &mut BufReader<T>, ) -> anyhow::Result<RegistryEntry> {
         unimplemented!()
     }
-    pub fn delete(&mut self, path: &String, store: &mut Storage) -> anyhow::Result<()> {
+    pub fn delete<T: Seek + Read>(&mut self, path: &String, reader: &mut BufReader<T>) -> anyhow::Result<()> {
         unimplemented!()
     }
 }

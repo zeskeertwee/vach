@@ -8,7 +8,6 @@ pub(crate) mod prelude {
     pub use crate::global::{
         header::{Header, HeaderConfig},
         registry::{Registry, RegistryEntry},
-        storage::Storage,
         types::*,
     };
     pub use crate::loader::{archive::Archive, resource::Resource};
@@ -21,8 +20,7 @@ mod test {
             header::{Header, HeaderConfig},
             registry::{Registry, RegistryEntry},
         },
-        loader::archive::Archive,
-        prelude::Storage,
+        loader::archive::Archive
     };
     use std::{
         fs::File,
@@ -40,24 +38,25 @@ mod test {
     #[test]
     fn header_config() -> anyhow::Result<()> {
         let config = HeaderConfig::new(*b"VfACH", 0u16);
-        let store = Storage::File(File::open("me.vach")?);
+        let mut reader = BufReader::new(File::open("me.vach")?);
+
         format!("{}", &config);
 
-        let _header = Header::from_storage(&store)?;
+        let mut _header = Header::from(&mut reader)?;
         format!("{}", _header);
-        Archive::validate(&store, &config)?;
+        Archive::validate(&mut reader, &config)?;
 
         Result::Ok(())
     }
 
     #[test]
     fn to_bytes() -> anyhow::Result<()> {
-        let mut store = Storage::File(File::open("me.vach")?);
+        let mut reader = BufReader::new(File::open("me.vach")?);
 
-        let _header = Header::from_storage(&store)?;
+        let _header = Header::from(&mut reader)?;
         assert_eq!(_header.bytes().len(), HeaderConfig::SIZE);
 
-        let registry = Registry::from_storage(&store, &_header)?;
+        let registry = Registry::from(&mut reader, &_header)?;
 
         let vector = registry.bytes();
         let vector: Vec<&[u8]> = vector.windows(RegistryEntry::SIZE).collect();

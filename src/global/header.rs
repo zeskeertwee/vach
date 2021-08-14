@@ -1,10 +1,5 @@
-use std::{
-    fmt,
-    io::{BufReader, Read},
-    str,
-};
+use std::{fmt, io::{BufReader, Read, Seek}, str};
 use anyhow;
-use crate::global::storage::Storage;
 
 #[derive(Debug)]
 pub struct HeaderConfig {
@@ -74,41 +69,32 @@ impl Header {
             capacity: 0,
         }
     }
-    pub fn from_storage(store: &Storage) -> anyhow::Result<Header> {
-        match store {
-            Storage::File(file) => {
-                let mut reader = BufReader::new(file);
-
-                // Construct header
-                let mut header = Header::empty();
-                // TODO: Remove this repetitive garbage
-        
-                // Read magic
-                let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
-                reader.read(&mut buffer)?;
-                header.magic = buffer;
-        
-                // Read flags, u32 from [u8;4]
-                let mut buffer = [0; HeaderConfig::FLAG_SIZE];
-                reader.read(&mut buffer)?;
-                header.flags = u16::from_ne_bytes(buffer);
-        
-                // Read version, u16 from [u8;2]
-                let mut buffer = [0; HeaderConfig::VERSION_SIZE];
-                reader.read(&mut buffer)?;
-                header.version = u16::from_ne_bytes(buffer);
-        
-                // Read number of entries, u16 from [u8;2]
-                let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
-                reader.read(&mut buffer)?;
-                header.capacity = u16::from_ne_bytes(buffer);
-        
-                Result::Ok(header)
-            },
-            Storage::Vector(vector) => {
-                unimplemented!()
-            }
-        }
+    pub fn from<T: Read + Seek>(reader: &mut BufReader<T>) -> anyhow::Result<Header> {
+            // Construct header
+            let mut header = Header::empty();
+            // TODO: Remove this repetitive garbage
+    
+            // Read magic
+            let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
+            reader.read(&mut buffer)?;
+            header.magic = buffer;
+    
+            // Read flags, u32 from [u8;4]
+            let mut buffer = [0; HeaderConfig::FLAG_SIZE];
+            reader.read(&mut buffer)?;
+            header.flags = u16::from_ne_bytes(buffer);
+    
+            // Read version, u16 from [u8;2]
+            let mut buffer = [0; HeaderConfig::VERSION_SIZE];
+            reader.read(&mut buffer)?;
+            header.version = u16::from_ne_bytes(buffer);
+    
+            // Read number of entries, u16 from [u8;2]
+            let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
+            reader.read(&mut buffer)?;
+            header.capacity = u16::from_ne_bytes(buffer);
+    
+            Result::Ok(header)
     }
 
 	 pub fn bytes(&self) -> Vec<u8> {
