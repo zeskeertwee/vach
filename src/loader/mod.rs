@@ -7,6 +7,8 @@ use crate::global::{
     registry::Registry,
 };
 use anyhow::bail;
+use ed25519_dalek::{PublicKey, Verifier};
+use signature::Signature;
 use std::{
     fmt,
     fs::File,
@@ -29,7 +31,7 @@ pub struct Archive<R: Read + Seek> {
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<R: Read + Seek> Archive<R> {
     /// attempt to read a archive from the current stream position
-    pub fn from_reader(mut reader: BufReader<R>) -> anyhow::Result<Archive<R>> {
+    pub fn from_reader(mut reader: BufReader<R>, public_key: &PublicKey) -> anyhow::Result<Archive<R>> {
         let header = Header::from_reader(&mut reader)?;
         
         if header.archive_version < MINIMUM_VERSION {
@@ -39,7 +41,7 @@ impl<R: Read + Seek> Archive<R> {
             )));
         };
         
-        let registry = Registry::from_reader(&mut reader, &header)?;
+        let registry = Registry::from_reader(&mut reader, &header, public_key)?;
         
         Ok(Archive {
             header,
@@ -48,7 +50,7 @@ impl<R: Read + Seek> Archive<R> {
         })
     }
 
-    pub fn get_file_at_index(&mut self, index: usize) -> anyhow::Result<Vec<u8>> {
+    pub fn get_file_at_index(&mut self, index: usize, public_key: &PublicKey) -> anyhow::Result<Vec<u8>> {
         if self.registry.entries.len() - 1 < index {
             bail!("No file for index {}", index);
         }
@@ -58,6 +60,9 @@ impl<R: Read + Seek> Archive<R> {
         self.reader.seek(SeekFrom::Start(entry.byte_offset));
         let mut buffer = vec![0; entry.compressed_size as usize];
         self.reader.read_exact(&mut buffer)?;
+
+        let expected_signature: ed25519_dalek::Signature = Signature::from_bytes(&entry.blob_signature)?;
+        public_key.verify(&buffer, &expected_signature)?;
 
         if compressed {
             Ok(lz4_flex::decompress(&buffer, entry.uncompressed_size as usize)?)

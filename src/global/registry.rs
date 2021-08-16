@@ -1,5 +1,8 @@
 use crate::global::header::Header;
 use std::{convert::TryInto, fs::File, io::{BufReader, Read, Seek, SeekFrom}};
+use ed25519_dalek::{PublicKey, Verifier};
+use log::info;
+use signature::Signature;
 
 #[derive(Debug)]
 pub struct Registry {
@@ -14,12 +17,17 @@ impl Registry {
     }
 
     /// attempts to read the registry at the current stream position
-    pub fn from_reader<R: Read>(reader: &mut BufReader<R>, header: &Header) -> anyhow::Result<Registry> {
+    pub fn from_reader<R: Read>(reader: &mut BufReader<R>, header: &Header, public_key: &PublicKey) -> anyhow::Result<Registry> {
+        let mut read_buffer = Vec::new();
         let mut entries:Vec<RegistryEntry> = vec![];
         for i in 0..header.registry_size {
-            entries.push(RegistryEntry::from_reader(reader)?);
+            entries.push(RegistryEntry::_from_reader_append_read(reader, &mut read_buffer)?);
         };
         
+        let expected_signature: ed25519_dalek::Signature = Signature::from_bytes(&header.registry_signature)?;
+        public_key.verify(&read_buffer, &expected_signature)?;
+        info!("Registry signature OK");
+
         Result::Ok(Registry { entries })
     }
 
@@ -55,7 +63,7 @@ impl RegistryEntry {
     const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 4 + 8 + 2;
 
     /// attempts to read a registry entry from the current stream position
-    pub fn from_reader<R: Read>(reader: &mut BufReader<R>) -> anyhow::Result<RegistryEntry> {
+    fn _from_reader_append_read<R: Read>(reader: &mut BufReader<R>, read_buffer: &mut Vec<u8>) -> anyhow::Result<RegistryEntry> {
         let mut entry = RegistryEntry::empty();
 
         let mut buffer = [0; 5 + ed25519_dalek::SIGNATURE_LENGTH];
@@ -64,9 +72,11 @@ impl RegistryEntry {
         entry.content_version = u16::from_le_bytes([buffer[1], buffer[2]]);
         entry.blob_signature.copy_from_slice(&buffer[3..(3 + ed25519_dalek::SIGNATURE_LENGTH)]);
         entry.path_name_length = u16::from_le_bytes([buffer[3 + ed25519_dalek::SIGNATURE_LENGTH], buffer[4 + ed25519_dalek::SIGNATURE_LENGTH]]);
+        read_buffer.extend_from_slice(&buffer);
 
         let mut buffer = vec![0; entry.path_name_length as usize];
         reader.read_exact(&mut buffer)?;
+        read_buffer.extend_from_slice(&buffer);
         entry.path = buffer;
 
         let mut buffer = [0; 18];
@@ -75,8 +85,13 @@ impl RegistryEntry {
         entry.uncompressed_size = u32::from_le_bytes([buffer[4], buffer[5], buffer[6], buffer[7]]);
         entry.byte_offset = u64::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11], buffer[12], buffer[13], buffer[14], buffer[15]]);
         entry.mime_type = u16::from_le_bytes([buffer[16], buffer[17]]);
+        read_buffer.extend_from_slice(&buffer);
 
         Ok(entry)
+    }
+
+    pub fn from_reader<R: Read>(reader: &mut BufReader<R>) -> anyhow::Result<RegistryEntry> {
+        Self::_from_reader_append_read(reader, &mut Vec::new())
     }
 
     pub fn empty() -> RegistryEntry {
