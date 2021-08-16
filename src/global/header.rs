@@ -1,118 +1,63 @@
-use std::{
-    fmt,
-    fs::File,
-    io::{BufReader, Read},
-    str,
-};
-use anyhow;
+use std::{fmt, fs::File, io::{BufReader, Read}, str};
+use anyhow::bail;
 
-#[derive(Debug)]
-pub struct HeaderConfig {
-    pub magic: [u8; HeaderConfig::MAGIC_LENGTH],
-    pub minimum_version: u16,
-}
-
-impl HeaderConfig {
-    pub const MAGIC: &'static [u8; 5] = b"VfACH";
-    pub const MAGIC_LENGTH: usize = 5;
-    pub const FLAG_SIZE: usize = 2;
-    pub const VERSION_SIZE: usize = 2;
-    pub const ENTRY_SIZE: usize = 2;
-    pub const SIZE: usize = 11;
-
-    pub fn new(magic: [u8; 5], minimum_version: u16) -> HeaderConfig {
-        HeaderConfig {
-            magic,
-            minimum_version,
-        }
-    }
-    pub fn default() -> HeaderConfig {
-        HeaderConfig::new(HeaderConfig::MAGIC.clone(), 0)
-    }
-    pub fn empty() -> HeaderConfig {
-        HeaderConfig{
-            magic: [0;HeaderConfig::MAGIC_LENGTH],
-            minimum_version: 0
-        }
-    }
-
-    pub fn set_minimum_version(mut self, version: &u16) -> HeaderConfig {
-        self.minimum_version = version.clone();
-        self
-    }
-    pub fn set_magic(mut self, magic: [u8; 5]) -> HeaderConfig {
-        self.magic = magic;
-        self
-    }
-}
-
-impl fmt::Display for HeaderConfig {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "[HeaderConfig] magic: {}, minimum_version: {}",
-            str::from_utf8(&self.magic).unwrap(),
-            self.minimum_version
-        )
-    }
-}
+pub const MAGIC_LENGTH: usize = 5;
+pub const MAGIC: &'static [u8; MAGIC_LENGTH] = b"VfACH";
 
 #[derive(Debug)]
 pub struct Header {
-    pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
-    pub version: u16,
-    pub flags: u16,
-    pub capacity: u16,
+    pub magic: [u8; MAGIC_LENGTH], // VfACH
+    pub archive_version: u16,
+    pub registry_size: u16,
+    pub registry_signature: [u8; ed25519_dalek::SIGNATURE_LENGTH]
 }
 
 impl Header {
+    pub const SIZE: usize = MAGIC_LENGTH + 2 + 2 + ed25519_dalek::SIGNATURE_LENGTH;
+
     pub fn empty() -> Header {
         Header {
-            magic: HeaderConfig::MAGIC.clone(),
-            flags: 0,
-            version: 0,
-            capacity: 0,
+            magic: [0; MAGIC_LENGTH],
+            archive_version: 0,
+            registry_size: 0,
+            registry_signature: [0; ed25519_dalek::SIGNATURE_LENGTH],
         }
     }
-    pub fn from_file(file: &File) -> anyhow::Result<Header> {
-        let mut reader = BufReader::new(file);
 
+    /// attempt to read a header at the current stream position
+    pub fn from_reader<R: Read>(reader: &mut BufReader<R>) -> anyhow::Result<Header> {
         // Construct header
         let mut header = Header::empty();
-        // TODO: Remove this repetitive garbage
 
         // Read magic
-        let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
-        reader.read(&mut buffer)?;
-        header.magic = buffer.clone();
+        let mut buffer = [0; MAGIC_LENGTH];
+        reader.read_exact(&mut buffer)?;
+        header.magic = buffer;
+        if &header.magic != MAGIC {
+            bail!("Invalid magic in header: found {:?}, expected {:?}", header.magic, MAGIC);
+        }
 
-        // Read flags, u32 from [u8;4]
-        let mut buffer = [0; HeaderConfig::FLAG_SIZE];
-        reader.read(&mut buffer)?;
-        header.flags = u16::from_ne_bytes(buffer);
+        // Read archive version and registry size, (u16, u16) from [u8; 4]
+        let mut buffer = [0; 4];
+        reader.read_exact(&mut buffer)?;
+        header.archive_version = u16::from_le_bytes([buffer[0], buffer[1]]);
+        header.registry_size = u16::from_le_bytes([buffer[2], buffer[3]]);
 
-        // Read version, u16 from [u8;2]
-        let mut buffer = [0; HeaderConfig::VERSION_SIZE];
-        reader.read(&mut buffer)?;
-        header.version = u16::from_ne_bytes(buffer);
-
-        // Read number of entries, u16 from [u8;2]
-        let mut buffer = [0; HeaderConfig::ENTRY_SIZE];
-        reader.read(&mut buffer)?;
-        header.capacity = u16::from_ne_bytes(buffer);
+        let mut buffer = [0; ed25519_dalek::SIGNATURE_LENGTH];
+        reader.read_exact(&mut buffer)?;
+        header.registry_signature = buffer;
 
         Result::Ok(header)
     }
 
-	 pub fn bytes(&self) -> Vec<u8> {
-		 let mut buffer: Vec<u8> = vec![];
-		 buffer.extend_from_slice(&self.magic);
-		 buffer.extend_from_slice(&self.flags.to_ne_bytes());
-		 buffer.extend_from_slice(&self.version.to_ne_bytes());
-		 buffer.extend_from_slice(&self.capacity.to_ne_bytes());
-		 
-		 buffer
-	 }
+    pub fn bytes(&self) -> Vec<u8> {
+    	let mut buffer: Vec<u8> = Vec::new();
+    	buffer.extend_from_slice(&self.magic);
+    	buffer.extend_from_slice(&self.archive_version.to_le_bytes());
+    	buffer.extend_from_slice(&self.registry_size.to_le_bytes());
+        buffer.extend_from_slice(&self.registry_signature);
+    	buffer
+    }
 }
 
 impl fmt::Display for Header {
