@@ -1,7 +1,5 @@
-use crate::global::header::{Header, HeaderConfig};
+use crate::global::header::Header;
 use std::{convert::TryInto, fs::File, io::{BufReader, Read, Seek, SeekFrom}};
-
-pub type RegisterType = u64;
 
 #[derive(Debug)]
 pub struct Registry {
@@ -14,19 +12,17 @@ impl Registry {
             entries: vec![],
         }
     }
-    pub fn from_file(file: &File, header: &Header) -> anyhow::Result<Registry> {
-        let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(HeaderConfig::SIZE as u64));
-        
+
+    /// attempts to read the registry at the current stream position
+    pub fn from_reader<R: Read>(reader: &mut BufReader<R>, header: &Header) -> anyhow::Result<Registry> {
         let mut entries:Vec<RegistryEntry> = vec![];
-        for i in 0..header.capacity{
-            let mut buffer = [0; RegistryEntry::SIZE];
-            reader.read(&mut buffer);
-            entries.push(RegistryEntry::from_bytes(buffer)?);
+        for i in 0..header.registry_size {
+            entries.push(RegistryEntry::from_reader(reader)?);
         };
-        dbg!(reader.stream_position()?);
+        
         Result::Ok(Registry { entries })
     }
+
     pub fn bytes(&self) -> Vec<u8> {
         let mut buffer = vec![];
         self.entries.iter().for_each(|entry|{
@@ -37,57 +33,87 @@ impl Registry {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RegistryEntry {
-    flags: u16,
-    mime_type: u16,
-    content_version: u8,
-    signature: u32,
+    pub(crate) flags: u8,
+    pub(crate) content_version: u16,
+    pub(crate) blob_signature: [u8; ed25519_dalek::SIGNATURE_LENGTH],
+    
+    pub(crate) path_name_length: u16,
+    pub(crate) path: Vec<u8>, // length of path_name_length
+    
+    pub(crate) compressed_size: u32,
+    pub(crate) uncompressed_size: u32,
 
-    path_name_start: RegisterType,
-    path_name_end: RegisterType,
-
-    index: RegisterType,
-    offset: RegisterType,
+    pub(crate) byte_offset: u64, // offset of the blob from the beginning of the file
+    
+    pub(crate) mime_type: u16,
 }
 
 impl RegistryEntry {
-    pub const SIZE: usize = 41;
-    pub fn from_bytes(buffer: [u8; Self::SIZE]) -> anyhow::Result<RegistryEntry> {
-        Ok(RegistryEntry{
-            flags: u16::from_ne_bytes(buffer[0..2].try_into()?),
-            mime_type: u16::from_ne_bytes(buffer[2..4].try_into()?),
-            content_version: *buffer.get(4).ok_or(anyhow::Error::msg("Out of bounds error"))?,
-            signature: u32::from_ne_bytes(buffer[5..9].try_into()?),
-            path_name_start: RegisterType::from_ne_bytes(buffer[9..17].try_into()?),
-            path_name_end: RegisterType::from_ne_bytes( buffer[17..25].try_into()?),
-            index: RegisterType::from_ne_bytes(buffer[25..33].try_into()?),
-            offset: RegisterType::from_ne_bytes(buffer[33..41].try_into()?)
-        })
+    /// size in bytes without the path (since it is variable-length)
+    const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 4 + 8 + 2;
+
+    /// attempts to read a registry entry from the current stream position
+    pub fn from_reader<R: Read>(reader: &mut BufReader<R>) -> anyhow::Result<RegistryEntry> {
+        let mut entry = RegistryEntry::empty();
+
+        let mut buffer = [0; 5 + ed25519_dalek::SIGNATURE_LENGTH];
+        reader.read_exact(&mut buffer)?;
+        entry.flags = buffer[0];
+        entry.content_version = u16::from_le_bytes([buffer[1], buffer[2]]);
+        entry.blob_signature.copy_from_slice(&buffer[3..(3 + ed25519_dalek::SIGNATURE_LENGTH)]);
+        entry.path_name_length = u16::from_le_bytes([buffer[3 + ed25519_dalek::SIGNATURE_LENGTH], buffer[4 + ed25519_dalek::SIGNATURE_LENGTH]]);
+
+        let mut buffer = vec![0; entry.path_name_length as usize];
+        reader.read_exact(&mut buffer)?;
+        entry.path = buffer;
+
+        let mut buffer = [0; 18];
+        reader.read_exact(&mut buffer)?;
+        entry.compressed_size = u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
+        entry.uncompressed_size = u32::from_le_bytes([buffer[4], buffer[5], buffer[6], buffer[7]]);
+        entry.byte_offset = u64::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11], buffer[12], buffer[13], buffer[14], buffer[15]]);
+        entry.mime_type = u16::from_le_bytes([buffer[16], buffer[17]]);
+
+        Ok(entry)
     }
+
     pub fn empty() -> RegistryEntry {
         RegistryEntry{
             flags: 0,
-            mime_type: 0,
             content_version: 0,
-            signature: 0,
-            path_name_start: 0,
-            path_name_end: 0,
-            index: 0,
-            offset: 0,
+            blob_signature: [0; ed25519_dalek::SIGNATURE_LENGTH],
+            path_name_length: 0,
+            path: vec![],
+            compressed_size: 0,
+            uncompressed_size: 0,
+            byte_offset: 0,
+            mime_type: 0,
         }
     }
+
     pub fn bytes(&self) -> Vec<u8>{
-        let mut buffer = vec![];
-        buffer.extend_from_slice(&self.flags.to_ne_bytes());
-        buffer.extend_from_slice(&self.mime_type.to_ne_bytes());
-        buffer.push(self.content_version);
-        buffer.extend_from_slice(&self.signature.to_ne_bytes());
-        buffer.extend_from_slice(&self.path_name_start.to_ne_bytes());
-        buffer.extend_from_slice(&self.path_name_end.to_ne_bytes());
-        buffer.extend_from_slice(&self.index.to_ne_bytes());
-        buffer.extend_from_slice(&self.offset.to_ne_bytes());
+        let mut buffer = Vec::with_capacity(Self::BASE_SIZE + self.path_name_length as usize);
+
+        buffer.push(self.flags);
+        buffer.extend_from_slice(&self.content_version.to_le_bytes());
+        buffer.extend_from_slice(&self.blob_signature);
+        buffer.extend_from_slice(&self.path_name_length.to_le_bytes());
+        buffer.extend_from_slice(&self.path);
+        buffer.extend_from_slice(&self.compressed_size.to_le_bytes());
+        buffer.extend_from_slice(&self.uncompressed_size.to_le_bytes());
+        buffer.extend_from_slice(&self.byte_offset.to_le_bytes());
+        buffer.extend_from_slice(&self.mime_type.to_le_bytes());
 
         buffer
+    }
+
+    pub fn size(&self) -> usize {
+        Self::BASE_SIZE + self.path.len()
+    }
+
+    pub fn path_string(&self) -> Result<String, std::string::FromUtf8Error> {
+        String::from_utf8(self.path.clone())
     }
 }

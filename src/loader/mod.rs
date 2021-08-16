@@ -1,8 +1,12 @@
 use crate::global::{
-    header::{Header, HeaderConfig},
+    header::{
+        MAGIC_LENGTH,
+        MAGIC,
+        Header
+    },
     registry::Registry,
 };
-use anyhow;
+use anyhow::bail;
 use std::{
     fmt,
     fs::File,
@@ -11,72 +15,62 @@ use std::{
     sync::Arc,
 };
 
+const MINIMUM_VERSION: u16 = 0;
+
 #[derive(Debug)]
-pub struct Archive {
-    header: Header,
-    registry: Registry,
-    data: Option<File>,
+pub struct Archive<R: Read + Seek> {
+    pub(crate) header: Header,
+    pub(crate) registry: Registry,
+    reader: BufReader<R>,
 }
+
+// TODO: Verify signatures
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
-impl Archive {
-    pub fn empty() -> Archive {
-        Archive {
-            header: Header::empty(),
-            registry: Registry::empty(),
-            data: None,
-        }
-    }
-    pub fn from_file(file: File) -> anyhow::Result<Archive> {
-        Archive::with_config(file, &HeaderConfig::default())
-    }
-    pub fn with_config(file: File, config: &HeaderConfig) -> anyhow::Result<Archive> {
-        match Archive::validate(&file, config) {
-            Ok(_) => {
-                let header = Header::from_file(&file)?;
-                let registry = Registry::from_file(&file, &header)?;
-                Result::Ok(Archive {
-                    header,
-                    registry,
-                    data: Some(file),
-                })
-            }
-            Err(error) => Result::Err(error),
-        }
-    }
-
-    pub fn validate(file: &File, config: &HeaderConfig) -> anyhow::Result<bool> {
-        let mut reader = BufReader::new(file);
-        reader.seek(SeekFrom::Start(0))?;
-
-        let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
-
-        reader.read(&mut buffer)?;
-
-        if &buffer != &config.magic {
-            return Result::Err(anyhow::Error::msg(format!(
-                "Invalid magic found in archive: {}",
-                str::from_utf8(&buffer)?
-            )));
-        };
-
-        let mut buffer = [0; HeaderConfig::VERSION_SIZE];
-        reader.read(&mut buffer)?;
-
-        let archive_version = u16::from_ne_bytes(buffer);
-        if config.minimum_version > archive_version {
+impl<R: Read + Seek> Archive<R> {
+    /// attempt to read a archive from the current stream position
+    pub fn from_reader(mut reader: BufReader<R>) -> anyhow::Result<Archive<R>> {
+        let header = Header::from_reader(&mut reader)?;
+        
+        if header.archive_version < MINIMUM_VERSION {
             return Result::Err(anyhow::Error::msg(format!(
                 "Minimum Version requirement not met. Version found: {}, Minimum version: {}",
-                archive_version, config.minimum_version
+                header.archive_version, MINIMUM_VERSION
             )));
         };
-
-        Result::Ok(true)
+        
+        let registry = Registry::from_reader(&mut reader, &header)?;
+        
+        Ok(Archive {
+            header,
+            registry,
+            reader,
+        })
     }
-}
 
-impl fmt::Display for Archive {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unimplemented!();
+    pub fn read_buffer(&mut self, index: usize) -> anyhow::Result<Vec<u8>> {
+        let entry = &self.registry.entries[index];
+        self.reader.seek(SeekFrom::Start(entry.byte_offset));
+        let mut buffer = vec![0; entry.compressed_size as usize];
+        self.reader.read_exact(&mut buffer)?;
+        Ok(buffer)
+    }
+
+    pub fn get_file_at_index(&mut self, index: usize) -> anyhow::Result<Vec<u8>> {
+        if self.registry.entries.len() - 1 < index {
+            bail!("No file for index {}", index);
+        }
+
+        let entry = &self.registry.entries[index];
+        let compressed = entry.compressed_size != entry.uncompressed_size;
+        self.reader.seek(SeekFrom::Start(entry.byte_offset));
+        let mut buffer = vec![0; entry.compressed_size as usize];
+        self.reader.read_exact(&mut buffer)?;
+
+        if compressed {
+            Ok(lz4_flex::decompress(&buffer, entry.uncompressed_size as usize)?)
+        } else {
+            Ok(buffer)
+        }
     }
 }
