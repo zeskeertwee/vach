@@ -76,37 +76,20 @@ mod tests {
         let mut reader = BufReader::new(File::open("me.vach")?);
 
         let _header = Header::from(&mut reader)?;
-        assert_eq!(_header.bytes().len(), HeaderConfig::SIZE);
+        assert_eq!(_header.bytes().len(), HeaderConfig::BASE_SIZE);
 
         let registry = Registry::from(&mut reader, &_header)?;
 
         let vector = registry.bytes();
-        let vector: Vec<&[u8]> = vector.windows(RegistryEntry::SIZE).collect();
+        let vector: Vec<&[u8]> = vector.windows(RegistryEntry::BASE_SIZE).collect();
 
         assert_eq!(
             vector
                 .get(0)
                 .ok_or(anyhow::Error::msg("Vector out of bounds error"))?
                 .len(),
-            RegistryEntry::SIZE
+            RegistryEntry::BASE_SIZE
         );
         Result::Ok(())
-    }
-
-    #[test]
-    fn to_ne_bytes() {
-        let num = 514u16;
-        let array = num.to_ne_bytes();
-        assert_eq!(
-            array,
-            if cfg!(target_endian = "big") {
-                num.to_be_bytes()
-            } else {
-                num.to_le_bytes()
-            }
-        );
-
-        let array = [2u8, 2u8];
-        assert_eq!(num, u16::from_ne_bytes(array));
     }
 }
