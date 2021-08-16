@@ -48,14 +48,6 @@ impl<R: Read + Seek> Archive<R> {
         })
     }
 
-    pub fn read_buffer(&mut self, index: usize) -> anyhow::Result<Vec<u8>> {
-        let entry = &self.registry.entries[index];
-        self.reader.seek(SeekFrom::Start(entry.byte_offset));
-        let mut buffer = vec![0; entry.compressed_size as usize];
-        self.reader.read_exact(&mut buffer)?;
-        Ok(buffer)
-    }
-
     pub fn get_file_at_index(&mut self, index: usize) -> anyhow::Result<Vec<u8>> {
         if self.registry.entries.len() - 1 < index {
             bail!("No file for index {}", index);
