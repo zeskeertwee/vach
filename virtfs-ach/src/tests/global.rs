@@ -21,7 +21,6 @@ const REG_PATH: [u8; REG_PATH_NAME_LENGTH as usize] = *b"Lorem ipsum dolor sit a
 const REG_COMPRESSED_SIZE: u32 = u32::from_le_bytes([0x01, 0x02, 0x03, 0x04]);
 const REG_UNCOMPRESSED_SIZE: u32 = u32::from_le_bytes([0x05, 0x06, 0x07, 0x08]);
 const REG_BYTE_OFFSET: u64 = u64::from_le_bytes([0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10]);
-const REG_MIME_TYPE: u16 = u16::from_le_bytes([0x11, 0x12]);
 
 fn generate_registry_entry() -> Vec<u8> {
     let mut buffer = Vec::new();
@@ -34,7 +33,6 @@ fn generate_registry_entry() -> Vec<u8> {
     buffer.extend_from_slice(&REG_COMPRESSED_SIZE.to_le_bytes());
     buffer.extend_from_slice(&REG_UNCOMPRESSED_SIZE.to_le_bytes());
     buffer.extend_from_slice(&REG_BYTE_OFFSET.to_le_bytes());
-    buffer.extend_from_slice(&REG_MIME_TYPE.to_le_bytes());
 
     buffer
 }
@@ -68,7 +66,6 @@ fn registry_entry_serialization() {
     assert_eq!(entry.compressed_size, REG_COMPRESSED_SIZE);
     assert_eq!(entry.uncompressed_size, REG_UNCOMPRESSED_SIZE);
     assert_eq!(entry.byte_offset, REG_BYTE_OFFSET);
-    assert_eq!(entry.mime_type, REG_MIME_TYPE);
 
     assert_eq!(entry.bytes(), registry_entry_buffer);
 }
