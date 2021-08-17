@@ -54,13 +54,11 @@ pub struct RegistryEntry {
     pub(crate) uncompressed_size: u32,
 
     pub(crate) byte_offset: u64, // offset of the blob from the beginning of the file
-    
-    pub(crate) mime_type: u16,
 }
 
 impl RegistryEntry {
     /// size in bytes without the path (since it is variable-length)
-    const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 4 + 8 + 2;
+    const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 4 + 8;
 
     /// attempts to read a registry entry from the current stream position
     fn _from_reader_append_read<R: Read>(reader: &mut BufReader<R>, read_buffer: &mut Vec<u8>) -> anyhow::Result<RegistryEntry> {
@@ -79,12 +77,11 @@ impl RegistryEntry {
         read_buffer.extend_from_slice(&buffer);
         entry.path = buffer;
 
-        let mut buffer = [0; 18];
+        let mut buffer = [0; 16];
         reader.read_exact(&mut buffer)?;
         entry.compressed_size = u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
         entry.uncompressed_size = u32::from_le_bytes([buffer[4], buffer[5], buffer[6], buffer[7]]);
         entry.byte_offset = u64::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11], buffer[12], buffer[13], buffer[14], buffer[15]]);
-        entry.mime_type = u16::from_le_bytes([buffer[16], buffer[17]]);
         read_buffer.extend_from_slice(&buffer);
 
         Ok(entry)
@@ -104,7 +101,6 @@ impl RegistryEntry {
             compressed_size: 0,
             uncompressed_size: 0,
             byte_offset: 0,
-            mime_type: 0,
         }
     }
 
@@ -119,7 +115,6 @@ impl RegistryEntry {
         buffer.extend_from_slice(&self.compressed_size.to_le_bytes());
         buffer.extend_from_slice(&self.uncompressed_size.to_le_bytes());
         buffer.extend_from_slice(&self.byte_offset.to_le_bytes());
-        buffer.extend_from_slice(&self.mime_type.to_le_bytes());
 
         buffer
     }

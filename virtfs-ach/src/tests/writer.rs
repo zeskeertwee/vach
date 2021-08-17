@@ -34,11 +34,9 @@ fn archive_writing() {
     let mut archive = Archive::from_reader(BufReader::new(buffer), &keypair.public).unwrap();
     assert_eq!(archive.registry.entries[0].path, FILE_1_PATH.as_bytes());
     assert_eq!(archive.registry.entries[0].content_version, 1);
-    assert_eq!(archive.registry.entries[0].mime_type, 2);    
     assert_eq!(FILE_1.len(), archive.get_file_at_index(0, &keypair.public).unwrap().len());
 
     assert_eq!(archive.registry.entries[1].path, FILE_2_PATH.as_bytes());
     assert_eq!(archive.registry.entries[1].content_version, 4);
-    assert_eq!(archive.registry.entries[1].mime_type, 8);
     assert_eq!(FILE_2.len(), archive.get_file_at_index(1, &keypair.public).unwrap().len());
 }

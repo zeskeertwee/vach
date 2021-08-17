@@ -129,7 +129,6 @@ impl ArchiveBuilderFile {
             uncompressed_size: self.data.len() as u32,
             // TODO: offset
             byte_offset: 0,
-            mime_type: self.mime_type,
         }
     }
 }
