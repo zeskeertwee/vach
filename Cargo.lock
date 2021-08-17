@@ -3,6 +3,19 @@
 version = 3
 
 [[package]]
+name = "ach"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ed25519-dalek",
+ "log",
+ "lz4_flex",
+ "pretty_env_logger",
+ "rand",
+ "signature",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13,9 +26,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.42"
+version = "1.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
+checksum = "28ae2b3dec75a406790005a200b1bd89785afc02517a00ca99ecfe093ee9e6cf"
 
 [[package]]
 name = "atty"
@@ -387,17 +400,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
 
 [[package]]
-name = "vf"
+name = "virtfs"
 version = "0.1.0"
-dependencies = [
- "anyhow",
- "ed25519-dalek",
- "log",
- "lz4_flex",
- "pretty_env_logger",
- "rand",
- "signature",
-]
 
 [[package]]
 name = "wasi"
