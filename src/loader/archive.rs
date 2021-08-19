@@ -5,12 +5,14 @@ use crate::global::{
     registry::{Registry, RegistryEntry},
 };
 use std::{fmt, io::{Cursor, Read, Seek, SeekFrom}, str, sync::Arc};
+use ed25519_dalek as esdalek;
 
 #[derive(Debug)]
 pub struct Archive<T> { 
     header: Header,
     registry: Registry,
     handle: T,
+    key: Option<esdalek::PublicKey>
 }
 
 impl Archive<Cursor<Vec<u8>>> {
@@ -19,6 +21,7 @@ impl Archive<Cursor<Vec<u8>>> {
             header: Header::empty(),
             registry: Registry::empty(),
             handle: Cursor::new(Vec::new()),
+            key: None
         }
     }
 }
@@ -26,23 +29,20 @@ impl Archive<Cursor<Vec<u8>>> {
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
     pub fn from(handle: T) -> anyhow::Result<Archive<T>> {
-        Archive::with_config(handle, &HeaderConfig::default())
+        Archive::with_config(handle, &HeaderConfig::new())
     }
     
     pub fn with_config(mut handle: T, config: &HeaderConfig) -> anyhow::Result<Archive<T>> {
-        match Archive::validate(&mut handle, config) {
-            Ok(_) => {
-                let header = Header::from(&mut handle)?;
-                let registry = Registry::from(&mut handle, &header)?;
+        Archive::validate(&mut handle, config)?;
 
-                Ok(Archive { header, registry, handle })
-            }
-            Err(error) => Err(error),
-        }
+        let header = Header::from(&mut handle)?;
+        let registry = Registry::from(&mut handle, &header)?;
+
+        Ok(Archive { header, registry, handle, key: config.public_key })
     }
 
     pub fn fetch(&mut self, path: &str) -> anyhow::Result<Resource> {
-        self.registry.fetch(path, &mut self.handle)
+        self.registry.fetch(path, &mut self.handle, &self.key)
     }
 
     pub fn validate(handle: &mut T, config: &HeaderConfig) -> anyhow::Result<bool> {
