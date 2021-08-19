@@ -1,6 +1,6 @@
 use crate::{global::{
         header::{Header, HeaderConfig},
-        types::{RegisterType, SignatureType},
+        types::RegisterType,
         flags::RegEntryFlags
     }, loader::resource::Resource,
 };
@@ -10,7 +10,8 @@ use std::{
     collections::HashMap,
     fmt
 };
-use ed25519_dalek as esdalek;
+use ed25519_dalek::{self as esdalek, Verifier};
+use lz4_flex as lz4;
 
 #[derive(Debug)]
 pub struct Registry {
@@ -36,23 +37,40 @@ impl Registry {
         Ok(Registry { entries })
     }
 
-    pub fn fetch<T: Seek + Read>(&self, path: &str, handle: &mut T) -> anyhow::Result<Resource> {
-        match self.fetch_entry(path) {
-            None => anyhow::bail!(format!("Resource not found: {}", path)),
-            Some(entry) => {
-                let mut reader = handle.take(entry.length);
-                let mut buffer = vec![];
-                reader.read_to_end(&mut buffer);
+    pub fn fetch<T: Seek + Read>(&self, path: &str, handle: &mut T, key: &Option<esdalek::PublicKey>) -> anyhow::Result<Resource> {
+        if let Some(entry) = self.fetch_entry(path) {
+            handle.seek(SeekFrom::Start(entry.location));
 
-                // --- snip --- IGNORED VALIDATION, DECOMPRESSION
+            let mut reader = handle.take(entry.length);
+            let mut buffer = Vec::new();
+            reader.read_to_end(&mut buffer);
 
-                let mut resource = Resource::empty();
-                resource.flags = entry.flags;
-                resource.content_version = entry.content_version;
-                resource.data = buffer;
+            // Validate then decompress
+            if entry.is_signed() {
+                match (&entry.signature, key) {
+                    // It is signed, and we have a key
+                    (Some(signature), Some(key)) => {
+                        key.verify(buffer.as_slice(), signature);
+                    },
 
-                Ok(resource)
-            }
+                    // It is signed but no key was provided
+                    (_, None) => { anyhow::bail!(format!("File: {}, found with signature, but no key was provided", path)) },
+
+                    // Ignore all other possible configurations
+                    (_, _) => {}
+                };
+            };
+
+            if entry.is_compressed() { buffer = lz4::decompress_size_prepended(buffer.as_slice())? };
+
+            let mut resource = Resource::empty();
+            resource.flags = entry.flags;
+            resource.content_version = entry.content_version;
+            resource.data = buffer;
+
+            Ok(resource)
+        } else {
+            anyhow::bail!(format!("Resource not found: {}", path))
         }
     }
     pub fn fetch_entry(&self, path: &str) -> Option<&RegistryEntry> { self.entries.get(path) }
@@ -66,7 +84,7 @@ impl fmt::Display for Registry {
 pub struct RegistryEntry {
     pub flags: u16,
     pub content_version: u8,
-    pub signature: Option<SignatureType>,
+    pub signature: Option<esdalek::Signature>,
 
     pub location: RegisterType,
     pub length: RegisterType,
