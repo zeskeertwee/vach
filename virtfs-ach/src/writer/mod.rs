@@ -28,7 +28,6 @@ struct ArchiveBuilderFile {
     data: Vec<u8>,
     path: String,
     content_version: u16,
-    mime_type: u16,
     flags: u8,
 }
 
@@ -44,13 +43,11 @@ impl ArchiveBuilder {
         data: Vec<u8>,
         path: S,
         content_version: u16,
-        mime_type: u16,
     ) {
         self.leafs.push(ArchiveBuilderFile {
             data,
             path: path.to_string(),
             content_version,
-            mime_type,
             flags: 0,
         })
     }

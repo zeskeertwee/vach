@@ -15,14 +15,12 @@ fn archive_writing() {
         FILE_1.to_owned(),
         FILE_1_PATH,
         1,
-        2,
     );
 
     builder.add_file(
         FILE_2.to_owned(),
         FILE_2_PATH,
         4,
-        8,
     );
 
     let keypair = super::generate_keypair();
