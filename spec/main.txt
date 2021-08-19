@@ -25,7 +25,5 @@ ENTRIES: (x) * HEADER::NUMBER_OF_ENTRIES
 	
 	BYTE_OFFSET: u64 // offset of the binary blob from the start of the file in bytes
 
-	MIME_TYPE: u16
-
 >---- LEAFS ( BINARY BLOBS )  ----<
 BLOB: [u8; COMPRESSED_SIZE]
