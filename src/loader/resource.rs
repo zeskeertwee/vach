@@ -18,7 +18,7 @@ impl Resource {
         }
     }
     pub fn empty() -> Resource {
-        Resource{ data: vec![], flags: 0, content_version: 0 }
+        Resource{ data: Vec::new(), flags: 0, content_version: 0 }
     }
 }
 
