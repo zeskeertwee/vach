@@ -1,118 +1,111 @@
-use crate::{
-    global::{
+use crate::{global::{
         header::{Header, HeaderConfig},
-        types::RegisterType,
-    },
-    loader::resource::Resource,
+        types::{RegisterType, SignatureType},
+        flags::RegEntryFlags
+    }, loader::resource::Resource,
 };
-use std::{convert::TryInto, io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write}};
+use std::{
+    convert::TryInto,
+    io::{Read, Seek, SeekFrom},
+    collections::HashMap,
+    fmt
+};
+use ed25519_dalek as esdalek;
 
 #[derive(Debug)]
 pub struct Registry {
-    pub entries: Vec<RegistryEntry>,
+    pub entries: HashMap<String, RegistryEntry>,
 }
 
 impl Registry {
     pub fn empty() -> Registry {
-        Registry { entries: vec![] }
-    }
-    pub fn bytes(&self) -> Vec<u8> {
-        let mut buffer = vec![];
-        self.entries.iter().for_each(|entry| {
-            buffer.append(&mut entry.bytes());
-        });
-
-        buffer
+        Registry { entries: HashMap::new() }
     }
 }
 
 impl Registry {
     pub fn from<T: Seek + Read>(handle: &mut T, header: &Header) -> anyhow::Result<Registry> {
-        let mut reader = BufReader::new(handle);
-        reader.seek(SeekFrom::Start(HeaderConfig::SIZE as u64));
+        handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64));
 
-        let mut entries: Vec<RegistryEntry> = vec![];
+        let mut entries = HashMap::new();
         for i in 0..header.capacity {
-            let mut buffer = [0; RegistryEntry::SIZE];
-            reader.read(&mut buffer);
-            entries.push(RegistryEntry::from_bytes(buffer)?);
+            let (entry, path) = RegistryEntry::from(handle)?;
+            entries.insert(path, entry);
         }
-        Result::Ok(Registry { entries })
+
+        Ok(Registry { entries })
     }
-    pub fn fetch<T: Seek + Read>(&self, path: &String, reader: &mut BufReader<T>) -> anyhow::Result<&Resource> {
-        let iter = self.entries.iter();
-        let mut found = self
-            .fetch_entry(path, reader)
-            .ok_or(anyhow::Error::msg(format!("Resource not found: {}", path)))?;
-        unimplemented!()
+
+    pub fn fetch<T: Seek + Read>(&self, path: &str, handle: &mut T) -> anyhow::Result<Resource> {
+        match self.fetch_entry(path) {
+            None => anyhow::bail!(format!("Resource not found: {}", path)),
+            Some(entry) => {
+                let mut reader = handle.take(entry.length);
+                let mut buffer = vec![];
+                reader.read_to_end(&mut buffer);
+
+                // --- snip --- IGNORED VALIDATION, DECOMPRESSION
+
+                let mut resource = Resource::empty();
+                resource.flags = entry.flags;
+                resource.content_version = entry.content_version;
+                resource.data = buffer;
+
+                Ok(resource)
+            }
+        }
     }
-    pub fn fetch_entry<T: Seek + Read>(&self, path: &String, reader: &mut BufReader<T>) -> Option<&RegistryEntry> {
-        unimplemented!()
-    }
+    pub fn fetch_entry(&self, path: &str) -> Option<&RegistryEntry> { self.entries.get(path) }
 }
 
-impl Registry {
-    pub fn append<T: Seek + Read + Write>(&mut self, path: &String, resource: &Resource, reader: &mut BufWriter<T>, ) -> anyhow::Result<RegistryEntry> {
-        unimplemented!()
-    }
-    pub fn delete<T: Seek + Read + Write>(&mut self, path: &String, reader: &mut BufWriter<T>) -> anyhow::Result<()> {
-        unimplemented!()
-    }
+impl fmt::Display for Registry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { unimplemented!() }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct RegistryEntry {
     pub flags: u16,
-    pub mime_type: u16,
     pub content_version: u8,
-    pub signature: u32,
-
-    pub path_name_start: RegisterType,
-    pub path_name_end: RegisterType,
+    pub signature: Option<SignatureType>,
 
     pub location: RegisterType,
     pub length: RegisterType,
 }
 
 impl RegistryEntry {
-    pub const SIZE: usize = 41;
-    pub fn from_bytes(buffer: [u8; Self::SIZE]) -> anyhow::Result<RegistryEntry> {
-        Ok(RegistryEntry {
-            flags: u16::from_ne_bytes(buffer[0..2].try_into()?),
-            mime_type: u16::from_ne_bytes(buffer[2..4].try_into()?),
-            content_version: *buffer
-                .get(4)
-                .ok_or(anyhow::Error::msg("Out of bounds error"))?,
-            signature: u32::from_ne_bytes(buffer[5..9].try_into()?),
-            path_name_start: RegisterType::from_ne_bytes(buffer[9..17].try_into()?),
-            path_name_end: RegisterType::from_ne_bytes(buffer[17..25].try_into()?),
-            location: RegisterType::from_ne_bytes(buffer[25..33].try_into()?),
-            length: RegisterType::from_ne_bytes(buffer[33..41].try_into()?),
-        })
-    }
+    // 2 + 1 + esdalek::SIGNATURE_LENGTH + 8 + 8
+    pub const MAX_SIZE: usize = 83 + 8;
+
     pub fn empty() -> RegistryEntry {
         RegistryEntry {
             flags: 0,
-            mime_type: 0,
             content_version: 0,
-            signature: 0,
-            path_name_start: 0,
-            path_name_end: 0,
+            signature: None,
             location: 0,
-            length: 0,
+            length: 0
         }
     }
-    pub fn bytes(&self) -> Vec<u8> {
-        let mut buffer = vec![];
-        buffer.extend_from_slice(&self.flags.to_ne_bytes());
-        buffer.extend_from_slice(&self.mime_type.to_ne_bytes());
-        buffer.push(self.content_version);
-        buffer.extend_from_slice(&self.signature.to_ne_bytes());
-        buffer.extend_from_slice(&self.path_name_start.to_ne_bytes());
-        buffer.extend_from_slice(&self.path_name_end.to_ne_bytes());
-        buffer.extend_from_slice(&self.location.to_ne_bytes());
-        buffer.extend_from_slice(&self.length.to_ne_bytes());
+    pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<(Self, String)> {
+        let mut buffer = [0; RegistryEntry::MAX_SIZE];
+        handle.read(&mut buffer);
 
-        buffer
+        // Construct entry
+        let mut entry = RegistryEntry::empty();
+        entry.flags = u16::from_le_bytes(buffer[0..2].try_into()?);
+        entry.content_version = buffer[2];
+        entry.signature = Some(buffer[3..67].try_into()?);
+        entry.location = RegisterType::from_le_bytes(buffer[67..75].try_into()?);
+        entry.length = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
+
+        // Construct path
+        let path_length  = u64::from_le_bytes(buffer[83..91].try_into()?);
+        let mut path = String::new();
+        handle.take(path_length).read_to_string(&mut path);
+
+        Ok((entry, path))
     }
+
+    // Flags helper functions
+    pub fn is_compressed(&self) -> bool { (self.flags & RegEntryFlags::COMPRESSED) != 0 }
+    pub fn is_signed(&self) -> bool { self.flags & RegEntryFlags::SIGNED != 0 }
 }
