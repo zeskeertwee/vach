@@ -5,13 +5,14 @@ use std::{
     str,
     convert::TryFrom
 };
-use crate::{global::types::{SignatureType, FlagType}};
+use crate::{global::types::FlagType};
 use ed25519_dalek as esdalek;
 
 #[derive(Debug)]
 pub struct HeaderConfig {
     pub magic: [u8; HeaderConfig::MAGIC_LENGTH],
     pub minimum_version: u16,
+    pub public_key: Option<esdalek::PublicKey>
 }
 
 // Used to store data about headers and to validate magic and content version
@@ -26,28 +27,29 @@ impl HeaderConfig {
     pub const CAPACITY_SIZE: usize = 2;
     pub const REG_SIG_SIZE: usize = esdalek::SIGNATURE_LENGTH;
 
-    pub fn new(magic: [u8; 5], minimum_version: u16) -> HeaderConfig {
+    pub fn from(magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey>) -> HeaderConfig {
         HeaderConfig {
             magic,
             minimum_version,
+            public_key: key
         }
     }
-    pub fn default() -> HeaderConfig {
-        HeaderConfig::new(*HeaderConfig::MAGIC, 0)
+    pub fn new() -> HeaderConfig {
+        HeaderConfig::from(*HeaderConfig::MAGIC, 0, None)
     }
-    pub fn empty() -> HeaderConfig {
-        HeaderConfig {
-            magic: [0; HeaderConfig::MAGIC_LENGTH],
-            minimum_version: 0,
-        }
-    }
+    pub fn empty() -> HeaderConfig { HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], 0, None)}
 
-    pub fn set_minimum_version(mut self, version: &u16) -> HeaderConfig {
-        self.minimum_version = *version;
+    // Setters
+    pub fn set_minimum_version(mut self, version: u16) -> HeaderConfig {
+        self.minimum_version = version;
         self
     }
     pub fn set_magic(mut self, magic: [u8; 5]) -> HeaderConfig {
         self.magic = magic;
+        self
+    }
+    pub fn set_key(mut self, key: Option<esdalek::PublicKey>) -> HeaderConfig {
+        self.public_key = key;
         self
     }
 }
@@ -69,7 +71,7 @@ pub struct Header {
     pub flags: FlagType,
     pub version: u16,
     pub capacity: u16,
-    pub reg_signature: Option<SignatureType>
+    pub reg_signature: Option<esdalek::Signature>
 }
 
 impl Header {
@@ -113,7 +115,7 @@ impl Header {
         // Read registry signature, esdalek::Signature from [u8; 64]
         let mut buffer = [0; HeaderConfig::REG_SIG_SIZE];
         handle.read_exact(&mut buffer)?;
-        header.reg_signature = Some(SignatureType::try_from(&buffer[..])?);
+        header.reg_signature = Some(esdalek::Signature::try_from(&buffer[..])?);
 
         Ok(header)
     }
