@@ -4,7 +4,10 @@ use crate::global::{
         MAGIC,
         Header
     },
-    registry::Registry,
+    registry::{
+        Registry,
+        RegistryEntryFlags
+    },
 };
 use anyhow::bail;
 use ed25519_dalek::{PublicKey, Verifier};
@@ -56,7 +59,7 @@ impl<R: Read + Seek> Archive<R> {
         }
 
         let entry = &self.registry.entries[index];
-        let compressed = entry.compressed_size != entry.uncompressed_size;
+        let compressed = entry.flags.contains(RegistryEntryFlags::IS_COMPRESSED);
         self.reader.seek(SeekFrom::Start(entry.byte_offset));
         let mut buffer = vec![0; entry.compressed_size as usize];
         self.reader.read_exact(&mut buffer)?;
@@ -65,7 +68,7 @@ impl<R: Read + Seek> Archive<R> {
         public_key.verify(&buffer, &expected_signature)?;
 
         if compressed {
-            Ok(lz4_flex::decompress(&buffer, entry.uncompressed_size as usize)?)
+            Ok(lz4_flex::decompress_size_prepended(&buffer)?)
         } else {
             Ok(buffer)
         }

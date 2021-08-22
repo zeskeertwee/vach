@@ -8,18 +8,18 @@ use crate::global::{
     },
     registry::{
         Registry,
-        RegistryEntry
+        RegistryEntry,
+        RegistryEntryFlags
     }
 };
 
 const HED_ARCHIVE_VERSION: u16 = u16::from_le_bytes([0x01, 0x02]);
 const HED_REGISTRY_SIZE: u16 = u16::from_le_bytes([0x01, 0x03]);
-const REG_FLAGS: u8 = 25;
+const REG_FLAGS: u8 = RegistryEntryFlags::IS_COMPRESSED.bits() | RegistryEntryFlags::IS_SIGNED.bits();
 const REG_CONTENT_VERSION: u16 = u16::from_le_bytes([0x27, 0x72]);
 const REG_PATH_NAME_LENGTH: u16 = 265;
 const REG_PATH: [u8; REG_PATH_NAME_LENGTH as usize] = *b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur pretium, lectus non pretium mattis, ex ex auctor elit, pellentesque pharetra nunc orci vitae eros. Curabitur massa lectus, aliquet non ex eu, venenatis euismod dolor. Maecenas cursus ipsum ac justo.";
 const REG_COMPRESSED_SIZE: u32 = u32::from_le_bytes([0x01, 0x02, 0x03, 0x04]);
-const REG_UNCOMPRESSED_SIZE: u32 = u32::from_le_bytes([0x05, 0x06, 0x07, 0x08]);
 const REG_BYTE_OFFSET: u64 = u64::from_le_bytes([0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10]);
 
 fn generate_registry_entry() -> Vec<u8> {
@@ -31,7 +31,6 @@ fn generate_registry_entry() -> Vec<u8> {
     buffer.extend_from_slice(&REG_PATH_NAME_LENGTH.to_le_bytes());
     buffer.extend_from_slice(&REG_PATH);
     buffer.extend_from_slice(&REG_COMPRESSED_SIZE.to_le_bytes());
-    buffer.extend_from_slice(&REG_UNCOMPRESSED_SIZE.to_le_bytes());
     buffer.extend_from_slice(&REG_BYTE_OFFSET.to_le_bytes());
 
     buffer
@@ -58,13 +57,12 @@ fn registry_entry_serialization() {
     let registry_entry_buffer = generate_registry_entry();
 
     let entry = RegistryEntry::from_reader(&mut BufReader::new(Cursor::new(&registry_entry_buffer))).unwrap();
-    assert_eq!(entry.flags, REG_FLAGS);
+    assert_eq!(entry.flags.bits(), REG_FLAGS);
     assert_eq!(entry.content_version, REG_CONTENT_VERSION);
     assert_eq!(entry.blob_signature, [0_u8; ed25519_dalek::SIGNATURE_LENGTH]);
     assert_eq!(entry.path_name_length, REG_PATH_NAME_LENGTH);
     assert_eq!(entry.path, REG_PATH);
     assert_eq!(entry.compressed_size, REG_COMPRESSED_SIZE);
-    assert_eq!(entry.uncompressed_size, REG_UNCOMPRESSED_SIZE);
     assert_eq!(entry.byte_offset, REG_BYTE_OFFSET);
 
     assert_eq!(entry.bytes(), registry_entry_buffer);

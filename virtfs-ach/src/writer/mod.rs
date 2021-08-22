@@ -10,7 +10,8 @@ use crate::loader::Archive;
 use crate::global::{
     registry::{
         Registry,
-        RegistryEntry
+        RegistryEntry,
+        RegistryEntryFlags
     },
     header::{
         MAGIC,
@@ -28,7 +29,7 @@ struct ArchiveBuilderFile {
     data: Vec<u8>,
     path: String,
     content_version: u16,
-    flags: u8,
+    flags:RegistryEntryFlags,
 }
 
 impl ArchiveBuilder {
@@ -48,7 +49,7 @@ impl ArchiveBuilder {
             data,
             path: path.to_string(),
             content_version,
-            flags: 0,
+            flags: RegistryEntryFlags::EMPTY,
         })
     }
 
@@ -73,17 +74,18 @@ impl ArchiveBuilder {
         for leaf in self.leafs.iter() {
             let mut registry_entry = leaf.to_registry_entry();
             
-            let compressed_data = lz4_flex::compress(&leaf.data);
+            let compressed_data = lz4_flex::compress_prepend_size(&leaf.data);
             let size_diff: f64 = compressed_data.len() as f64 / leaf.data.len() as f64;
             if compressed_data.len() >= leaf.data.len() {
                 info!("Did not compress {} ({:.2}x original size)", registry_entry.path_string().unwrap(), size_diff);
                 let signature = signer.sign(&leaf.data);
                 registry_entry.blob_signature = signature.to_bytes();
-                registry_entry.compressed_size = registry_entry.uncompressed_size;
+                registry_entry.compressed_size = leaf.data.len() as u32;
                 processed_data.push(leaf.data.clone());
             } else {
                 info!("Compressed {} ({:.2}x original size)", registry_entry.path_string().unwrap(), size_diff);
                 let signature = signer.sign(&compressed_data);
+                registry_entry.flags.set(RegistryEntryFlags::IS_COMPRESSED, true);
                 registry_entry.blob_signature = signature.to_bytes();
                 registry_entry.compressed_size = compressed_data.len() as u32;
                 processed_data.push(compressed_data);
@@ -117,14 +119,10 @@ impl ArchiveBuilderFile {
         RegistryEntry {
             flags: self.flags,
             content_version: self.content_version,
-            // TODO: signature
             blob_signature: [0; ed25519_dalek::SIGNATURE_LENGTH],
             path_name_length: self.path.len() as u16,
             path: self.path.as_bytes().to_owned(),
-            // TODO: compression
             compressed_size: self.data.len() as u32,
-            uncompressed_size: self.data.len() as u32,
-            // TODO: offset
             byte_offset: 0,
         }
     }
