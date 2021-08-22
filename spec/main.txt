@@ -11,7 +11,8 @@ REGISTRY_SIGNATURE: [u8; SIGNATURE_LENGTH]
 >---- REGISTRY -----<
 ENTRIES: (x) * HEADER::NUMBER_OF_ENTRIES
 	FLAGS: u8, SPECIFIES:
-		IS_SIGNED // byte 0
+		IS_COMPRESSED // byte 0
+		IS_SIGNED // byte 1
 	
 	CONTENT_VERSION: u16
 
@@ -21,9 +22,9 @@ ENTRIES: (x) * HEADER::NUMBER_OF_ENTRIES
 	PATH: [u8; PATH_NAME_LENGTH] // path encoded in UTF-8
 
 	COMPRESSED_SIZE: u32 // size of the blob in the ach file (potentially compressed)
-	UNCOMPRESSED_SIZE: u32 // size of the initial file, uncompressed
 	
 	BYTE_OFFSET: u64 // offset of the binary blob from the start of the file in bytes
 
 >---- LEAFS ( BINARY BLOBS )  ----<
+(if compressed, size is prepended to BLOB)
 BLOB: [u8; COMPRESSED_SIZE]
