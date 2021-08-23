@@ -37,7 +37,7 @@ impl HeaderConfig {
     pub fn new() -> HeaderConfig {
         HeaderConfig::from(*HeaderConfig::MAGIC, 0, None)
     }
-    pub fn empty() -> HeaderConfig { HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], 0, None)}
+    pub fn empty() -> HeaderConfig { HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], 0, None) }
 
     // Setters
     pub fn set_minimum_version(mut self, version: u16) -> HeaderConfig {
