@@ -33,3 +33,9 @@ impl fmt::Display for Resource {
         )
     }
 }
+
+impl Default for Resource {
+    fn default() -> Resource {
+        Resource::empty()
+    }
+}

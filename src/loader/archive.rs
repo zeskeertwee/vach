@@ -18,7 +18,7 @@ pub struct Archive<T> {
 impl Archive<Cursor<Vec<u8>>> {
     pub fn empty() -> Archive<Cursor<Vec<u8>>> {
         Archive {
-            header: Header::empty(),
+            header: Header::default(),
             registry: Registry::empty(),
             handle: Cursor::new(Vec::new()),
             key: None
@@ -31,7 +31,7 @@ impl<T: Seek + Read> Archive<T> {
     pub fn from(handle: T) -> anyhow::Result<Archive<T>> {
         Archive::with_config(handle, &HeaderConfig::new())
     }
-    
+
     pub fn with_config(mut handle: T, config: &HeaderConfig) -> anyhow::Result<Archive<T>> {
         Archive::validate(&mut handle, config)?;
 
@@ -75,5 +75,11 @@ impl<T: Seek + Read> Archive<T> {
 impl<T> fmt::Display for Archive<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{header}\n{registry}", header=self.header, registry=self.registry)
+    }
+}
+
+impl Default for Archive<Cursor<Vec<u8>>> {
+    fn default() -> Archive<Cursor<Vec<u8>>> {
+        Archive::empty()
     }
 }
