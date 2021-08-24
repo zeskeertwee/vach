@@ -1,9 +1,8 @@
 use crate::{global::{
         header::{Header, HeaderConfig},
-        types::RegisterType,
+        types::{RegisterType, FlagType},
         flags::RegEntryFlags
-    }, loader::resource::Resource,
-};
+    }, loader::resource::Resource};
 use std::{
     convert::TryInto,
     io::{Read, Seek, SeekFrom},
@@ -50,7 +49,7 @@ impl Registry {
                 match (&entry.signature, key) {
                     // It is signed, and we have a key
                     (Some(signature), Some(key)) => {
-                        key.verify(buffer.as_slice(), signature);
+                        key.verify(&buffer, signature);
                     },
 
                     // It is signed but no key was provided
@@ -61,7 +60,7 @@ impl Registry {
                 };
             };
 
-            if entry.is_compressed() { buffer = lz4::decompress_size_prepended(buffer.as_slice())? };
+            if entry.is_compressed() { buffer = lz4::decompress_size_prepended(&buffer)? };
 
             let mut resource = Resource::empty();
             resource.flags = entry.flags;
@@ -80,9 +79,15 @@ impl fmt::Display for Registry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { unimplemented!() }
 }
 
+impl Default for Registry {
+    fn default() -> Registry {
+        Registry::empty()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
-    pub flags: u16,
+    pub flags: FlagType,
     pub content_version: u8,
     pub signature: Option<esdalek::Signature>,
 
@@ -92,7 +97,7 @@ pub struct RegistryEntry {
 
 impl RegistryEntry {
     // 2 + 1 + esdalek::SIGNATURE_LENGTH + 8 + 8
-    pub const MAX_SIZE: usize = 83 + 8;
+    pub const MIN_SIZE: usize = 83 + 8;
 
     pub fn empty() -> RegistryEntry {
         RegistryEntry {
@@ -104,12 +109,12 @@ impl RegistryEntry {
         }
     }
     pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<(Self, String)> {
-        let mut buffer = [0; RegistryEntry::MAX_SIZE];
+        let mut buffer = [0; RegistryEntry::MIN_SIZE];
         handle.read(&mut buffer);
 
         // Construct entry
         let mut entry = RegistryEntry::empty();
-        entry.flags = u16::from_le_bytes(buffer[0..2].try_into()?);
+        entry.flags = FlagType::from_le_bytes(buffer[0..2].try_into()?);
         entry.content_version = buffer[2];
         entry.signature = Some(buffer[3..67].try_into()?);
         entry.location = RegisterType::from_le_bytes(buffer[67..75].try_into()?);
@@ -126,4 +131,20 @@ impl RegistryEntry {
     // Flags helper functions
     pub fn is_compressed(&self) -> bool { (self.flags & RegEntryFlags::COMPRESSED) != 0 }
     pub fn is_signed(&self) -> bool { self.flags & RegEntryFlags::SIGNED != 0 }
+
+    pub fn bytes(&self, path_length: &RegisterType) -> Vec<u8> {
+        let mut buffer = vec![];
+        buffer.extend_from_slice(&self.flags.to_le_bytes());
+        buffer.extend_from_slice(&self.content_version.to_le_bytes());
+        buffer.extend_from_slice(&self.location.to_le_bytes());
+        buffer.extend_from_slice(&self.location.to_le_bytes());
+        buffer.extend_from_slice(&path_length.to_le_bytes());
+        buffer
+    }
+}
+
+impl Default for RegistryEntry {
+    fn default() -> RegistryEntry {
+        RegistryEntry::empty()
+    }
 }
