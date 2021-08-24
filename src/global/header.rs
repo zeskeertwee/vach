@@ -1,18 +1,18 @@
+use crate::global::types::FlagType;
 use anyhow;
+use ed25519_dalek as esdalek;
 use std::{
+    convert::TryFrom,
     fmt,
     io::{Read, Seek, SeekFrom},
     str,
-    convert::TryFrom
 };
-use crate::{global::types::FlagType};
-use ed25519_dalek as esdalek;
 
 #[derive(Debug)]
 pub struct HeaderConfig {
     pub magic: [u8; HeaderConfig::MAGIC_LENGTH],
     pub minimum_version: u16,
-    pub public_key: Option<esdalek::PublicKey>
+    pub public_key: Option<esdalek::PublicKey>,
 }
 
 // Used to store data about headers and to validate magic and content version
@@ -27,17 +27,19 @@ impl HeaderConfig {
     pub const CAPACITY_SIZE: usize = 2;
     pub const REG_SIG_SIZE: usize = esdalek::SIGNATURE_LENGTH;
 
-    pub fn from(magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey>) -> HeaderConfig {
+    pub fn from( magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey>, ) -> HeaderConfig {
         HeaderConfig {
             magic,
             minimum_version,
-            public_key: key
+            public_key: key,
         }
     }
     pub fn new() -> HeaderConfig {
         HeaderConfig::from(*HeaderConfig::MAGIC, 0, None)
     }
-    pub fn empty() -> HeaderConfig { HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], 0, None) }
+    pub fn empty() -> HeaderConfig {
+        HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], 0, None)
+    }
 
     // Setters
     pub fn set_minimum_version(mut self, version: u16) -> HeaderConfig {
@@ -65,23 +67,29 @@ impl fmt::Display for HeaderConfig {
     }
 }
 
+impl Default for HeaderConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug)]
 pub struct Header {
     pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
     pub flags: FlagType,
     pub version: u16,
     pub capacity: u16,
-    pub reg_signature: Option<esdalek::Signature>
+    pub reg_signature: Option<esdalek::Signature>,
 }
 
-impl Header {
-    pub fn empty() -> Header {
+impl Default for Header {
+    fn default() -> Header {
         Header {
             magic: [0u8; HeaderConfig::MAGIC_LENGTH],
             flags: 0,
             version: 0,
             capacity: 0,
-            reg_signature: None
+            reg_signature: None,
         }
     }
 }
@@ -89,8 +97,9 @@ impl Header {
 impl Header {
     pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<Header> {
         handle.seek(SeekFrom::Start(0));
+
         // Construct header
-        let mut header = Header::empty();
+        let mut header = Header::default();
 
         // Read magic, [u8;5]
         let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
