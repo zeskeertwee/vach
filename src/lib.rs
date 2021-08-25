@@ -1,16 +1,23 @@
 #![allow(unused)]
+#![allow(clippy::or_fun_call)]
 mod tests;
 
 pub mod global;
 pub mod loader;
 pub mod writer;
 
-// Current archive version
-pub const VERSION: f32 = 0.1;
+// Re-exports
+pub use rand;
+pub use anyhow;
+pub use bitflags;
 
-// Simplify imports
+// Current archive version
+pub const VERSION: u16 = 12;
+
+// Simpler imports
 pub mod prelude {
     pub use crate::global::{
+        flags::Flags,
         header::{Header, HeaderConfig},
         registry::{Registry, RegistryEntry},
         types::*,
