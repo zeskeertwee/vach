@@ -18,7 +18,7 @@ impl Resource {
         }
     }
     pub fn empty() -> Resource {
-        Resource{ data: Vec::new(), flags: 0, content_version: 0 }
+        Resource{ data: Vec::new(), flags: FlagType::default(), content_version: 0 }
     }
 }
 
@@ -26,9 +26,9 @@ impl fmt::Display for Resource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "[Resource] size: {length} bytes, version: {version}, flags: {flags}",
+            "[Resource] size: {length} bytes, content version: {version}, flags: {flags:b}",
             length = self.data.len(),
-            flags = &self.flags,
+            flags = &self.flags.bits(),
             version = &self.content_version
         )
     }
