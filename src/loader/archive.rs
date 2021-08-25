@@ -49,21 +49,24 @@ impl<T: Seek + Read> Archive<T> {
         handle.seek(SeekFrom::Start(0))?;
 
         // Validate magic
-        let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
+        let mut buffer = [0x72; HeaderConfig::MAGIC_LENGTH];
         handle.read_exact(&mut buffer)?;
 
         if buffer != config.magic {
             anyhow::bail!(format!("Invalid magic found in archive: {}", str::from_utf8(&buffer)?));
         };
 
+        // Jump the flags
+        handle.seek(SeekFrom::Current(2));
+
         // Validate version
-        let mut buffer = [0; HeaderConfig::VERSION_SIZE];
+        let mut buffer = [0x72; HeaderConfig::VERSION_SIZE];
         handle.read_exact(&mut buffer)?;
 
         let archive_version = u16::from_le_bytes(buffer);
         if config.minimum_version > archive_version {
             anyhow::bail!(format!(
-                "Minimum Version requirement not met. Version found: {}, Minimum version: {}",
+                "Minimum Version requirement not met. Version found: {}, Minimum acceptable version: {}",
                 archive_version, config.minimum_version
             ))
         };
