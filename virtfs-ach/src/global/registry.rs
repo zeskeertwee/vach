@@ -3,6 +3,7 @@ use std::{convert::TryInto, fs::File, io::{BufReader, Read, Seek, SeekFrom}};
 use ed25519_dalek::{PublicKey, Verifier};
 use log::info;
 use signature::Signature;
+use bitflags::bitflags;
 
 #[derive(Debug)]
 pub struct Registry {
@@ -41,9 +42,17 @@ impl Registry {
     }
 }
 
+bitflags! {
+    pub struct RegistryEntryFlags: u8 {
+        const EMPTY         = 0b00000000;
+        const IS_COMPRESSED = 0b00000001;
+        const IS_SIGNED     = 0b00000010;
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
-    pub(crate) flags: u8,
+    pub(crate) flags: RegistryEntryFlags,
     pub(crate) content_version: u16,
     pub(crate) blob_signature: [u8; ed25519_dalek::SIGNATURE_LENGTH],
     
@@ -51,14 +60,13 @@ pub struct RegistryEntry {
     pub(crate) path: Vec<u8>, // length of path_name_length
     
     pub(crate) compressed_size: u32,
-    pub(crate) uncompressed_size: u32,
 
     pub(crate) byte_offset: u64, // offset of the blob from the beginning of the file
 }
 
 impl RegistryEntry {
     /// size in bytes without the path (since it is variable-length)
-    const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 4 + 8;
+    const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 8;
 
     /// attempts to read a registry entry from the current stream position
     fn _from_reader_append_read<R: Read>(reader: &mut BufReader<R>, read_buffer: &mut Vec<u8>) -> anyhow::Result<RegistryEntry> {
@@ -66,7 +74,7 @@ impl RegistryEntry {
 
         let mut buffer = [0; 5 + ed25519_dalek::SIGNATURE_LENGTH];
         reader.read_exact(&mut buffer)?;
-        entry.flags = buffer[0];
+        entry.flags = RegistryEntryFlags::from_bits(buffer[0]).ok_or(anyhow::anyhow!("Invalid flags"))?;
         entry.content_version = u16::from_le_bytes([buffer[1], buffer[2]]);
         entry.blob_signature.copy_from_slice(&buffer[3..(3 + ed25519_dalek::SIGNATURE_LENGTH)]);
         entry.path_name_length = u16::from_le_bytes([buffer[3 + ed25519_dalek::SIGNATURE_LENGTH], buffer[4 + ed25519_dalek::SIGNATURE_LENGTH]]);
@@ -77,11 +85,10 @@ impl RegistryEntry {
         read_buffer.extend_from_slice(&buffer);
         entry.path = buffer;
 
-        let mut buffer = [0; 16];
+        let mut buffer = [0; 12];
         reader.read_exact(&mut buffer)?;
         entry.compressed_size = u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
-        entry.uncompressed_size = u32::from_le_bytes([buffer[4], buffer[5], buffer[6], buffer[7]]);
-        entry.byte_offset = u64::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11], buffer[12], buffer[13], buffer[14], buffer[15]]);
+        entry.byte_offset = u64::from_le_bytes([buffer[4], buffer[5], buffer[6], buffer[7], buffer[8], buffer[9], buffer[10], buffer[11]]);
         read_buffer.extend_from_slice(&buffer);
 
         Ok(entry)
@@ -93,13 +100,12 @@ impl RegistryEntry {
 
     pub fn empty() -> RegistryEntry {
         RegistryEntry{
-            flags: 0,
+            flags: RegistryEntryFlags::EMPTY,
             content_version: 0,
             blob_signature: [0; ed25519_dalek::SIGNATURE_LENGTH],
             path_name_length: 0,
             path: vec![],
             compressed_size: 0,
-            uncompressed_size: 0,
             byte_offset: 0,
         }
     }
@@ -107,13 +113,12 @@ impl RegistryEntry {
     pub fn bytes(&self) -> Vec<u8>{
         let mut buffer = Vec::with_capacity(Self::BASE_SIZE + self.path_name_length as usize);
 
-        buffer.push(self.flags);
+        buffer.push(self.flags.bits());
         buffer.extend_from_slice(&self.content_version.to_le_bytes());
         buffer.extend_from_slice(&self.blob_signature);
         buffer.extend_from_slice(&self.path_name_length.to_le_bytes());
         buffer.extend_from_slice(&self.path);
         buffer.extend_from_slice(&self.compressed_size.to_le_bytes());
-        buffer.extend_from_slice(&self.uncompressed_size.to_le_bytes());
         buffer.extend_from_slice(&self.byte_offset.to_le_bytes());
 
         buffer
