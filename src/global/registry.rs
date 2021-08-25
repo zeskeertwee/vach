@@ -1,16 +1,16 @@
 use crate::{global::{
         header::{Header, HeaderConfig},
         types::{RegisterType, FlagType},
-        flags::RegEntryFlags
+        flags::Flags
     }, loader::resource::Resource};
 use std::{
     convert::TryInto,
     io::{Read, Seek, SeekFrom},
-    collections::HashMap,
     fmt
 };
 use ed25519_dalek::{self as esdalek, Verifier};
 use lz4_flex as lz4;
+use hashbrown::HashMap;
 
 #[derive(Debug)]
 pub struct Registry {
@@ -53,7 +53,7 @@ impl Registry {
                     },
 
                     // It is signed but no key was provided
-                    (_, None) => { anyhow::bail!(format!("File: {}, found with signature, but no key was provided", path)) },
+                    (_, None) => { anyhow::bail!(format!("Leaf: {}, found with signature, but no key was provided", path)) },
 
                     // Ignore all other possible configurations
                     (_, _) => {}
@@ -101,7 +101,7 @@ impl RegistryEntry {
 
     pub fn empty() -> RegistryEntry {
         RegistryEntry {
-            flags: 0,
+            flags: FlagType::default(),
             content_version: 0,
             signature: None,
             location: 0,
@@ -110,13 +110,16 @@ impl RegistryEntry {
     }
     pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<(Self, String)> {
         let mut buffer = [0; RegistryEntry::MIN_SIZE];
-        handle.read(&mut buffer);
+        handle.read_exact(&mut buffer);
 
         // Construct entry
         let mut entry = RegistryEntry::empty();
-        entry.flags = FlagType::from_le_bytes(buffer[0..2].try_into()?);
+        entry.flags = FlagType::from_bits(u16::from_le_bytes(buffer[0..2].try_into()?)).unwrap();
         entry.content_version = buffer[2];
-        entry.signature = Some(buffer[3..67].try_into()?);
+
+        // Only produce a flag from data that is signed
+        if entry.flags.contains(FlagType::SIGNED) { entry.signature = Some(buffer[3..67].try_into()?) };
+
         entry.location = RegisterType::from_le_bytes(buffer[67..75].try_into()?);
         entry.length = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
 
@@ -129,15 +132,19 @@ impl RegistryEntry {
     }
 
     // Flags helper functions
-    pub fn is_compressed(&self) -> bool { (self.flags & RegEntryFlags::COMPRESSED) != 0 }
-    pub fn is_signed(&self) -> bool { self.flags & RegEntryFlags::SIGNED != 0 }
+    pub fn is_compressed(&self) -> bool { (Flags::COMPRESSED.contains(self.flags)) }
+    pub fn is_signed(&self) -> bool { Flags::SIGNED.contains(self.flags) }
 
     pub fn bytes(&self, path_length: &RegisterType) -> Vec<u8> {
         let mut buffer = vec![];
-        buffer.extend_from_slice(&self.flags.to_le_bytes());
+        buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
         buffer.extend_from_slice(&self.content_version.to_le_bytes());
+        match self.signature {
+            Some(signature) => { buffer.extend_from_slice(&signature.to_bytes()) },
+            None => { buffer.extend_from_slice(&[0x53u8; esdalek::SIGNATURE_LENGTH]) }
+        };
         buffer.extend_from_slice(&self.location.to_le_bytes());
-        buffer.extend_from_slice(&self.location.to_le_bytes());
+        buffer.extend_from_slice(&self.length.to_le_bytes());
         buffer.extend_from_slice(&path_length.to_le_bytes());
         buffer
     }
