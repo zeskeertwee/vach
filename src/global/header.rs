@@ -17,7 +17,8 @@ pub struct HeaderConfig {
 
 // Used to store data about headers and to validate magic and content version
 impl HeaderConfig {
-    pub const BASE_SIZE: usize = Self::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE + Self::REG_SIG_SIZE;
+    // BASE_SIZE => 11 + 64 = 75
+    pub const BASE_SIZE: usize = Self::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE + esdalek::SIGNATURE_LENGTH;
     pub const MAGIC: &'static [u8; 5] = b"VfACH";
 
     // Data appears in this order
@@ -25,7 +26,6 @@ impl HeaderConfig {
     pub const FLAG_SIZE: usize = 2;
     pub const VERSION_SIZE: usize = 2;
     pub const CAPACITY_SIZE: usize = 2;
-    pub const REG_SIG_SIZE: usize = esdalek::SIGNATURE_LENGTH;
 
     pub fn from( magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey>, ) -> HeaderConfig {
         HeaderConfig {
@@ -35,10 +35,10 @@ impl HeaderConfig {
         }
     }
     pub fn new() -> HeaderConfig {
-        HeaderConfig::from(*HeaderConfig::MAGIC, 0, None)
+        HeaderConfig::from(*HeaderConfig::MAGIC, crate::VERSION, None)
     }
     pub fn empty() -> HeaderConfig {
-        HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], 0, None)
+        HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], crate::VERSION, None)
     }
 
     // Setters
@@ -69,7 +69,11 @@ impl fmt::Display for HeaderConfig {
 
 impl Default for HeaderConfig {
     fn default() -> Self {
-        Self::new()
+        HeaderConfig {
+            magic: HeaderConfig::MAGIC.clone(),
+            minimum_version: crate::VERSION,
+            public_key: None,
+        }
     }
 }
 
@@ -77,7 +81,7 @@ impl Default for HeaderConfig {
 pub struct Header {
     pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
     pub flags: FlagType,
-    pub version: u16,
+    pub arch_version: u16,
     pub capacity: u16,
     pub reg_signature: Option<esdalek::Signature>,
 }
@@ -85,9 +89,9 @@ pub struct Header {
 impl Default for Header {
     fn default() -> Header {
         Header {
-            magic: [0u8; HeaderConfig::MAGIC_LENGTH],
-            flags: 0,
-            version: 0,
+            magic: HeaderConfig::MAGIC.clone(),
+            flags: FlagType::default(),
+            arch_version: crate::VERSION,
             capacity: 0,
             reg_signature: None,
         }
@@ -95,36 +99,38 @@ impl Default for Header {
 }
 
 impl Header {
-    pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<Header> {
+    pub fn from<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
         handle.seek(SeekFrom::Start(0));
 
         // Construct header
         let mut header = Header::default();
 
         // Read magic, [u8;5]
-        let mut buffer = [0; HeaderConfig::MAGIC_LENGTH];
+        let mut buffer = [0x69; HeaderConfig::MAGIC_LENGTH];
         handle.read_exact(&mut buffer)?;
         header.magic = buffer;
 
         // Read flags, u16 from [u8;2]
-        let mut buffer = [0; HeaderConfig::FLAG_SIZE];
+        let mut buffer = [0x69; HeaderConfig::FLAG_SIZE];
         handle.read_exact(&mut buffer)?;
-        header.flags = u16::from_le_bytes(buffer);
+        header.flags = FlagType::from_bits(u16::from_le_bytes(buffer)).unwrap();
 
         // Read version, u16 from [u8;2]
-        let mut buffer = [0; HeaderConfig::VERSION_SIZE];
+        let mut buffer = [0x69; HeaderConfig::VERSION_SIZE];
         handle.read_exact(&mut buffer)?;
-        header.version = u16::from_le_bytes(buffer);
+        header.arch_version = u16::from_le_bytes(buffer);
 
         // Read the capacity of the archive, u16 from [u8;2]
-        let mut buffer = [0; HeaderConfig::CAPACITY_SIZE];
+        let mut buffer = [0x69; HeaderConfig::CAPACITY_SIZE];
         handle.read_exact(&mut buffer)?;
         header.capacity = u16::from_le_bytes(buffer);
 
         // Read registry signature, esdalek::Signature from [u8; 64]
-        let mut buffer = [0; HeaderConfig::REG_SIG_SIZE];
-        handle.read_exact(&mut buffer)?;
-        header.reg_signature = Some(esdalek::Signature::try_from(&buffer[..])?);
+        if header.flags.contains(FlagType::SIGNED) {
+            let mut buffer = [0x53; esdalek::SIGNATURE_LENGTH];
+            handle.read_exact(&mut buffer)?;
+            header.reg_signature = Some(esdalek::Signature::try_from(&buffer[..])?);
+        };
 
         Ok(header)
     }
@@ -135,7 +141,7 @@ impl fmt::Display for Header {
         write!(
             f,
             "[Archive Header] Version: {}, Magic: {}",
-            self.version,
+            self.arch_version,
             str::from_utf8(&self.magic).expect("Error constructing str from Header::Magic")
         )
     }
