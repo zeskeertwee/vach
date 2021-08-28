@@ -3,8 +3,7 @@ pub use config::LeafConfig;
 
 use crate::{
 	global::{
-		registry::RegistryEntry,
-		types::FlagType
+		registry::RegistryEntry
 	}
 };
 use std::{io::{Cursor, Read}};
@@ -29,13 +28,8 @@ impl<T: Read> Leaf<T> {
         Ok(Leaf { handle, config })
     }
     pub fn to_registry_entry(&self) -> RegistryEntry {
-        RegistryEntry {
-            flags: FlagType::empty(),
-            content_version: self.config.content_version,
-            signature: None,
-
-            length: 0,
-            location: 0,
-        }
+        let mut entry = RegistryEntry::empty();
+        entry.content_version = self.config.content_version;
+        entry
     }
 }

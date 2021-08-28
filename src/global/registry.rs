@@ -1,12 +1,10 @@
 use crate::{global::{
         header::{Header, HeaderConfig},
-        types::{RegisterType, FlagType},
-        flags::Flags
+        types::{RegisterType, FlagType}
     }, loader::resource::Resource};
 use std::{
     convert::TryInto,
-    io::{Read, Seek, SeekFrom},
-    fmt
+    io::{Read, Seek, SeekFrom}
 };
 use ed25519_dalek::{self as esdalek, Verifier};
 use lz4_flex as lz4;
@@ -24,40 +22,50 @@ impl Registry {
 }
 
 impl Registry {
-    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header) -> anyhow::Result<Registry> {
-        handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64));
+    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header, pub_key: &Option<esdalek::PublicKey>) -> anyhow::Result<Registry> {
+        handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64))?;
 
+        // Generate and store Registry Entries
         let mut entries = HashMap::new();
-        for i in 0..header.capacity {
-            let (entry, path) = RegistryEntry::from(handle)?;
-            entries.insert(path, entry);
-        }
+        for _ in 0..header.capacity {
+            let (entry, id) = RegistryEntry::from(handle)?;
+            entries.insert(id, entry);
+        };
+
+        // Validate self, using signature acquired from header
+        if header.flags.contains(FlagType::SIGNED) {
+            if let Some(key) = pub_key {
+                let reg_size = handle.stream_position()? - HeaderConfig::BASE_SIZE as u64;
+                handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64))?;
+    
+                let mut  buffer = vec![];
+                let mut handle = handle.take(reg_size);
+                handle.read_to_end(&mut buffer)?;
+    
+                if let Err(error) = key.verify(&buffer, &header.reg_signature.ok_or( anyhow::anyhow!("No registry signature found in header") )?){
+                    anyhow::bail!(format!("({}): Invalid signature found for Registry", error))
+                };
+            }
+        };
 
         Ok(Registry { entries })
     }
 
-    pub fn fetch<T: Seek + Read>(&self, path: &str, handle: &mut T, key: &Option<esdalek::PublicKey>) -> anyhow::Result<Resource> {
-        if let Some(entry) = self.fetch_entry(path) {
-            handle.seek(SeekFrom::Start(entry.location));
+    pub fn fetch<T: Seek + Read>(&self, id: &str, handle: &mut T, key: &Option<esdalek::PublicKey>) -> anyhow::Result<Resource> {
+        if let Some(entry) = self.fetch_entry(id) {
+            handle.seek(SeekFrom::Start(entry.location))?;
 
             let mut reader = handle.take(entry.length);
             let mut buffer = Vec::new();
-            reader.read_to_end(&mut buffer);
+            reader.read_to_end(&mut buffer)?;
 
-            // Validate then decompress
+            // Every time a fetch is done, check for tampering: May be made conditional
             if entry.is_signed() {
-                match (&entry.signature, key) {
-                    // It is signed, and we have a key
-                    (Some(signature), Some(key)) => {
-                        key.verify(&buffer, signature);
-                    },
-
-                    // It is signed but no key was provided
-                    (_, None) => { anyhow::bail!(format!("Leaf: {}, found with signature, but no key was provided", path)) },
-
-                    // Ignore all other possible configurations
-                    (_, _) => {}
-                };
+                if let Some(pub_key) = &key {
+                    if let Err(error) = pub_key.verify(&buffer, &entry.signature){
+                        anyhow::bail!(format!("({}): Invalid signature found for ID: {}", error, id))
+                    };
+                }
             };
 
             if entry.is_compressed() { buffer = lz4::decompress_size_prepended(&buffer)? };
@@ -69,14 +77,10 @@ impl Registry {
 
             Ok(resource)
         } else {
-            anyhow::bail!(format!("Resource not found: {}", path))
+            anyhow::bail!(format!("Resource not found: {}", id))
         }
     }
-    pub fn fetch_entry(&self, path: &str) -> Option<&RegistryEntry> { self.entries.get(path) }
-}
-
-impl fmt::Display for Registry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { unimplemented!() }
+    pub fn fetch_entry(&self, id: &str) -> Option<&RegistryEntry> { self.entries.get(id) }
 }
 
 impl Default for Registry {
@@ -89,7 +93,7 @@ impl Default for Registry {
 pub struct RegistryEntry {
     pub flags: FlagType,
     pub content_version: u8,
-    pub signature: Option<esdalek::Signature>,
+    pub signature: esdalek::Signature,
 
     pub location: RegisterType,
     pub length: RegisterType,
@@ -103,14 +107,14 @@ impl RegistryEntry {
         RegistryEntry {
             flags: FlagType::default(),
             content_version: 0,
-            signature: None,
+            signature: esdalek::Signature::new([0; 64]),
             location: 0,
             length: 0
         }
     }
     pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<(Self, String)> {
         let mut buffer = [0; RegistryEntry::MIN_SIZE];
-        handle.read_exact(&mut buffer);
+        handle.read_exact(&mut buffer)?;
 
         // Construct entry
         let mut entry = RegistryEntry::empty();
@@ -118,34 +122,35 @@ impl RegistryEntry {
         entry.content_version = buffer[2];
 
         // Only produce a flag from data that is signed
-        if entry.flags.contains(FlagType::SIGNED) { entry.signature = Some(buffer[3..67].try_into()?) };
+        if entry.flags.contains(FlagType::SIGNED) { entry.signature = buffer[3..67].try_into()? };
 
         entry.location = RegisterType::from_le_bytes(buffer[67..75].try_into()?);
         entry.length = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
 
-        // Construct path
-        let path_length  = u64::from_le_bytes(buffer[83..91].try_into()?);
-        let mut path = String::new();
-        handle.take(path_length).read_to_string(&mut path);
+        // Construct ID
+        let id_length  = u64::from_le_bytes(buffer[83..91].try_into()?);
+        let mut id = String::new();
+        handle.take(id_length).read_to_string(&mut id)?;
 
-        Ok((entry, path))
+        Ok((entry, id))
     }
 
     // Flags helper functions
-    pub fn is_compressed(&self) -> bool { (Flags::COMPRESSED.contains(self.flags)) }
-    pub fn is_signed(&self) -> bool { Flags::SIGNED.contains(self.flags) }
+    pub fn is_compressed(&self) -> bool { self.flags.contains(FlagType::COMPRESSED) }
+    pub fn is_signed(&self) -> bool { self.flags.contains(FlagType::SIGNED) }
 
-    pub fn bytes(&self, path_length: &RegisterType) -> Vec<u8> {
+    pub fn bytes(&self, id_length: &RegisterType) -> Vec<u8> {
         let mut buffer = vec![];
         buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
         buffer.extend_from_slice(&self.content_version.to_le_bytes());
-        match self.signature {
-            Some(signature) => { buffer.extend_from_slice(&signature.to_bytes()) },
-            None => { buffer.extend_from_slice(&[0x53u8; esdalek::SIGNATURE_LENGTH]) }
+        if self.is_signed() {
+            buffer.extend_from_slice(&self.signature.to_bytes())
+        } else {
+            buffer.extend_from_slice(&[0x53u8; esdalek::SIGNATURE_LENGTH])
         };
         buffer.extend_from_slice(&self.location.to_le_bytes());
         buffer.extend_from_slice(&self.length.to_le_bytes());
-        buffer.extend_from_slice(&path_length.to_le_bytes());
+        buffer.extend_from_slice(&id_length.to_le_bytes());
         buffer
     }
 }

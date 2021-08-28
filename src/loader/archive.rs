@@ -4,13 +4,13 @@ use crate::global::{
     header::{Header, HeaderConfig},
     registry::{Registry, RegistryEntry},
 };
-use std::{fmt, io::{Cursor, Read, Seek, SeekFrom}, str, sync::Arc};
+use std::{io::{BufReader, Cursor, Read, Seek, SeekFrom}, str};
 use ed25519_dalek as esdalek;
 
 #[derive(Debug)]
 pub struct Archive<T> { 
     header: Header,
-    registry: Registry,
+    pub registry: Registry,
     handle: T,
     key: Option<esdalek::PublicKey>
 }
@@ -33,16 +33,21 @@ impl<T: Seek + Read> Archive<T> {
     }
 
     pub fn with_config(mut handle: T, config: &HeaderConfig) -> anyhow::Result<Archive<T>> {
-        Archive::validate(&mut handle, config)?;
+        let mut reader = BufReader::new(&mut handle);
+        Archive::validate(&mut reader, config)?;
 
-        let header = Header::from(&mut handle)?;
-        let registry = Registry::from(&mut handle, &header)?;
+        let header = Header::from(&mut reader)?;
+        let registry = Registry::from(&mut reader, &header, &config.public_key)?;
 
         Ok(Archive { header, registry, handle, key: config.public_key })
     }
 
-    pub fn fetch(&mut self, path: &str) -> anyhow::Result<Resource> {
-        self.registry.fetch(path, &mut self.handle, &self.key)
+    // Query functions
+    pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
+        self.registry.fetch(id, &mut self.handle, &self.key)
+    }
+    pub fn fetch_entry(&mut self, id: &str) -> Option<&RegistryEntry> {
+        self.registry.fetch_entry(id)
     }
 
     pub fn validate(handle: &mut T, config: &HeaderConfig) -> anyhow::Result<bool> {
@@ -57,7 +62,7 @@ impl<T: Seek + Read> Archive<T> {
         };
 
         // Jump the flags
-        handle.seek(SeekFrom::Current(2));
+        handle.seek(SeekFrom::Current(2))?;
 
         // Validate version
         let mut buffer = [0x72; HeaderConfig::VERSION_SIZE];
@@ -72,12 +77,6 @@ impl<T: Seek + Read> Archive<T> {
         };
 
         Ok(true)
-    }
-}
-
-impl<T> fmt::Display for Archive<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{header}\n{registry}", header=self.header, registry=self.registry)
     }
 }
 
