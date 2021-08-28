@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![allow(clippy::or_fun_call)]
 mod tests;
 
@@ -11,13 +10,13 @@ pub use rand;
 pub use anyhow;
 pub use bitflags;
 
-// Current archive version
+// Global constants
 pub const VERSION: u16 = 12;
+pub const KEYPAIR_LENGTH: usize = ed25519_dalek::KEYPAIR_LENGTH;
 
 // Simpler imports
 pub mod prelude {
     pub use crate::global::{
-        flags::Flags,
         header::{Header, HeaderConfig},
         registry::{Registry, RegistryEntry},
         types::*,

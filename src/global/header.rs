@@ -27,7 +27,7 @@ impl HeaderConfig {
     pub const VERSION_SIZE: usize = 2;
     pub const CAPACITY_SIZE: usize = 2;
 
-    pub fn from( magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey>, ) -> HeaderConfig {
+    pub fn from( magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey> ) -> HeaderConfig {
         HeaderConfig {
             magic,
             minimum_version,
@@ -37,20 +37,17 @@ impl HeaderConfig {
     pub fn new() -> HeaderConfig {
         HeaderConfig::from(*HeaderConfig::MAGIC, crate::VERSION, None)
     }
-    pub fn empty() -> HeaderConfig {
-        HeaderConfig::from([0; HeaderConfig::MAGIC_LENGTH], crate::VERSION, None)
-    }
 
     // Setters
-    pub fn set_minimum_version(mut self, version: u16) -> HeaderConfig {
+    pub fn minimum_version(mut self, version: u16) -> HeaderConfig {
         self.minimum_version = version;
         self
     }
-    pub fn set_magic(mut self, magic: [u8; 5]) -> HeaderConfig {
+    pub fn magic(mut self, magic: [u8; 5]) -> HeaderConfig {
         self.magic = magic;
         self
     }
-    pub fn set_key(mut self, key: Option<esdalek::PublicKey>) -> HeaderConfig {
+    pub fn key(mut self, key: Option<esdalek::PublicKey>) -> HeaderConfig {
         self.public_key = key;
         self
     }
@@ -70,7 +67,7 @@ impl fmt::Display for HeaderConfig {
 impl Default for HeaderConfig {
     fn default() -> Self {
         HeaderConfig {
-            magic: HeaderConfig::MAGIC.clone(),
+            magic: *HeaderConfig::MAGIC,
             minimum_version: crate::VERSION,
             public_key: None,
         }
@@ -89,7 +86,7 @@ pub struct Header {
 impl Default for Header {
     fn default() -> Header {
         Header {
-            magic: HeaderConfig::MAGIC.clone(),
+            magic: *HeaderConfig::MAGIC,
             flags: FlagType::default(),
             arch_version: crate::VERSION,
             capacity: 0,
@@ -100,7 +97,7 @@ impl Default for Header {
 
 impl Header {
     pub fn from<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
-        handle.seek(SeekFrom::Start(0));
+        handle.seek(SeekFrom::Start(0))?;
 
         // Construct header
         let mut header = Header::default();
