@@ -7,7 +7,7 @@ use crate::global::{
 };
 pub use config::BuilderConfig;
 
-use ed25519_dalek::{self as esdalek, Signer};
+use ed25519_dalek::Signer;
 use hashbrown::HashMap;
 use lz4_flex as lz4;
 use std::io::{BufWriter, Read, Write};
@@ -50,17 +50,13 @@ impl<T: Read> Builder<T> {
         let mut buffer = BufWriter::new( target);
         buffer.write_all(&config.header_config.magic)?;
 
-        // Some interior mutability sorcery
-        let mut flags_temp = config.flags;
-        if config.keypair.is_some() { flags_temp.insert(FlagType::SIGNED) };
-        buffer.write_all(&flags_temp.bits().to_le_bytes())?;
+        // INSERT flags here
+        buffer.write_all(&config.flags.bits().to_le_bytes())?;
 
         buffer.write_all(&config.header_config.minimum_version.to_le_bytes())?;
         buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
-        // Write the registry
         let mut leaf_data = vec![];
-        let mut registry_buffer = vec![];
         
         // Calculate the size of the registry
         let mut reg_size = 0usize;
@@ -94,6 +90,8 @@ impl<T: Read> Builder<T> {
             };
 
             let glob_length = glob.len();
+
+            // Buffer the contents of the leaf, to be written later
             leaf_data.extend(&glob);
 
             entry.location = leaf_offset as RegisterType;
@@ -108,28 +106,13 @@ impl<T: Read> Builder<T> {
             // Drop stuff
             drop(glob);
 
-            let mut entry_b = entry.bytes(&(id.len() as u64));
-            entry_b.extend(id.as_bytes());
-            registry_buffer.extend(entry_b);
-        }
-
-        {
-            // Sign the registry and write out the signature
-            match &config.keypair {
-                Some(keypair) => {
-                    let signature = keypair.sign(&registry_buffer);
-                    dbg!(&reg_size, &registry_buffer.len());
-                    let signature_bytes = signature.to_bytes();
-                    buffer.write_all(&signature_bytes)?;
-                },
-                None => {
-                    buffer.write_all(&[0x53; esdalek::SIGNATURE_LENGTH])?;
-                }
+            {
+                // Write to the registry
+                let mut entry_b = entry.bytes(&(id.len() as u64));
+                entry_b.extend(id.as_bytes());
+                buffer.write_all(&entry_b)?;
             }
         }
-        // Write out the registry
-        buffer.write_all(&registry_buffer)?;
-        drop(registry_buffer);
 
         // Write the glob
         buffer.write_all(&leaf_data)?;
