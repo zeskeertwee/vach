@@ -4,16 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 # TODO: 
-	# impl Iter and Stream dunctionality for Archives
 	# Add a simple API to handle keypairs
-	# Switch hashing function to blake3
-	# Reduce the number of reads and instead use in-memory buffers
-	# pub(crate) everywhere
-	# Optional signatures
-	# Use serde someplace
-	# Benchmark BufReaders and BufWriters
-	# Arcive::config should validate the Registry signature
-	# Ask about storing paths as hashes, secure mode
 
 [dependencies]
 anyhow = "1.0.42"
