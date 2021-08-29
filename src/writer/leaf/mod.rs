@@ -27,7 +27,7 @@ impl<T: Read> Leaf<T> {
     pub fn from(handle: T, config: LeafConfig) -> anyhow::Result<Leaf<T>> {
         Ok(Leaf { handle, config })
     }
-    pub fn to_registry_entry(&self) -> RegistryEntry {
+    pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
         let mut entry = RegistryEntry::empty();
         entry.content_version = self.config.content_version;
         entry

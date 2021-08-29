@@ -10,7 +10,7 @@ use ed25519_dalek as esdalek;
 #[derive(Debug)]
 pub struct Archive<T> { 
     header: Header,
-    pub registry: Registry,
+    registry: Registry,
     handle: T,
     key: Option<esdalek::PublicKey>
 }
@@ -33,11 +33,11 @@ impl<T: Seek + Read> Archive<T> {
     }
 
     pub fn with_config(mut handle: T, config: &HeaderConfig) -> anyhow::Result<Archive<T>> {
-        let mut reader = BufReader::new(&mut handle);
-        Archive::validate(&mut reader, config)?;
+        let mut buf_handle = BufReader::new(&mut handle);
+        Archive::validate(&mut buf_handle, config)?;
 
-        let header = Header::from(&mut reader)?;
-        let registry = Registry::from(&mut reader, &header)?;
+        let header = Header::from(&mut buf_handle)?;
+        let registry = Registry::from(&mut buf_handle, &header)?;
 
         Ok(Archive { header, registry, handle, key: config.public_key })
     }

@@ -96,7 +96,7 @@ impl<T: Read> Builder<T> {
 
             entry.location = leaf_offset as RegisterType;
             leaf_offset += glob_length;
-            entry.length = glob_length as RegisterType;
+            entry.offset = glob_length as RegisterType;
 
             if let Some(keypair) = &config.keypair {
                 entry.signature = keypair.sign(&glob);

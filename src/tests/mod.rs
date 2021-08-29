@@ -1,6 +1,7 @@
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::prelude::*;
+    use crate::global::registry::*;
     use std::{fs::{File}, io::{Cursor, Read}};
     use ed25519_dalek as esdalek;
     use rand::rngs::OsRng;
@@ -114,7 +115,7 @@ pub(crate) mod tests {
 
     #[test]
     pub(crate) fn esdalek_test() -> anyhow::Result<()>{
-        println!("Bytes per esdalek::Signature: {}", esdalek::SIGNATURE_LENGTH);
+        println!("Bytes per esdalek::Signature: {}", crate::SIGNATURE_LENGTH);
         Ok(())
     }
 }
