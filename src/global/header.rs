@@ -1,11 +1,7 @@
 use crate::global::types::FlagType;
 use anyhow;
 use ed25519_dalek as esdalek;
-use std::{
-    fmt,
-    io::{Read, Seek, SeekFrom},
-    str,
-};
+use std::{convert::TryInto, fmt, io::{Read, Seek, SeekFrom}, str};
 
 #[derive(Debug)]
 pub struct HeaderConfig {
@@ -50,9 +46,9 @@ impl HeaderConfig {
         self.public_key = key;
         self
     }
-    pub fn load_key<T: Read>(&mut self, mut reader: T) -> anyhow::Result<()> {
+    pub fn load_key<T: Read>(&mut self, mut handle: T) -> anyhow::Result<()> {
         let mut keypair_bytes = [4; crate::KEYPAIR_LENGTH];
-        reader.read(&mut keypair_bytes)?;
+        handle.read(&mut keypair_bytes)?;
         let keypair = esdalek::Keypair::from_bytes(&keypair_bytes)?;
         self.public_key = Some(keypair.public);
         Ok(())
@@ -102,29 +98,23 @@ impl Default for Header {
 impl Header {
     pub fn from<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
         handle.seek(SeekFrom::Start(0))?;
+        let mut buffer = [0x69; HeaderConfig::BASE_SIZE];
+        handle.read_exact(&mut buffer)?;
 
         // Construct header
         let mut header = Header::default();
 
         // Read magic, [u8;5]
-        let mut buffer = [0x69; HeaderConfig::MAGIC_LENGTH];
-        handle.read_exact(&mut buffer)?;
-        header.magic = buffer;
+        header.magic = buffer[0..HeaderConfig::MAGIC_LENGTH].try_into()?;
 
         // Read flags, u16 from [u8;2]
-        let mut buffer = [0x69; HeaderConfig::FLAG_SIZE];
-        handle.read_exact(&mut buffer)?;
-        header.flags = FlagType::from_bits(u16::from_le_bytes(buffer)).unwrap();
+        header.flags = FlagType::from_bits(u16::from_le_bytes(buffer[HeaderConfig::MAGIC_LENGTH..7].try_into()?)).unwrap();
 
         // Read version, u16 from [u8;2]
-        let mut buffer = [0x69; HeaderConfig::VERSION_SIZE];
-        handle.read_exact(&mut buffer)?;
-        header.arch_version = u16::from_le_bytes(buffer);
+        header.arch_version = u16::from_le_bytes(buffer[7..9].try_into()?);
 
         // Read the capacity of the archive, u16 from [u8;2]
-        let mut buffer = [0x69; HeaderConfig::CAPACITY_SIZE];
-        handle.read_exact(&mut buffer)?;
-        header.capacity = u16::from_le_bytes(buffer);
+        header.capacity = u16::from_le_bytes(buffer[9..HeaderConfig::BASE_SIZE].try_into()?);
 
         Ok(header)
     }
