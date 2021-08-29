@@ -19,7 +19,7 @@ pub const SIGNATURE_LENGTH: usize =  ed25519_dalek::SIGNATURE_LENGTH;
 // Simpler imports
 pub mod prelude {
     pub use crate::global::{
-        header::{Header, HeaderConfig},
+        header::HeaderConfig,
         types::*,
     };
     pub use crate::loader::{

@@ -1,7 +1,7 @@
 use crate::global::types::FlagType;
 use anyhow;
 use ed25519_dalek as esdalek;
-use std::{convert::TryInto, fmt, io::{Read, Seek, SeekFrom}, str};
+use std::{ convert::TryInto, fmt, io::{Read, Seek, SeekFrom}, str };
 
 #[derive(Debug)]
 pub struct HeaderConfig {
@@ -48,7 +48,7 @@ impl HeaderConfig {
     }
     pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> anyhow::Result<()> {
         let mut keypair_bytes = [4; crate::PUBLIC_KEY_LENGTH];
-        handle.read(&mut keypair_bytes)?;
+        handle.read_exact(&mut keypair_bytes)?;
         let public_key = esdalek::PublicKey::from_bytes(&keypair_bytes)?;
         self.public_key = Some(public_key);
         Ok(())
@@ -77,11 +77,11 @@ impl Default for HeaderConfig {
 }
 
 #[derive(Debug)]
-pub struct Header {
+pub(crate) struct Header {
     pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
     pub flags: FlagType,
     pub arch_version: u16,
-    pub capacity: u16
+    pub capacity: u16,
 }
 
 impl Default for Header {
@@ -96,27 +96,22 @@ impl Default for Header {
 }
 
 impl Header {
-    pub fn from<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
+    pub(crate) fn from<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
         handle.seek(SeekFrom::Start(0))?;
         let mut buffer = [0x69; HeaderConfig::BASE_SIZE];
         handle.read_exact(&mut buffer)?;
 
         // Construct header
-        let mut header = Header::default();
-
-        // Read magic, [u8;5]
-        header.magic = buffer[0..HeaderConfig::MAGIC_LENGTH].try_into()?;
-
-        // Read flags, u16 from [u8;2]
-        header.flags = FlagType::from_bits(u16::from_le_bytes(buffer[HeaderConfig::MAGIC_LENGTH..7].try_into()?)).unwrap();
-
-        // Read version, u16 from [u8;2]
-        header.arch_version = u16::from_le_bytes(buffer[7..9].try_into()?);
-
-        // Read the capacity of the archive, u16 from [u8;2]
-        header.capacity = u16::from_le_bytes(buffer[9..HeaderConfig::BASE_SIZE].try_into()?);
-
-        Ok(header)
+        Ok(Header {
+            // Read magic, [u8;5]
+            magic: buffer[0..HeaderConfig::MAGIC_LENGTH].try_into()?,
+            // Read flags, u16 from [u8;2]
+            flags: FlagType::from_bits(u16::from_le_bytes( buffer[HeaderConfig::MAGIC_LENGTH..7].try_into()?)).unwrap(),
+            // Read version, u16 from [u8;2]
+            arch_version: u16::from_le_bytes(buffer[7..9].try_into()?),
+            // Read the capacity of the archive, u16 from [u8;2]
+            capacity: u16::from_le_bytes(buffer[9..HeaderConfig::BASE_SIZE].try_into()?),
+        })
     }
 }
 
