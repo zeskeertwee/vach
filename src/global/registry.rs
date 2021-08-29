@@ -14,7 +14,7 @@ use lz4_flex as lz4;
 use hashbrown::HashMap;
 
 #[derive(Debug)]
-pub struct Registry {
+pub(crate) struct Registry {
     pub entries: HashMap<String, RegistryEntry>,
 }
 
@@ -42,9 +42,9 @@ impl Registry {
         if let Some(entry) = self.fetch_entry(id) {
             handle.seek(SeekFrom::Start(entry.location))?;
 
-            let mut reader = handle.take(entry.length);
+            let mut take = handle.take(entry.offset);
             let mut buffer = Vec::new();
-            reader.read_to_end(&mut buffer)?;
+            take.read_to_end(&mut buffer)?;
 
             // Every time a fetch is done, check for tampering: May be made conditional
             if entry.is_signed() {
@@ -83,7 +83,7 @@ pub struct RegistryEntry {
     pub signature: esdalek::Signature,
 
     pub location: RegisterType,
-    pub length: RegisterType,
+    pub offset: RegisterType,
 }
 
 impl RegistryEntry {
@@ -96,7 +96,7 @@ impl RegistryEntry {
             content_version: 0,
             signature: esdalek::Signature::new([0; 64]),
             location: 0,
-            length: 0
+            offset: 0
         }
     }
     pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<(Self, String)> {
@@ -112,7 +112,7 @@ impl RegistryEntry {
         if entry.flags.contains(FlagType::SIGNED) { entry.signature = buffer[3..67].try_into()? };
 
         entry.location = RegisterType::from_le_bytes(buffer[67..75].try_into()?);
-        entry.length = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
+        entry.offset = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
 
         // Construct ID
         let id_length  = u64::from_le_bytes(buffer[83..91].try_into()?);
@@ -133,10 +133,10 @@ impl RegistryEntry {
         if self.is_signed() {
             buffer.extend_from_slice(&self.signature.to_bytes())
         } else {
-            buffer.extend_from_slice(&[0x53u8; esdalek::SIGNATURE_LENGTH])
+            buffer.extend_from_slice(&[0x53u8; crate::SIGNATURE_LENGTH])
         };
         buffer.extend_from_slice(&self.location.to_le_bytes());
-        buffer.extend_from_slice(&self.length.to_le_bytes());
+        buffer.extend_from_slice(&self.offset.to_le_bytes());
         buffer.extend_from_slice(&id_length.to_le_bytes());
         buffer
     }
