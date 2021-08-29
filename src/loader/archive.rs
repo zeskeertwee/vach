@@ -37,7 +37,7 @@ impl<T: Seek + Read> Archive<T> {
         Archive::validate(&mut reader, config)?;
 
         let header = Header::from(&mut reader)?;
-        let registry = Registry::from(&mut reader, &header, &config.public_key)?;
+        let registry = Registry::from(&mut reader, &header)?;
 
         Ok(Archive { header, registry, handle, key: config.public_key })
     }

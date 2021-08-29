@@ -1,7 +1,10 @@
-use crate::{global::{
+use crate::{
+    global::{
         header::{Header, HeaderConfig},
         types::{RegisterType, FlagType}
-    }, loader::resource::Resource};
+    },
+    loader::resource::Resource
+};
 use std::{
     convert::TryInto,
     io::{Read, Seek, SeekFrom}
@@ -22,7 +25,7 @@ impl Registry {
 }
 
 impl Registry {
-    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header, pub_key: &Option<esdalek::PublicKey>) -> anyhow::Result<Registry> {
+    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header) -> anyhow::Result<Registry> {
         handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64))?;
 
         // Generate and store Registry Entries
@@ -30,22 +33,6 @@ impl Registry {
         for _ in 0..header.capacity {
             let (entry, id) = RegistryEntry::from(handle)?;
             entries.insert(id, entry);
-        };
-
-        // Validate self, using signature acquired from header
-        if header.flags.contains(FlagType::SIGNED) {
-            if let Some(key) = pub_key {
-                let reg_size = handle.stream_position()? - HeaderConfig::BASE_SIZE as u64;
-                handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64))?;
-    
-                let mut  buffer = vec![];
-                let mut handle = handle.take(reg_size);
-                handle.read_to_end(&mut buffer)?;
-    
-                if let Err(error) = key.verify(&buffer, &header.reg_signature.ok_or( anyhow::anyhow!("No registry signature found in header") )?){
-                    anyhow::bail!(format!("({}): Invalid signature found for Registry", error))
-                };
-            }
         };
 
         Ok(Registry { entries })
@@ -63,7 +50,7 @@ impl Registry {
             if entry.is_signed() {
                 if let Some(pub_key) = &key {
                     if let Err(error) = pub_key.verify(&buffer, &entry.signature){
-                        anyhow::bail!(format!("({}): Invalid signature found for ID: {}", error, id))
+                        anyhow::bail!(format!("({}): Invalid signature found for leaf with ID: {}", error, id))
                     };
                 }
             };

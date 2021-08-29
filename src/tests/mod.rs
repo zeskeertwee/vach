@@ -65,15 +65,15 @@ pub(crate) mod tests {
 
     #[test]
     pub fn loader_with_signature() -> anyhow::Result<()> {
-        let mut target = File::open(SIGNED_TARGET)?;
+        let target = File::open(SIGNED_TARGET)?;
         
         // Load keypair
-        let mut keypair_bytes = [4; crate::KEYPAIR_LENGTH];
-        File::open(KEYPAIR)?.read(&mut keypair_bytes)?;
-        let keypair = esdalek::Keypair::from_bytes(&keypair_bytes)?;
-        let config = &HeaderConfig::default().key(Some(keypair.public));
+        let mut config = HeaderConfig::default();
+        config.load_key(File::open(KEYPAIR)?)?;
 
-        Archive::validate(&mut target, &config)?;
+        let mut archive = Archive::with_config(target, &config)?;
+        let resource = archive.fetch("song")?;
+        println!("{}", std::str::from_utf8(resource.data.as_slice())?);
         Ok(())
     }
 

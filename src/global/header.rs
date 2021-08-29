@@ -2,7 +2,6 @@ use crate::global::types::FlagType;
 use anyhow;
 use ed25519_dalek as esdalek;
 use std::{
-    convert::TryFrom,
     fmt,
     io::{Read, Seek, SeekFrom},
     str,
@@ -18,7 +17,7 @@ pub struct HeaderConfig {
 // Used to store data about headers and to validate magic and content version
 impl HeaderConfig {
     // BASE_SIZE => 11 + 64 = 75
-    pub const BASE_SIZE: usize = Self::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE + esdalek::SIGNATURE_LENGTH;
+    pub const BASE_SIZE: usize = Self::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
     pub const MAGIC: &'static [u8; 5] = b"VfACH";
 
     // Data appears in this order
@@ -51,6 +50,13 @@ impl HeaderConfig {
         self.public_key = key;
         self
     }
+    pub fn load_key<T: Read>(&mut self, mut reader: T) -> anyhow::Result<()> {
+        let mut keypair_bytes = [4; crate::KEYPAIR_LENGTH];
+        reader.read(&mut keypair_bytes)?;
+        let keypair = esdalek::Keypair::from_bytes(&keypair_bytes)?;
+        self.public_key = Some(keypair.public);
+        Ok(())
+    }
 }
 
 impl fmt::Display for HeaderConfig {
@@ -79,8 +85,7 @@ pub struct Header {
     pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
     pub flags: FlagType,
     pub arch_version: u16,
-    pub capacity: u16,
-    pub reg_signature: Option<esdalek::Signature>,
+    pub capacity: u16
 }
 
 impl Default for Header {
@@ -90,7 +95,6 @@ impl Default for Header {
             flags: FlagType::default(),
             arch_version: crate::VERSION,
             capacity: 0,
-            reg_signature: None,
         }
     }
 }
@@ -121,13 +125,6 @@ impl Header {
         let mut buffer = [0x69; HeaderConfig::CAPACITY_SIZE];
         handle.read_exact(&mut buffer)?;
         header.capacity = u16::from_le_bytes(buffer);
-
-        // Read registry signature, esdalek::Signature from [u8; 64]
-        if header.flags.contains(FlagType::SIGNED) {
-            let mut buffer = [0x53; esdalek::SIGNATURE_LENGTH];
-            handle.read_exact(&mut buffer)?;
-            header.reg_signature = Some(esdalek::Signature::try_from(&buffer[..])?);
-        };
 
         Ok(header)
     }
