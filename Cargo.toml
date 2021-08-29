@@ -4,18 +4,16 @@ version = "0.1.0"
 edition = "2018"
 
 # TODO: 
-	# Archives don't need to be mutable to allow reading, use Rc
-	# Resource to not store the data in a vector rather they store it in an impl Read
 	# impl Iter and Stream dunctionality for Archives
-	# Remove #[allow(unused)]
 	# Add a simple API to handle keypairs
-	# Consider changing to crc32fast, easier to use, faster and has less dependancies less errors, faster compile time
+	# Switch hashing function to blake3
+	# Reduce the number of reads and instead use in-memory buffers
 	# pub(crate) everywhere
-	# No key passed no verification is done
+	# Optional signatures
 	# Use serde someplace
 	# Benchmark BufReaders and BufWriters
-	# Prevent verification of signatures every time a fetch is done?
 	# Arcive::config should validate the Registry signature
+	# Ask about storing paths as hashes, secure mode
 
 [dependencies]
 anyhow = "1.0.42"
