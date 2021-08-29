@@ -2,9 +2,8 @@
 pub(crate) mod tests {
     use crate::prelude::*;
     use crate::global::registry::*;
-    use std::{fs::{File}, io::{Cursor, Read}};
+    use std::{fs::{File}, io::{Cursor, Read, Seek, SeekFrom}, str};
     use ed25519_dalek as esdalek;
-    use rand::rngs::OsRng;
 
     const KEYPAIR: &str = "test_data/pair.pub";
     const SIGNED_TARGET: &str = "test_data/signed/target.vach";
@@ -42,7 +41,7 @@ pub(crate) mod tests {
         let target = File::open(SIMPLE_TARGET)?;
         let mut archive = Archive::from(target)?;
         let resource = archive.fetch("song")?;
-        println!("{}", std::str::from_utf8(resource.data.as_slice())?);
+        println!("{}", str::from_utf8(resource.data.as_slice())?);
         Ok(())
     }
 
@@ -50,6 +49,8 @@ pub(crate) mod tests {
     pub(crate) fn writer_no_signature() -> anyhow::Result<()>{
         let mut builder = Builder::default();
         let build_config = BuilderConfig::default();
+
+        builder.add(File::open("test_data/song.txt")?, "song")?;
         builder.add_with_config(
             File::open("test_data/poem.txt")?,
             &LeafConfig::default()
@@ -57,7 +58,6 @@ pub(crate) mod tests {
                 .version(12)
                 .id(&"poem")
         )?;
-        builder.add(File::open("test_data/song.txt")?, "song")?;
 
         let mut target = File::create(SIMPLE_TARGET)?;
         builder.write(&mut target, &build_config)?;
@@ -65,12 +65,14 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub fn loader_with_signature() -> anyhow::Result<()> {
+    pub(crate) fn loader_with_signature() -> anyhow::Result<()> {
         let target = File::open(SIGNED_TARGET)?;
-        
+
         // Load keypair
         let mut config = HeaderConfig::default();
-        config.load_key(File::open(KEYPAIR)?)?;
+        let mut keypair = File::open(KEYPAIR)?;
+        keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
+        config.load_public_key(keypair)?;
 
         let mut archive = Archive::with_config(target, &config)?;
         let resource = archive.fetch("song")?;
@@ -99,9 +101,11 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub fn gen_keypair() -> anyhow::Result<()> {
+    pub(crate) fn gen_keypair() -> anyhow::Result<()> {
+        use rand::rngs::OsRng;
+
         // NOTE: regenerating new keys will break some tests
-        let regenerate = true;
+        let regenerate = false;
 
         if regenerate {
             let mut rng = OsRng;
@@ -110,12 +114,6 @@ pub(crate) mod tests {
             std::fs::write( KEYPAIR, &keypair.to_bytes())?;
         };
 
-        Ok(())
-    }
-
-    #[test]
-    pub(crate) fn esdalek_test() -> anyhow::Result<()>{
-        println!("Bytes per esdalek::Signature: {}", crate::SIGNATURE_LENGTH);
         Ok(())
     }
 }

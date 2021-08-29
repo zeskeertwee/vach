@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2018"
 
 # TODO: 
-	# Add a simple API to handle keypairs
+	# Add a simple API to generate keypairs
+	# A simple way to load aand add flags, to and from the Header and RegistryEntry
 
 [dependencies]
 anyhow = "1.0.42"

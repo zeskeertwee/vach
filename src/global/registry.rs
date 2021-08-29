@@ -25,13 +25,13 @@ impl Registry {
 }
 
 impl Registry {
-    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header) -> anyhow::Result<Registry> {
+    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header, read_sig: bool) -> anyhow::Result<Registry> {
         handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64))?;
 
         // Generate and store Registry Entries
         let mut entries = HashMap::new();
         for _ in 0..header.capacity {
-            let (entry, id) = RegistryEntry::from(handle)?;
+            let (entry, id) = RegistryEntry::from(handle, read_sig)?;
             entries.insert(id, entry);
         };
 
@@ -47,15 +47,13 @@ impl Registry {
             take.read_to_end(&mut buffer)?;
 
             // Every time a fetch is done, check for tampering: May be made conditional
-            if entry.is_signed() {
-                if let Some(pub_key) = &key {
-                    if let Err(error) = pub_key.verify(&buffer, &entry.signature){
-                        anyhow::bail!(format!("({}): Invalid signature found for leaf with ID: {}", error, id))
-                    };
-                }
+            if let Some(pub_key) = &key {
+                if let Err(error) = pub_key.verify(&buffer, &entry.signature) {
+                    anyhow::bail!(format!("({}): Invalid signature found for leaf with ID: {}", error, id))
+                };
             };
 
-            if entry.is_compressed() { buffer = lz4::decompress_size_prepended(&buffer)? };
+            if entry.flags.contains(FlagType::COMPRESSED) { buffer = lz4::decompress_size_prepended(&buffer)? };
 
             let mut resource = Resource::empty();
             resource.flags = entry.flags;
@@ -99,7 +97,7 @@ impl RegistryEntry {
             offset: 0
         }
     }
-    pub fn from<T: Read + Seek>(handle: &mut T) -> anyhow::Result<(Self, String)> {
+    pub fn from<T: Read + Seek>(handle: &mut T, read_sig: bool) -> anyhow::Result<(Self, String)> {
         let mut buffer = [0; RegistryEntry::MIN_SIZE];
         handle.read_exact(&mut buffer)?;
 
@@ -109,7 +107,7 @@ impl RegistryEntry {
         entry.content_version = buffer[2];
 
         // Only produce a flag from data that is signed
-        if entry.flags.contains(FlagType::SIGNED) { entry.signature = buffer[3..67].try_into()? };
+        if read_sig { entry.signature = buffer[3..67].try_into()? };
 
         entry.location = RegisterType::from_le_bytes(buffer[67..75].try_into()?);
         entry.offset = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
@@ -122,15 +120,11 @@ impl RegistryEntry {
         Ok((entry, id))
     }
 
-    // Flags helper functions
-    pub fn is_compressed(&self) -> bool { self.flags.contains(FlagType::COMPRESSED) }
-    pub fn is_signed(&self) -> bool { self.flags.contains(FlagType::SIGNED) }
-
-    pub fn bytes(&self, id_length: &RegisterType) -> Vec<u8> {
+    pub fn bytes(&self, id_length: &RegisterType, sign: bool) -> Vec<u8> {
         let mut buffer = vec![];
         buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
         buffer.extend_from_slice(&self.content_version.to_le_bytes());
-        if self.is_signed() {
+        if sign {
             buffer.extend_from_slice(&self.signature.to_bytes())
         } else {
             buffer.extend_from_slice(&[0x53u8; crate::SIGNATURE_LENGTH])

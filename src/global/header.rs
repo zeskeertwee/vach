@@ -46,11 +46,11 @@ impl HeaderConfig {
         self.public_key = key;
         self
     }
-    pub fn load_key<T: Read>(&mut self, mut handle: T) -> anyhow::Result<()> {
-        let mut keypair_bytes = [4; crate::KEYPAIR_LENGTH];
+    pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> anyhow::Result<()> {
+        let mut keypair_bytes = [4; crate::PUBLIC_KEY_LENGTH];
         handle.read(&mut keypair_bytes)?;
-        let keypair = esdalek::Keypair::from_bytes(&keypair_bytes)?;
-        self.public_key = Some(keypair.public);
+        let public_key = esdalek::PublicKey::from_bytes(&keypair_bytes)?;
+        self.public_key = Some(public_key);
         Ok(())
     }
 }

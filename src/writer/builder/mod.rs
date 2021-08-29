@@ -50,8 +50,10 @@ impl<T: Read> Builder<T> {
         let mut buffer = BufWriter::new( target);
         buffer.write_all(&config.header_config.magic)?;
 
-        // INSERT flags here
-        buffer.write_all(&config.flags.bits().to_le_bytes())?;
+        // INSERT flags
+        let mut temp = config.flags;
+        if config.keypair.is_some() { temp.insert(FlagType::SIGNED) };
+        buffer.write_all(&temp.bits().to_le_bytes())?;
 
         buffer.write_all(&config.header_config.minimum_version.to_le_bytes())?;
         buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
@@ -100,7 +102,6 @@ impl<T: Read> Builder<T> {
 
             if let Some(keypair) = &config.keypair {
                 entry.signature = keypair.sign(&glob);
-                entry.flags.insert(FlagType::SIGNED);
             };
 
             // Drop stuff
@@ -108,7 +109,7 @@ impl<T: Read> Builder<T> {
 
             {
                 // Write to the registry
-                let mut entry_b = entry.bytes(&(id.len() as u64));
+                let mut entry_b = entry.bytes(&(id.len() as u64), config.keypair.is_some());
                 entry_b.extend(id.as_bytes());
                 buffer.write_all(&entry_b)?;
             }
