@@ -10,12 +10,13 @@ use std::{io::{Cursor, Read}};
 
 #[derive(Debug)]
 pub struct Leaf<T> {
+    // NOTE: Replace T with Box<dyn T>, so that multiple types can be used
     pub handle: T,
     pub config: LeafConfig
 }
 
-impl Leaf<Cursor<Vec<u8>>> {
-    pub fn empty() -> Leaf<Cursor<Vec<u8>>> {
+impl Default for Leaf<Cursor<Vec<u8>>> {
+    fn default() -> Leaf<Cursor<Vec<u8>>> {
         Leaf {
             handle: Cursor::new(vec![]),
             config: LeafConfig::default()
