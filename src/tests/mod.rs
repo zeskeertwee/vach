@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub(crate) mod tests {
     use crate::prelude::*;
-    use crate::global::registry::*;
+    use crate::global::{header::Header, registry::*};
     use std::{fs::{File}, io::{Cursor, Read, Seek, SeekFrom}, str};
     use ed25519_dalek as esdalek;
 
@@ -11,16 +11,16 @@ pub(crate) mod tests {
 
     #[test]
     pub(crate) fn defaults() {
-        let _header_config = HeaderConfig::new();
+        let _header_config = HeaderConfig::default();
         let _header = Header::default();
         let _registry = Registry::empty();
         let _registry_entry = RegistryEntry::empty();
-        let _resource = Resource::empty();
-        let _leaf = Leaf::empty();
+        let _resource = Resource::default();
+        let _leaf = Leaf::default();
         let _leaf_config = LeafConfig::default();
-        let _builder:Builder<Cursor<Vec<u8>>> = Builder::default();
+        let _builder: Builder<Cursor<Vec<u8>>> = Builder::new();
         let _builder_config = BuilderConfig::default();
-        let _flags = FlagType::empty();
+        let _flags = FlagType::default();
     }
 
     #[test]
@@ -33,6 +33,11 @@ pub(crate) mod tests {
         format!("{}", _header);
 
         Archive::validate(&mut file, &config)?;
+        Ok(())
+    }
+
+    #[test]
+    pub(crate) fn empty_test() -> anyhow::Result<()> {
         Ok(())
     }
 

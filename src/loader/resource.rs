@@ -17,9 +17,6 @@ impl Resource {
             content_version: entry.content_version
         }
     }
-    pub fn empty() -> Resource {
-        Resource{ data: Vec::new(), flags: FlagType::default(), content_version: 0 }
-    }
 }
 
 impl fmt::Display for Resource {
@@ -36,6 +33,6 @@ impl fmt::Display for Resource {
 
 impl Default for Resource {
     fn default() -> Resource {
-        Resource::empty()
+        Resource{ data: Vec::new(), flags: FlagType::default(), content_version: 0 }
     }
 }

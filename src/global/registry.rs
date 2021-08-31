@@ -53,14 +53,11 @@ impl Registry {
                 };
             };
 
-            if entry.flags.contains(FlagType::COMPRESSED) { buffer = lz4::decompress_size_prepended(&buffer)? };
-
-            let mut resource = Resource::empty();
-            resource.flags = entry.flags;
-            resource.content_version = entry.content_version;
-            resource.data = buffer;
-
-            Ok(resource)
+            Ok(Resource {
+                flags: entry.flags,
+                content_version: entry.content_version,
+                data: if entry.flags.contains(FlagType::COMPRESSED) { lz4::decompress_size_prepended(&buffer)? } else { buffer }
+            })
         } else {
             anyhow::bail!(format!("Resource not found: {}", id))
         }

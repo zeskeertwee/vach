@@ -29,9 +29,6 @@ impl HeaderConfig {
             public_key: key,
         }
     }
-    pub fn new() -> HeaderConfig {
-        HeaderConfig::from(*HeaderConfig::MAGIC, crate::VERSION, None)
-    }
 
     // Setters
     pub fn minimum_version(mut self, version: u16) -> HeaderConfig {
@@ -68,11 +65,7 @@ impl fmt::Display for HeaderConfig {
 
 impl Default for HeaderConfig {
     fn default() -> Self {
-        HeaderConfig {
-            magic: *HeaderConfig::MAGIC,
-            minimum_version: crate::VERSION,
-            public_key: None,
-        }
+        HeaderConfig::from(*HeaderConfig::MAGIC, crate::VERSION, None)
     }
 }
 

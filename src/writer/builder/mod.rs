@@ -26,6 +26,7 @@ impl<T: Read> Default for Builder<T> {
 }
 
 impl<T: Read> Builder<T> {
+    pub fn new() -> Builder<T> { Builder::default() }
     pub fn add(&mut self, data: T, id: &str) -> anyhow::Result<()> {
         let mut config = LeafConfig::default();
         config.id = id.to_string();
