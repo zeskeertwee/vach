@@ -10,7 +10,7 @@ pub use config::BuilderConfig;
 use ed25519_dalek::Signer;
 use hashbrown::HashMap;
 use lz4_flex as lz4;
-use std::io::{BufWriter, Write, Read};
+use std::io::{self, BufWriter, Write, Read};
 
 #[derive(Debug)]
 pub struct Builder<T> {
@@ -75,13 +75,10 @@ impl<T: Read> Builder<T> {
             let mut entry = leaf.to_registry_entry();
             let mut glob = Vec::new();
 
-            leaf.handle.read_to_end(&mut glob)?;
-            let length = glob.len() as u64;
-
             // Create and compare compressed leaf data
             if leaf.config.compress {
                 let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
-                compressor.write(&glob)?;
+                let length = io::copy(&mut leaf.handle, &mut compressor)?;
                 let compressed_data = compressor.finish()?;
 
                 let ratio = compressed_data.len() as f32 / length as f32;
@@ -92,6 +89,8 @@ impl<T: Read> Builder<T> {
                 } else {
                     drop(compressed_data);
                 };
+            } else {
+                io::copy(&mut leaf.handle, &mut glob)?;
             };
 
             let glob_length = glob.len();
