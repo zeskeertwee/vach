@@ -7,14 +7,14 @@ pub(crate) mod writer;
 
 // Re-exports
 pub use rand;
-pub use anyhow;
+pub use bitflags;
 
 // Global constants
-pub const VERSION: u16 = 12;
-pub const KEYPAIR_LENGTH: usize = ed25519_dalek::KEYPAIR_LENGTH;
-pub const SECRET_KEY_LENGTH: usize = ed25519_dalek::SECRET_KEY_LENGTH;
-pub const PUBLIC_KEY_LENGTH: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
-pub const SIGNATURE_LENGTH: usize =  ed25519_dalek::SIGNATURE_LENGTH;
+pub const VERSION: u16 = 13;
+pub const KEYPAIR_LENGTH: usize = 64;
+pub const SECRET_KEY_LENGTH: usize = 32;
+pub const PUBLIC_KEY_LENGTH: usize = 32;
+pub const SIGNATURE_LENGTH: usize =  64;
 
 // Simpler imports
 pub mod prelude {

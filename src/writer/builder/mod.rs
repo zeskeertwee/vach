@@ -46,7 +46,7 @@ impl<T: Read> Builder<T> {
         Ok(())
     }
 
-    pub fn write<W: Write>( &mut self, target: &mut W, config: &BuilderConfig ) -> anyhow::Result<()> {
+    pub fn write<W: Write>(&mut self, target: &mut W, config: &BuilderConfig) -> anyhow::Result<()> {
         // Write header in order defined in the spec document
         let mut buffer = BufWriter::new( target);
         buffer.write_all(&config.header_config.magic)?;
@@ -66,7 +66,7 @@ impl<T: Read> Builder<T> {
         for (id, _) in self.leafs.iter() {
             reg_size += id.len() + RegistryEntry::MIN_SIZE
         };
-        
+
         // Start counting the offset of the leafs from the end of the registry
         let mut leaf_offset = reg_size + HeaderConfig::BASE_SIZE;
 
@@ -103,11 +103,12 @@ impl<T: Read> Builder<T> {
             entry.offset = glob_length as RegisterType;
 
             if let Some(keypair) = &config.keypair {
+                // The reason we include the path in the signature is to prevent mangling in the registry,
+                // For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
+                // The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
+                glob.extend(id.as_bytes());
                 entry.signature = keypair.sign(&glob);
             };
-
-            // Drop stuff
-            drop(glob);
 
             {
                 // Write to the registry

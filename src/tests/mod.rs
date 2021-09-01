@@ -1,12 +1,29 @@
+/// This is meant to mirror as closely as possible, how users should use the crate
 #[cfg(test)]
 pub(crate) mod tests {
-    use crate::prelude::*;
+    // The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
+    // We still need to conduct tests on them tho.
     use crate::global::{header::Header, registry::*};
+
+    // Boring, average every day contemporary imports
+    use crate::prelude::*;
     use std::{fs::{File}, io::{Cursor, Seek, SeekFrom}, str};
 
+    // Contains both the public key and secret key in the same file:
+    // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
     const KEYPAIR: &str = "test_data/pair.pub";
+
+    // The paths to the Archives, to be written|loaded
     const SIGNED_TARGET: &str = "test_data/signed/target.vach";
     const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
+
+    #[test]
+    pub(crate) fn log_constants() {
+        dbg!(crate::VERSION);
+        dbg!(crate::PUBLIC_KEY_LENGTH);
+        dbg!(crate::SIGNATURE_LENGTH);
+        dbg!(crate::SECRET_KEY_LENGTH);
+    }
 
     #[test]
     pub(crate) fn defaults() {
@@ -38,6 +55,11 @@ pub(crate) mod tests {
     #[test]
     pub(crate) fn empty_test() -> anyhow::Result<()> {
         Ok(())
+    }
+
+    #[test]
+    pub(crate) fn custom_bits() -> anyhow::Result<()> {
+        todo!("Write this test")
     }
 
     #[test]
@@ -80,7 +102,7 @@ pub(crate) mod tests {
 
         let mut archive = Archive::with_config(target, &config)?;
         let resource = archive.fetch("song")?;
-        println!("{}", std::str::from_utf8(resource.data.as_slice())?);
+        println!("{}", str::from_utf8(resource.data.as_slice())?);
         Ok(())
     }
 
@@ -111,7 +133,7 @@ pub(crate) mod tests {
         let mut archive = Archive::with_config(target, &config)?;
         let mut string = Vec::new();
         archive.fetch_write("song", &mut string)?;
-        println!("{}", std::str::from_utf8(&string)?);
+        println!("{}", str::from_utf8(&string)?);
         Ok(())
     }
 

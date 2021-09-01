@@ -6,6 +6,7 @@ use crate::global::{
 };
 use std::{io::{BufReader, Cursor, Read, Seek, SeekFrom, Write}, str};
 use ed25519_dalek as esdalek;
+use hashbrown::HashMap;
 
 #[derive(Debug)]
 pub struct Archive<T> { 
@@ -48,7 +49,12 @@ impl<T: Seek + Read> Archive<T> {
     pub fn fetch_write(&mut self, id: &str, target: impl Write) -> anyhow::Result<()> {
         self.registry.fetch_write(id, &mut self.handle, &self.key, target)
     }
-    pub fn fetch_entry(&mut self, id: &str) -> Option<&RegistryEntry> { self.registry.fetch_entry(id) }
+    pub fn fetch_entry(&mut self, id: &str) -> Option<&RegistryEntry> {
+        self.registry.fetch_entry(id)
+    }
+    pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
+        &self.registry.entries
+    }
 
     pub fn validate(handle: &mut T, config: &HeaderConfig) -> anyhow::Result<bool> {
         handle.seek(SeekFrom::Start(0))?;

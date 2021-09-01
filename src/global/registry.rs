@@ -5,6 +5,7 @@ use crate::{
     },
     loader::resource::Resource
 };
+
 use std::{convert::TryInto, io::{self, Write, Read, Seek, SeekFrom}};
 use ed25519_dalek::{self as esdalek, Verifier};
 use lz4_flex as lz4;
@@ -35,6 +36,7 @@ impl Registry {
         Ok(Registry { entries })
     }
 
+    // Query functions bruh
     pub fn fetch_write<H: Seek + Read, T: Write>(&self, id: &str, handle: &mut H, key: &Option<esdalek::PublicKey>, mut target: T) -> anyhow::Result<()> {
         if let Some(entry) = self.fetch_entry(id) {
             handle.seek(SeekFrom::Start(entry.location))?;
@@ -42,6 +44,7 @@ impl Registry {
             let mut take = handle.take(entry.offset);
             let mut buffer = Vec::new();
             take.read_to_end(&mut buffer)?;
+            buffer.extend(id.as_bytes());
 
             // Validate signature
             if let Some(pub_key) = &key {
@@ -52,9 +55,9 @@ impl Registry {
 
             // Decompress
             if entry.flags.contains(FlagType::COMPRESSED) {
-                io::copy(&mut lz4::frame::FrameDecoder::new(buffer.as_slice()), &mut target)?;
+                io::copy(&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)), &mut target)?;
             } else {
-                target.write(&buffer)?;
+                io::copy(&mut buffer.take(entry.offset), &mut target)?;
             };
 
             Ok(())
@@ -69,6 +72,7 @@ impl Registry {
             let mut take = handle.take(entry.offset);
             let mut buffer = Vec::new();
             take.read_to_end(&mut buffer)?;
+            buffer.extend(id.as_bytes());
 
             // Validate signature
             if let Some(pub_key) = &key {
@@ -83,8 +87,10 @@ impl Registry {
 
             // Decompress
             if entry.flags.contains(FlagType::COMPRESSED) {
-                io::copy(&mut lz4::frame::FrameDecoder::new(buffer.as_slice()), &mut res.data)?;
-            } else { res.data.write(&buffer)?; };
+                io::copy(&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)), &mut res.data)?;
+            } else {
+                io::copy(&mut buffer.take(entry.offset), &mut res.data)?;
+            };
 
             Ok(res)
         } else {
