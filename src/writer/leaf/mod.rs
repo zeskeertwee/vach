@@ -18,7 +18,7 @@ pub struct Leaf<T> {
 impl Default for Leaf<Cursor<Vec<u8>>> {
     fn default() -> Leaf<Cursor<Vec<u8>>> {
         Leaf {
-            handle: Cursor::new(vec![]),
+            handle: Cursor::new(Vec::new()),
             config: LeafConfig::default()
         }
     }

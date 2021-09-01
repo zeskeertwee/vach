@@ -5,10 +5,7 @@ use crate::{
     },
     loader::resource::Resource
 };
-use std::{
-    convert::TryInto,
-    io::{Read, Seek, SeekFrom}
-};
+use std::{convert::TryInto, io::{self, Write, Read, Seek, SeekFrom}};
 use ed25519_dalek::{self as esdalek, Verifier};
 use lz4_flex as lz4;
 use hashbrown::HashMap;
@@ -38,7 +35,7 @@ impl Registry {
         Ok(Registry { entries })
     }
 
-    pub fn fetch<T: Seek + Read>(&self, id: &str, handle: &mut T, key: &Option<esdalek::PublicKey>) -> anyhow::Result<Resource> {
+    pub fn fetch_write<H: Seek + Read, T: Write>(&self, id: &str, handle: &mut H, key: &Option<esdalek::PublicKey>, mut target: T) -> anyhow::Result<()> {
         if let Some(entry) = self.fetch_entry(id) {
             handle.seek(SeekFrom::Start(entry.location))?;
 
@@ -46,18 +43,50 @@ impl Registry {
             let mut buffer = Vec::new();
             take.read_to_end(&mut buffer)?;
 
-            // Every time a fetch is done, check for tampering: May be made conditional
+            // Validate signature
             if let Some(pub_key) = &key {
                 if let Err(error) = pub_key.verify(&buffer, &entry.signature) {
                     anyhow::bail!(format!("({}): Invalid signature found for leaf with ID: {}", error, id))
                 };
             };
 
-            Ok(Resource {
-                flags: entry.flags,
-                content_version: entry.content_version,
-                data: if entry.flags.contains(FlagType::COMPRESSED) { lz4::decompress_size_prepended(&buffer)? } else { buffer }
-            })
+            // Decompress
+            if entry.flags.contains(FlagType::COMPRESSED) {
+                io::copy(&mut lz4::frame::FrameDecoder::new(buffer.as_slice()), &mut target)?;
+            } else {
+                target.write(&buffer)?;
+            };
+
+            Ok(())
+        } else {
+            anyhow::bail!(format!("Resource not found: {}", id))
+        }
+    }
+    pub fn fetch<H: Seek + Read>(&self, id: &str, handle: &mut H, key: &Option<esdalek::PublicKey>) -> anyhow::Result<Resource> {
+        if let Some(entry) = self.fetch_entry(id) {
+            handle.seek(SeekFrom::Start(entry.location))?;
+
+            let mut take = handle.take(entry.offset);
+            let mut buffer = Vec::new();
+            take.read_to_end(&mut buffer)?;
+
+            // Validate signature
+            if let Some(pub_key) = &key {
+                if let Err(error) = pub_key.verify(&buffer, &entry.signature) {
+                    anyhow::bail!(format!("({}): Invalid signature found for leaf with ID: {}", error, id))
+                };
+            };
+
+            let mut res = Resource::default();
+            res.flags = entry.flags;
+            res.content_version = entry.content_version;
+
+            // Decompress
+            if entry.flags.contains(FlagType::COMPRESSED) {
+                io::copy(&mut lz4::frame::FrameDecoder::new(buffer.as_slice()), &mut res.data)?;
+            } else { res.data.write(&buffer)?; };
+
+            Ok(res)
         } else {
             anyhow::bail!(format!("Resource not found: {}", id))
         }
@@ -118,7 +147,7 @@ impl RegistryEntry {
     }
 
     pub fn bytes(&self, id_length: &RegisterType, sign: bool) -> Vec<u8> {
-        let mut buffer = vec![];
+        let mut buffer = Vec::new();
         buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
         buffer.extend_from_slice(&self.content_version.to_le_bytes());
         if sign {

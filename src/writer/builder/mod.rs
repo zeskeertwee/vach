@@ -10,7 +10,7 @@ pub use config::BuilderConfig;
 use ed25519_dalek::Signer;
 use hashbrown::HashMap;
 use lz4_flex as lz4;
-use std::io::{BufWriter, Read, Write};
+use std::io::{BufWriter, Write, Read};
 
 #[derive(Debug)]
 pub struct Builder<T> {
@@ -59,7 +59,7 @@ impl<T: Read> Builder<T> {
         buffer.write_all(&config.header_config.minimum_version.to_le_bytes())?;
         buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
-        let mut leaf_data = vec![];
+        let mut leaf_data = Vec::new();
         
         // Calculate the size of the registry
         let mut reg_size = 0usize;
@@ -73,15 +73,17 @@ impl<T: Read> Builder<T> {
         // Populate the archive glob
         for (id, leaf) in self.leafs.iter_mut() {
             let mut entry = leaf.to_registry_entry();
-            let mut glob = vec![];
-            let compressed_data;
+            let mut glob = Vec::new();
 
             leaf.handle.read_to_end(&mut glob)?;
             let length = glob.len() as u64;
 
             // Create and compare compressed leaf data
             if leaf.config.compress {
-                compressed_data = lz4::compress_prepend_size(&glob);
+                let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
+                compressor.write(&glob)?;
+                let compressed_data = compressor.finish()?;
+
                 let ratio = compressed_data.len() as f32 / length as f32;
                 if ratio < 1f32 {
                     println!("Compressed {} ({:2}x original size)", id, ratio);

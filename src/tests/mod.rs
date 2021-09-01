@@ -2,8 +2,7 @@
 pub(crate) mod tests {
     use crate::prelude::*;
     use crate::global::{header::Header, registry::*};
-    use std::{fs::{File}, io::{Cursor, Read, Seek, SeekFrom}, str};
-    use ed25519_dalek as esdalek;
+    use std::{fs::{File}, io::{Cursor, Seek, SeekFrom}, str};
 
     const KEYPAIR: &str = "test_data/pair.pub";
     const SIGNED_TARGET: &str = "test_data/signed/target.vach";
@@ -45,7 +44,7 @@ pub(crate) mod tests {
     pub fn loader_no_signature() -> anyhow::Result<()> {
         let target = File::open(SIMPLE_TARGET)?;
         let mut archive = Archive::from(target)?;
-        let resource = archive.fetch("song")?;
+        let resource = archive.fetch("poem")?;
         println!("{}", str::from_utf8(resource.data.as_slice())?);
         Ok(())
     }
@@ -61,7 +60,7 @@ pub(crate) mod tests {
             &LeafConfig::default()
                 .compress(false)
                 .version(12)
-                .id(&"poem")
+                .id("poem")
         )?;
 
         let mut target = File::create(SIMPLE_TARGET)?;
@@ -89,16 +88,10 @@ pub(crate) mod tests {
     pub(crate) fn writer_with_signature() -> anyhow::Result<()>{
         let mut builder = Builder::default();
         let mut build_config = BuilderConfig::default();
+        build_config.load_keypair(File::open(KEYPAIR)?)?;
 
-        let mut keypair_bytes = [4; crate::KEYPAIR_LENGTH];
-        File::open(KEYPAIR)?.read(&mut keypair_bytes)?;
-        build_config.keypair = Some(esdalek::Keypair::from_bytes(&keypair_bytes)?);
-
-        builder.add_with_config(
-            File::open("test_data/poem.txt")?,
-            &LeafConfig::default().compress(false).version(12).id(&"poem")
-        )?;
         builder.add(File::open("test_data/song.txt")?, "song")?;
+        builder.add(File::open("test_data/poem.txt")?, "poem")?;
 
         let mut target = File::create(SIGNED_TARGET)?;
         builder.write(&mut target, &build_config)?;
@@ -106,8 +99,26 @@ pub(crate) mod tests {
     }
 
     #[test]
+    pub(crate) fn fetch_write_with_signature() -> anyhow::Result<()> {
+        let target = File::open(SIGNED_TARGET)?;
+
+        // Load keypair
+        let mut config = HeaderConfig::default();
+        let mut keypair = File::open(KEYPAIR)?;
+        keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
+        config.load_public_key(keypair)?;
+
+        let mut archive = Archive::with_config(target, &config)?;
+        let mut string = Vec::new();
+        archive.fetch_write("song", &mut string)?;
+        println!("{}", std::str::from_utf8(&string)?);
+        Ok(())
+    }
+
+    #[test]
     pub(crate) fn gen_keypair() -> anyhow::Result<()> {
         use rand::rngs::OsRng;
+        use ed25519_dalek as esdalek;
 
         // NOTE: regenerating new keys will break some tests
         let regenerate = false;

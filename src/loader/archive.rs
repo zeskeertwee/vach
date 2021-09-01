@@ -4,7 +4,7 @@ use crate::global::{
     header::{Header, HeaderConfig},
     registry::{Registry, RegistryEntry},
 };
-use std::{io::{BufReader, Cursor, Read, Seek, SeekFrom}, str};
+use std::{io::{BufReader, Cursor, Read, Seek, SeekFrom, Write}, str};
 use ed25519_dalek as esdalek;
 
 #[derive(Debug)]
@@ -45,9 +45,10 @@ impl<T: Seek + Read> Archive<T> {
     pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
         self.registry.fetch(id, &mut self.handle, &self.key)
     }
-    pub fn fetch_entry(&mut self, id: &str) -> Option<&RegistryEntry> {
-        self.registry.fetch_entry(id)
+    pub fn fetch_write(&mut self, id: &str, target: impl Write) -> anyhow::Result<()> {
+        self.registry.fetch_write(id, &mut self.handle, &self.key, target)
     }
+    pub fn fetch_entry(&mut self, id: &str) -> Option<&RegistryEntry> { self.registry.fetch_entry(id) }
 
     pub fn validate(handle: &mut T, config: &HeaderConfig) -> anyhow::Result<bool> {
         handle.seek(SeekFrom::Start(0))?;

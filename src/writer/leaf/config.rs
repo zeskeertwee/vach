@@ -17,7 +17,7 @@ impl LeafConfig {
 		self.content_version = version;
 		self
 	}
-	pub fn id<S: ToString>(mut self, id: &S) -> Self {
+	pub fn id(mut self, id: &str) -> Self {
 		self.id = id.to_string();
 		self
 	}
