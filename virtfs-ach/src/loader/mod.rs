@@ -64,8 +64,13 @@ impl<R: Read + Seek> Archive<R> {
         let mut buffer = vec![0; entry.compressed_size as usize];
         self.reader.read_exact(&mut buffer)?;
 
+        buffer.extend(&entry.path);
+
         let expected_signature: ed25519_dalek::Signature = Signature::from_bytes(&entry.blob_signature)?;
         public_key.verify(&buffer, &expected_signature)?;
+
+        // remove appended path
+        buffer.truncate(entry.compressed_size as usize);
 
         if compressed {
             Ok(lz4_flex::decompress_size_prepended(&buffer)?)
