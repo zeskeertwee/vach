@@ -28,6 +28,6 @@ pub mod prelude {
     };
     pub use crate::writer::{
         builder::{Builder, BuilderConfig},
-        leaf::{Leaf, LeafConfig}
+        leaf::Leaf
     };
 }
