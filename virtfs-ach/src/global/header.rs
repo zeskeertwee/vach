@@ -9,7 +9,6 @@ pub struct Header {
     pub magic: [u8; MAGIC_LENGTH], // VfACH
     pub archive_version: u16,
     pub registry_size: u16,
-    pub registry_signature: [u8; ed25519_dalek::SIGNATURE_LENGTH]
 }
 
 impl Header {
@@ -20,7 +19,6 @@ impl Header {
             magic: [0; MAGIC_LENGTH],
             archive_version: 0,
             registry_size: 0,
-            registry_signature: [0; ed25519_dalek::SIGNATURE_LENGTH],
         }
     }
 
@@ -43,9 +41,7 @@ impl Header {
         header.archive_version = u16::from_le_bytes([buffer[0], buffer[1]]);
         header.registry_size = u16::from_le_bytes([buffer[2], buffer[3]]);
 
-        let mut buffer = [0; ed25519_dalek::SIGNATURE_LENGTH];
         reader.read_exact(&mut buffer)?;
-        header.registry_signature = buffer;
 
         Result::Ok(header)
     }
@@ -55,7 +51,6 @@ impl Header {
     	buffer.extend_from_slice(&self.magic);
     	buffer.extend_from_slice(&self.archive_version.to_le_bytes());
     	buffer.extend_from_slice(&self.registry_size.to_le_bytes());
-        buffer.extend_from_slice(&self.registry_signature);
     	buffer
     }
 }

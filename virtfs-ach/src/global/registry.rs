@@ -18,16 +18,12 @@ impl Registry {
     }
 
     /// attempts to read the registry at the current stream position
-    pub fn from_reader<R: Read>(reader: &mut BufReader<R>, header: &Header, public_key: &PublicKey) -> anyhow::Result<Registry> {
+    pub fn from_reader<R: Read>(reader: &mut BufReader<R>, header: &Header) -> anyhow::Result<Registry> {
         let mut read_buffer = Vec::new();
         let mut entries:Vec<RegistryEntry> = vec![];
         for i in 0..header.registry_size {
             entries.push(RegistryEntry::_from_reader_append_read(reader, &mut read_buffer)?);
         };
-        
-        let expected_signature: ed25519_dalek::Signature = Signature::from_bytes(&header.registry_signature)?;
-        public_key.verify(&read_buffer, &expected_signature)?;
-        info!("Registry signature OK");
 
         Result::Ok(Registry { entries })
     }
@@ -46,7 +42,6 @@ bitflags! {
     pub struct RegistryEntryFlags: u8 {
         const EMPTY         = 0b00000000;
         const IS_COMPRESSED = 0b00000001;
-        const IS_SIGNED     = 0b00000010;
     }
 }
 
@@ -54,7 +49,7 @@ bitflags! {
 pub struct RegistryEntry {
     pub(crate) flags: RegistryEntryFlags,
     pub(crate) content_version: u16,
-    pub(crate) blob_signature: [u8; ed25519_dalek::SIGNATURE_LENGTH],
+    pub(crate) blob_signature: [u8; ed25519_dalek::SIGNATURE_LENGTH], // signature of the blob with path appended
     
     pub(crate) path_name_length: u16,
     pub(crate) path: Vec<u8>, // length of path_name_length

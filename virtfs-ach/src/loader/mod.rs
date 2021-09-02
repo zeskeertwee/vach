@@ -44,7 +44,7 @@ impl<R: Read + Seek> Archive<R> {
             )));
         };
         
-        let registry = Registry::from_reader(&mut reader, &header, public_key)?;
+        let registry = Registry::from_reader(&mut reader, &header)?;
         
         Ok(Archive {
             header,

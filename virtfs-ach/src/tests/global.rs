@@ -15,7 +15,7 @@ use crate::global::{
 
 const HED_ARCHIVE_VERSION: u16 = u16::from_le_bytes([0x01, 0x02]);
 const HED_REGISTRY_SIZE: u16 = u16::from_le_bytes([0x01, 0x03]);
-const REG_FLAGS: u8 = RegistryEntryFlags::IS_COMPRESSED.bits() | RegistryEntryFlags::IS_SIGNED.bits();
+const REG_FLAGS: u8 = RegistryEntryFlags::IS_COMPRESSED.bits();
 const REG_CONTENT_VERSION: u16 = u16::from_le_bytes([0x27, 0x72]);
 const REG_PATH_NAME_LENGTH: u16 = 265;
 const REG_PATH: [u8; REG_PATH_NAME_LENGTH as usize] = *b"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur pretium, lectus non pretium mattis, ex ex auctor elit, pellentesque pharetra nunc orci vitae eros. Curabitur massa lectus, aliquet non ex eu, venenatis euismod dolor. Maecenas cursus ipsum ac justo.";
@@ -88,7 +88,7 @@ fn registry_and_header_serialization() {
     let mut reader = BufReader::new(Cursor::new(header_buffer));
 
     let header = Header::from_reader(&mut reader).unwrap();
-    let registry = Registry::from_reader(&mut reader, &header, &keypair.public);
+    let registry = Registry::from_reader(&mut reader, &header);
 }
 
 #[test]
