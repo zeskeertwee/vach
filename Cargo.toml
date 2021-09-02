@@ -1,24 +1,8 @@
-[package]
-name = "vach"
-version = "0.1.3"
-edition = "2018"
-authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
-
-# TODO: 
-	# Add a simple API to generate keypairs
-	# A simple way to load aand add flags, to and from the Header and RegistryEntry
-	# Optimize the builder for memory not for speed
-	# Use streams and abstain from buffereing with vectors
-	# Serialize configs, and impl From<HeaderConfig> for BuilderConfig
-	# Correctly format flags
-
-[dependencies]
-anyhow = "1.0.42"
-ed25519-dalek = "1.0.1"
-lz4_flex = "0.8.2"
-rand = "0.7.0"
-hashbrown = "0.11.2"
-bitflags = "1.3.2"
+[workspace]
+members = [
+    "vach",
+    "vf"
+]
 
 [profile.release]
 lto = true
