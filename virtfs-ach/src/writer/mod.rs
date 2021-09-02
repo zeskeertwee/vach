@@ -53,7 +53,7 @@ impl ArchiveBuilder {
         })
     }
 
-    pub fn write_to<W: Write, S: Signer<ed25519_dalek::Signature>>(&self, writer: &mut W, signer: &S) -> anyhow::Result<()> {
+    pub fn write_to<W: Write, S: Signer<ed25519_dalek::Signature>>(&mut self, writer: &mut W, signer: &S) -> anyhow::Result<()> {
         writer.write_all(&self.bytes(signer))?;
         
         Ok(())
@@ -77,7 +77,7 @@ impl ArchiveBuilder {
                 info!("Did not compress {} ({:.2}x original size)", registry_entry.path_string().unwrap(), size_diff);
 
                 let original_leaf_data_size = leaf.data.len();
-                leaf.data.extend(&leaf.path);
+                leaf.data.extend(leaf.path.bytes());
 
                 let signature = signer.sign(&leaf.data);
 
@@ -91,7 +91,7 @@ impl ArchiveBuilder {
                 registry_entry.flags.set(RegistryEntryFlags::IS_COMPRESSED, true);
 
                 let original_compressed_size = compressed_data.len();
-                compressed_data.extend(&leaf.path);
+                compressed_data.extend(leaf.path.bytes());
 
                 let signature = signer.sign(&compressed_data);
 
