@@ -6,7 +6,7 @@ use crate::{
     loader::resource::Resource
 };
 
-use std::{convert::TryInto, io::{self, Write, Read, Seek, SeekFrom}};
+use std::{convert::TryInto, io::{self, Write, Read, Seek, SeekFrom}, fmt};
 use ed25519_dalek::{self as esdalek, Verifier};
 use lz4_flex as lz4;
 use hashbrown::HashMap;
@@ -171,5 +171,14 @@ impl RegistryEntry {
 impl Default for RegistryEntry {
     fn default() -> RegistryEntry {
         RegistryEntry::empty()
+    }
+}
+
+impl fmt::Display for RegistryEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f, "[RegistryEntry] location: {}, length: {}, content_version: {}, flags: {}",
+            self.location, self.offset, self.content_version, self.flags.bits()
+        )
     }
 }
