@@ -69,6 +69,7 @@ pub(crate) mod tests {
         let resource = archive.fetch("poem")?;
         let flags = Custom::from_bits(resource.flags.bits()).unwrap();
         dbg!(flags);
+
         Ok(())
     }
 
@@ -77,9 +78,10 @@ pub(crate) mod tests {
         let target = File::open(SIMPLE_TARGET)?;
         let mut archive = Archive::from(target)?;
         let resource = archive.fetch("wasm")?;
-        println!("{}", resource);
 
-        dbg!(archive.fetch_entry("wasm").unwrap());
+        println!("{}", resource);
+        println!("{}", archive.fetch_entry("wasm").unwrap());
+
         Ok(())
     }
 
@@ -92,6 +94,7 @@ pub(crate) mod tests {
         builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
         builder.add(File::open("test_data/bee.script")?, "script")?;
         builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
+
         builder.add_leaf(
             Leaf::from(File::open("test_data/poem.txt")?)?
                 .compress(false)
@@ -101,6 +104,7 @@ pub(crate) mod tests {
 
         let mut target = File::create(SIMPLE_TARGET)?;
         builder.write(&mut target, &build_config)?;
+
         Ok(())
     }
 
@@ -117,6 +121,7 @@ pub(crate) mod tests {
         let mut archive = Archive::with_config(target, &config)?;
         let resource = archive.fetch("song")?;
         println!("{}", str::from_utf8(resource.data.as_slice())?);
+
         Ok(())
     }
 
@@ -132,6 +137,7 @@ pub(crate) mod tests {
 
         let mut target = File::create(SIGNED_TARGET)?;
         builder.write(&mut target, &build_config)?;
+
         Ok(())
     }
 
@@ -149,6 +155,7 @@ pub(crate) mod tests {
         let mut string = Vec::new();
         archive.fetch_write("song", &mut string)?;
         println!("{}", str::from_utf8(&string)?);
+
         Ok(())
     }
 
