@@ -33,7 +33,6 @@ pub(crate) mod tests {
         let _registry_entry = RegistryEntry::empty();
         let _resource = Resource::default();
         let _leaf = Leaf::default();
-        let _leaf_config = LeafConfig::default();
         let _builder: Builder<Cursor<Vec<u8>>> = Builder::new();
         let _builder_config = BuilderConfig::default();
         let _flags = FlagType::default();
@@ -52,22 +51,35 @@ pub(crate) mod tests {
         Ok(())
     }
 
-    #[test]
-    pub(crate) fn empty_test() -> anyhow::Result<()> {
-        Ok(())
+    // Custom bitflag tests
+    crate::bitflags::bitflags! {
+        #[derive(Default)]
+        pub struct Custom: u16 {
+            const TRENT = 0b_0000_1000_0000_0000;
+            const DRUMLIN = 0b_0000_0100_0000_0000;
+            const DJ = 0b_0000_0010_0000_0000;
+            const TANISHA = 0b_0000_0001_0000_0000;
+        }
     }
 
     #[test]
-    pub(crate) fn custom_bits() -> anyhow::Result<()> {
-        todo!("Write this test")
+    pub(crate) fn load_bitflags() -> anyhow::Result<()> {
+        let target = File::open(SIMPLE_TARGET)?;
+        let mut archive = Archive::from(target)?;
+        let resource = archive.fetch("poem")?;
+        let flags = Custom::from_bits(resource.flags.bits()).unwrap();
+        dbg!(flags);
+        Ok(())
     }
 
     #[test]
     pub fn loader_no_signature() -> anyhow::Result<()> {
         let target = File::open(SIMPLE_TARGET)?;
         let mut archive = Archive::from(target)?;
-        let resource = archive.fetch("poem")?;
-        println!("{}", str::from_utf8(resource.data.as_slice())?);
+        let resource = archive.fetch("wasm")?;
+        println!("{}", resource);
+
+        dbg!(archive.fetch_entry("wasm").unwrap());
         Ok(())
     }
 
@@ -77,11 +89,13 @@ pub(crate) mod tests {
         let build_config = BuilderConfig::default();
 
         builder.add(File::open("test_data/song.txt")?, "song")?;
-        builder.add_with_config(
-            File::open("test_data/poem.txt")?,
-            &LeafConfig::default()
+        builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
+        builder.add(File::open("test_data/bee.script")?, "script")?;
+        builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
+        builder.add_leaf(
+            Leaf::from(File::open("test_data/poem.txt")?)?
                 .compress(false)
-                .version(12)
+                .version(10)
                 .id("poem")
         )?;
 
@@ -112,6 +126,7 @@ pub(crate) mod tests {
         let mut build_config = BuilderConfig::default();
         build_config.load_keypair(File::open(KEYPAIR)?)?;
 
+        builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
         builder.add(File::open("test_data/song.txt")?, "song")?;
         builder.add(File::open("test_data/poem.txt")?, "poem")?;
 
