@@ -10,6 +10,7 @@ authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatot
 	# Optimize the builder for memory not for speed
 	# Use streams and abstain from buffereing with vectors
 	# Serialize configs, and impl From<HeaderConfig> for BuilderConfig
+	# Correctly format flags
 
 [dependencies]
 anyhow = "1.0.42"
