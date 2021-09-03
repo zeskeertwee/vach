@@ -12,7 +12,7 @@ pub struct Header {
 }
 
 impl Header {
-    pub const SIZE: usize = MAGIC_LENGTH + 2 + 2 + ed25519_dalek::SIGNATURE_LENGTH;
+    pub const SIZE: usize = MAGIC_LENGTH + 2 + 2;
 
     pub fn empty() -> Header {
         Header {
@@ -40,8 +40,6 @@ impl Header {
         reader.read_exact(&mut buffer)?;
         header.archive_version = u16::from_le_bytes([buffer[0], buffer[1]]);
         header.registry_size = u16::from_le_bytes([buffer[2], buffer[3]]);
-
-        reader.read_exact(&mut buffer)?;
 
         Result::Ok(header)
     }

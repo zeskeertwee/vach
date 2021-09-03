@@ -36,16 +36,12 @@ fn generate_registry_entry() -> Vec<u8> {
     buffer
 }
 
-fn generate_header(registry: &Vec<u8>, keypair: &Keypair) -> Vec<u8> {
+fn generate_header() -> Vec<u8> {
     let mut buffer = Vec::new();
-
-    let signature = keypair.sign(registry).to_bytes();
-    assert_eq!(signature.len(), ed25519_dalek::SIGNATURE_LENGTH);
 
     buffer.extend_from_slice(MAGIC);
     buffer.extend_from_slice(&HED_ARCHIVE_VERSION.to_le_bytes());
     buffer.extend_from_slice(&HED_REGISTRY_SIZE.to_le_bytes());
-    buffer.extend_from_slice(&signature);
 
     buffer
 }
@@ -72,7 +68,6 @@ fn registry_entry_serialization() {
 fn registry_and_header_serialization() {
     super::init_log();
 
-    let keypair = super::generate_keypair();
     let mut registry = Vec::new();
     
     for i in 0..HED_REGISTRY_SIZE {
@@ -80,10 +75,8 @@ fn registry_and_header_serialization() {
     }
     
     assert_eq!(registry.len(), HED_REGISTRY_SIZE as usize * generate_registry_entry().len());
-    let mut header_buffer = generate_header(&registry, &keypair);
+    let mut header_buffer = generate_header();
     header_buffer.extend_from_slice(&registry);
-
-    let signature = keypair.sign(&header_buffer).to_bytes();
 
     let mut reader = BufReader::new(Cursor::new(header_buffer));
 

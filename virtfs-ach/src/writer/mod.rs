@@ -54,24 +54,36 @@ impl ArchiveBuilder {
     }
 
     pub fn write_to<W: Write, S: Signer<ed25519_dalek::Signature>>(&mut self, writer: &mut W, signer: &S) -> anyhow::Result<()> {
-        writer.write_all(&self.bytes(signer))?;
+        writer.write_all(&self.bytes(signer)?)?;
         
         Ok(())
     }
 
-    pub fn bytes<S: Signer<ed25519_dalek::Signature>>(&mut self, signer: &S) -> Vec<u8> {
+    pub fn bytes<S: Signer<ed25519_dalek::Signature>>(&mut self, signer: &S) -> anyhow::Result<Vec<u8>> {
         let mut buffer = Vec::new();
         
         buffer.extend_from_slice(MAGIC);
         buffer.extend_from_slice(&CURRENT_ARCHIVE_VERSION.to_le_bytes());
         buffer.extend_from_slice(&(self.leafs.len() as u16).to_le_bytes());
 
+        let mut offset = Header::SIZE;
+        offset += RegistryEntry::BASE_SIZE * self.leafs.len();
+        for leaf in self.leafs.iter() {
+            offset += leaf.path.len();
+        }
+
         let mut processed_data = Vec::new();
 
         for leaf in self.leafs.iter_mut() {
             let mut registry_entry = leaf.to_registry_entry();
-            
-            let mut compressed_data = lz4_flex::compress_prepend_size(&leaf.data);
+            registry_entry.byte_offset = offset as u64;
+
+            let mut encoder_data_buffer = Cursor::new(Vec::with_capacity(leaf.data.len()));
+            let mut encoder = lz4_flex::frame::FrameEncoder::new(encoder_data_buffer);
+            encoder.write_all(&leaf.data)?;
+            let compressed_data_cursor = encoder.finish()?;
+            let mut compressed_data = compressed_data_cursor.into_inner();
+            compressed_data.shrink_to_fit();
             let size_diff: f64 = compressed_data.len() as f64 / leaf.data.len() as f64;
             if compressed_data.len() >= leaf.data.len() {
                 info!("Did not compress {} ({:.2}x original size)", registry_entry.path_string().unwrap(), size_diff);
@@ -85,6 +97,7 @@ impl ArchiveBuilder {
 
                 registry_entry.blob_signature = signature.to_bytes();
                 registry_entry.compressed_size = leaf.data.len() as u32;
+                offset += leaf.data.len();
                 processed_data.push(leaf.data.clone());
             } else {
                 info!("Compressed {} ({:.2}x original size)", registry_entry.path_string().unwrap(), size_diff);
@@ -99,6 +112,7 @@ impl ArchiveBuilder {
 
                 registry_entry.blob_signature = signature.to_bytes();
                 registry_entry.compressed_size = compressed_data.len() as u32;
+                offset += compressed_data.len();
                 processed_data.push(compressed_data);
             }
 
@@ -109,7 +123,7 @@ impl ArchiveBuilder {
             buffer.extend_from_slice(&data);
         }
 
-        buffer
+        Ok(buffer)
     }
 }
 

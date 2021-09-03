@@ -61,7 +61,7 @@ pub struct RegistryEntry {
 
 impl RegistryEntry {
     /// size in bytes without the path (since it is variable-length)
-    const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 8;
+    pub const BASE_SIZE: usize = 1 + 2 + ed25519_dalek::SIGNATURE_LENGTH + 2 + 4 + 8;
 
     /// attempts to read a registry entry from the current stream position
     fn _from_reader_append_read<R: Read>(reader: &mut BufReader<R>, read_buffer: &mut Vec<u8>) -> anyhow::Result<RegistryEntry> {

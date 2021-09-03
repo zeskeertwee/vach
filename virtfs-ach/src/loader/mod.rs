@@ -15,7 +15,7 @@ use signature::Signature;
 use std::{
     fmt,
     fs::File,
-    io::{BufReader, Read, Seek, SeekFrom},
+    io::{BufReader, Read, Seek, SeekFrom, Cursor},
     str,
     sync::Arc,
 };
@@ -28,8 +28,6 @@ pub struct Archive<R: Read + Seek> {
     pub(crate) registry: Registry,
     reader: BufReader<R>,
 }
-
-// TODO: Verify signatures
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<R: Read + Seek> Archive<R> {
@@ -73,7 +71,10 @@ impl<R: Read + Seek> Archive<R> {
         buffer.truncate(entry.compressed_size as usize);
 
         if compressed {
-            Ok(lz4_flex::decompress_size_prepended(&buffer)?)
+            let mut decoder = lz4_flex::frame::FrameDecoder::new(Cursor::new(buffer));
+            let mut buf = Vec::with_capacity(entry.compressed_size as usize);
+            decoder.read_to_end(&mut buf);
+            Ok(buf)
         } else {
             Ok(buffer)
         }
