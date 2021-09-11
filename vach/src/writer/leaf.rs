@@ -5,19 +5,18 @@ use crate::{
 };
 use std::{io::{Cursor, Read}};
 
-#[derive(Debug)]
-pub struct Leaf<T> {
-    // NOTE: Replace T with Box<dyn T>, so that multiple types can be used
-    pub handle: T,
+pub struct Leaf<'a> {
+    // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+    pub handle: Box<dyn Read + 'a>,
     pub id: String,
-	pub content_version: u8,
-	pub compress: bool,
+    pub content_version: u8,
+    pub compress: bool,
 }
 
-impl Default for Leaf<Cursor<Vec<u8>>> {
-    fn default() -> Leaf<Cursor<Vec<u8>>> {
+impl<'a> Default for Leaf<'a> {
+    fn default() -> Leaf<'a> {
         Leaf {
-            handle: Cursor::new(Vec::new()),
+            handle: Box::new(Cursor::new(Vec::new())),
             id: String::new(),
             content_version: 0,
             compress: true
@@ -25,10 +24,10 @@ impl Default for Leaf<Cursor<Vec<u8>>> {
     }
 }
 
-impl<T: Read> Leaf<T> {
-    pub fn from(handle: T) -> anyhow::Result<Leaf<T>> {
+impl<'a> Leaf<'a> {
+    pub fn from(handle: impl Read + 'a) -> anyhow::Result<Leaf<'a>> {
         Ok(Leaf {
-            handle,
+            handle: Box::new(handle),
             id: String::new(),
             content_version: 0,
             compress: true

@@ -7,7 +7,7 @@ mod tests {
 
     // Boring, average every day contemporary imports
     use crate::prelude::*;
-    use std::{fs::{File}, io::{Cursor, Seek, SeekFrom}, str};
+    use std::{fs::{File}, io::{Seek, SeekFrom}, str};
 
     // Contains both the public key and secret key in the same file:
     // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -34,7 +34,7 @@ mod tests {
         let _registry_entry = RegistryEntry::empty();
         let _resource = Resource::default();
         let _leaf = Leaf::default();
-        let _builder: Builder<Cursor<Vec<u8>>> = Builder::new();
+        let _builder = Builder::new();
         let _builder_config = BuilderConfig::default();
         let _flags = FlagType::default();
     }

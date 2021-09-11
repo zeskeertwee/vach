@@ -11,27 +11,26 @@ use ed25519_dalek::Signer;
 use lz4_flex as lz4;
 use std::io::{self, BufWriter, Write, Read};
 
-#[derive(Debug)]
-pub struct Builder<T> {
-    leafs: Vec<Leaf<T>>,
+pub struct Builder<'a> {
+    leafs: Vec<Leaf<'a>>,
 }
 
-impl<T: Read> Default for Builder<T> {
-    fn default() -> Builder<T> {
+impl<'a> Default for Builder<'a> {
+    fn default() -> Builder<'a> {
         Builder {
             leafs: Vec::new(),
         }
     }
 }
 
-impl<T: Read> Builder<T> {
-    pub fn new() -> Builder<T> { Builder::default() }
-    pub fn add(&mut self, data: T, id: &str) -> anyhow::Result<()> {
+impl<'a> Builder<'a> {
+    pub fn new() -> Builder<'a> { Builder::default() }
+    pub fn add(&mut self, data: impl Read + 'static, id: &str) -> anyhow::Result<()> {
         let leaf = Leaf::from(data)?.id(id);
         self.leafs.push(leaf);
         Ok(())
     }
-    pub fn add_leaf(&mut self, leaf: Leaf<T>) -> anyhow::Result<()> {
+    pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {
         self.leafs.push(leaf);
         Ok(())
     }
