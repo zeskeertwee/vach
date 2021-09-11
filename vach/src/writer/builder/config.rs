@@ -20,7 +20,7 @@ impl BuilderConfig {
     // Keypair helpers
     pub fn load_keypair<T: io::Read>(&mut self, mut handle: T) -> anyhow::Result<()> {
         let mut keypair_bytes = [4; crate::KEYPAIR_LENGTH];
-        handle.read(&mut keypair_bytes)?;
+        handle.read_exact(&mut keypair_bytes)?;
         self.keypair = Some(esdalek::Keypair::from_bytes(&keypair_bytes)?);
         Ok(())
     }
