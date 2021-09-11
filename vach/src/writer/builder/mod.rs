@@ -102,7 +102,7 @@ impl<T: Read> Builder<T> {
 
             {
                 // Write to the registry
-                let mut entry_b = entry.bytes(&(leaf.id.len() as u64), config.keypair.is_some());
+                let mut entry_b = entry.bytes(&(leaf.id.len() as u16), config.keypair.is_some());
                 entry_b.extend(leaf.id.as_bytes());
                 buffer.write_all(&entry_b)?;
             }
