@@ -9,8 +9,7 @@ homepage = "https://github.com/sokorototo/vach"
 categories = [
 	"parsing",
 	"games",
-	"compression",
-	"format"
+	"compression"
 ]
 keywords = [
 	"archive",
