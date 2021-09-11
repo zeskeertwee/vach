@@ -81,9 +81,11 @@ impl Registry {
                 };
             };
 
-            let mut res = Resource::default();
-            res.flags = entry.flags;
-            res.content_version = entry.content_version;
+            let mut res = Resource {
+                flags: entry.flags,
+                content_version: entry.content_version,
+                ..Resource::default()
+            };
 
             // Decompress
             if entry.flags.contains(FlagType::COMPRESSED) {
@@ -117,10 +119,10 @@ pub struct RegistryEntry {
 }
 
 impl RegistryEntry {
-    // 2 + 1 + esdalek::SIGNATURE_LENGTH + 8 + 8
-    pub const MIN_SIZE: usize = 83 + 8;
+    // 2(flags) + 1(content version) + 64(crate::SIGNATURE_LENGTH) + 8(location) + 8(offset) + 2(path length)
+    pub(crate) const MIN_SIZE: usize = 85;
 
-    pub fn empty() -> RegistryEntry {
+    pub(crate) fn empty() -> RegistryEntry {
         RegistryEntry {
             flags: FlagType::default(),
             content_version: 0,
@@ -129,7 +131,7 @@ impl RegistryEntry {
             offset: 0
         }
     }
-    pub fn from<T: Read + Seek>(handle: &mut T, read_sig: bool) -> anyhow::Result<(Self, String)> {
+    pub(crate) fn from<T: Read + Seek>(handle: &mut T, read_sig: bool) -> anyhow::Result<(Self, String)> {
         let mut buffer = [0; RegistryEntry::MIN_SIZE];
         handle.read_exact(&mut buffer)?;
 
@@ -145,14 +147,14 @@ impl RegistryEntry {
         entry.offset = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
 
         // Construct ID
-        let id_length  = u64::from_le_bytes(buffer[83..91].try_into()?);
+        let id_length  = u16::from_le_bytes(buffer[83..RegistryEntry::MIN_SIZE].try_into()?);
         let mut id = String::new();
-        handle.take(id_length).read_to_string(&mut id)?;
+        handle.take(id_length as u64).read_to_string(&mut id)?;
 
         Ok((entry, id))
     }
 
-    pub fn bytes(&self, id_length: &RegisterType, sign: bool) -> Vec<u8> {
+    pub(crate) fn bytes(&self, id_length: &u16, sign: bool) -> Vec<u8> {
         let mut buffer = Vec::new();
         buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
         buffer.extend_from_slice(&self.content_version.to_le_bytes());
