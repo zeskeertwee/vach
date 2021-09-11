@@ -1,0 +1,6 @@
+Add a simple API to generate keypairs
+A simple way to load and add flags, to and from the Header and RegistryEntry
+Optimize the builder for memory not for speed
+Use streams and abstain from buffering with vectors
+Correctly format flags
+Use rand_chacha20
