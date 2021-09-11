@@ -1,6 +1,6 @@
 /// This is meant to mirror as closely as possible, how users should use the crate
 #[cfg(test)]
-pub(crate) mod tests {
+mod tests {
     // The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
     // We still need to conduct tests on them tho.
     use crate::global::{header::Header, registry::*};
@@ -18,15 +18,16 @@ pub(crate) mod tests {
     const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
 
     #[test]
-    pub(crate) fn log_constants() {
+    fn log_constants() {
         dbg!(crate::VERSION);
         dbg!(crate::PUBLIC_KEY_LENGTH);
         dbg!(crate::SIGNATURE_LENGTH);
         dbg!(crate::SECRET_KEY_LENGTH);
+        dbg!(crate::MAX_ID_LENGTH);
     }
 
     #[test]
-    pub(crate) fn defaults() {
+    fn defaults() {
         let _header_config = HeaderConfig::default();
         let _header = Header::default();
         let _registry = Registry::empty();
@@ -39,7 +40,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub(crate) fn header_config() -> anyhow::Result<()> {
+    fn header_config() -> anyhow::Result<()> {
         let config = HeaderConfig::from(*b"VfACH", 0, None);
         let mut file = File::open("test_data/simple/target.vach")?;
         format!("{}", &config);
@@ -54,7 +55,7 @@ pub(crate) mod tests {
     // Custom bitflag tests
     crate::bitflags::bitflags! {
         #[derive(Default)]
-        pub struct Custom: u16 {
+        struct Custom: u16 {
             const TRENT = 0b_0000_1000_0000_0000;
             const DRUMLIN = 0b_0000_0100_0000_0000;
             const DJ = 0b_0000_0010_0000_0000;
@@ -63,7 +64,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub(crate) fn load_bitflags() -> anyhow::Result<()> {
+    fn load_bitflags() -> anyhow::Result<()> {
         let target = File::open(SIMPLE_TARGET)?;
         let mut archive = Archive::from(target)?;
         let resource = archive.fetch("poem")?;
@@ -74,7 +75,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub fn loader_no_signature() -> anyhow::Result<()> {
+    fn loader_no_signature() -> anyhow::Result<()> {
         let target = File::open(SIMPLE_TARGET)?;
         let mut archive = Archive::from(target)?;
         let resource = archive.fetch("wasm")?;
@@ -86,7 +87,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub(crate) fn writer_no_signature() -> anyhow::Result<()>{
+    fn writer_no_signature() -> anyhow::Result<()>{
         let mut builder = Builder::default();
         let build_config = BuilderConfig::default();
 
@@ -109,7 +110,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub(crate) fn loader_with_signature() -> anyhow::Result<()> {
+    fn loader_with_signature() -> anyhow::Result<()> {
         let target = File::open(SIGNED_TARGET)?;
 
         // Load keypair
@@ -126,7 +127,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub(crate) fn writer_with_signature() -> anyhow::Result<()>{
+    fn writer_with_signature() -> anyhow::Result<()>{
         let mut builder = Builder::default();
         let mut build_config = BuilderConfig::default();
         build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -142,7 +143,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub(crate) fn fetch_write_with_signature() -> anyhow::Result<()> {
+    fn fetch_write_with_signature() -> anyhow::Result<()> {
         let target = File::open(SIGNED_TARGET)?;
 
         // Load keypair
@@ -160,7 +161,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    pub(crate) fn gen_keypair() -> anyhow::Result<()> {
+    fn gen_keypair() -> anyhow::Result<()> {
         use rand::rngs::OsRng;
         use ed25519_dalek as esdalek;
 
