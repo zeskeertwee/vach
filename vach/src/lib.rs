@@ -1,4 +1,6 @@
 #![allow(clippy::or_fun_call)]
+
+/// All tests are included in this module.
 mod tests;
 
 pub(crate) mod global;
@@ -10,23 +12,26 @@ pub use rand;
 pub use bitflags;
 
 // Global constants
-/// Current file spec version
+/// Current file spec version, both `Loader` and `Builder`
 pub const VERSION: u16 = 13;
 
-/// The size in bytes of a keypair: (secret + public)
+/// Size of a keypair: (secret + public)
 pub const KEYPAIR_LENGTH: usize = 64;
 
-/// The size in bytes of a secret key
+/// Size of a secret key
 pub const SECRET_KEY_LENGTH: usize = 32;
 
-/// The size in bytes of a public key
+/// Size of a public key
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 
-/// The size in bytes of a signature
+/// Size of a signature
 pub const SIGNATURE_LENGTH: usize =  64;
 
+/// Maximum size for any ID
+pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
+
+/// All crate structures and logic is stored within
 pub mod prelude {
-    //! All crate structures and logic is stored within
     pub use crate::global::{
         header::HeaderConfig,
         types::*,
