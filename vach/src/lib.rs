@@ -10,14 +10,23 @@ pub use rand;
 pub use bitflags;
 
 // Global constants
+/// Current file spec version
 pub const VERSION: u16 = 13;
+
+/// The size in bytes of a keypair: (secret + public)
 pub const KEYPAIR_LENGTH: usize = 64;
+
+/// The size in bytes of a secret key
 pub const SECRET_KEY_LENGTH: usize = 32;
+
+/// The size in bytes of a public key
 pub const PUBLIC_KEY_LENGTH: usize = 32;
+
+/// The size in bytes of a signature
 pub const SIGNATURE_LENGTH: usize =  64;
 
-// Simpler imports
 pub mod prelude {
+    //! All crate structures and logic is stored within
     pub use crate::global::{
         header::HeaderConfig,
         types::*,
