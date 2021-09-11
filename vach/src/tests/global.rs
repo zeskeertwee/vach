@@ -75,6 +75,7 @@ fn registry_and_header_serialization() {
     }
     
     assert_eq!(registry.len(), HED_REGISTRY_SIZE as usize * generate_registry_entry().len());
+
     let mut header_buffer = generate_header();
     header_buffer.extend_from_slice(&registry);
 

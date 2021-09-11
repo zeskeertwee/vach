@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "virtfs",
-    "virtfs-ach"
+    "vf",
+    "vach"
 ]
