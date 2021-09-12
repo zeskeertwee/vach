@@ -30,7 +30,7 @@ pub const SIGNATURE_LENGTH: usize =  64;
 /// Maximum size for any ID
 pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
 
-/// All crate structures and logic is stored within
+/// Where all crate logic resides
 pub mod prelude {
     pub use crate::global::{
         header::HeaderConfig,
