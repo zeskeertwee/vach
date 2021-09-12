@@ -25,7 +25,7 @@ impl<'a> Default for Builder<'a> {
 
 impl<'a> Builder<'a> {
     pub fn new() -> Builder<'a> { Builder::default() }
-    pub fn add(&mut self, data: impl Read + 'static, id: &str) -> anyhow::Result<()> {
+    pub fn add(&mut self, data: impl Read + 'a, id: &str) -> anyhow::Result<()> {
         let leaf = Leaf::from(data)?.id(id);
         self.leafs.push(leaf);
         Ok(())
@@ -50,7 +50,7 @@ impl<'a> Builder<'a> {
         buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
         let mut leaf_data = Vec::new();
-        
+
         // Calculate the size of the registry
         let mut reg_size = 0usize;
         for leaf in self.leafs.iter() {
@@ -104,7 +104,9 @@ impl<'a> Builder<'a> {
                 let mut entry_b = entry.bytes(&(leaf.id.len() as u16), config.keypair.is_some());
                 entry_b.extend(leaf.id.as_bytes());
                 buffer.write_all(&entry_b)?;
-            }
+            };
+
+            drop(glob)
         }
 
         // Write the glob
