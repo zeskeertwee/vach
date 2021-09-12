@@ -4,3 +4,5 @@ Optimize the builder for memory not for speed
 Use streams and abstain from buffering with vectors
 Correctly format flags
 Use rand_chacha20
+Reduce size of crate
+Compression and Signing as optional cargo features
