@@ -18,7 +18,7 @@ keywords = [
 	"vach",
 	"format"
 ]
-documentation = "https://lib.rs/crates/vach"
+documentation = "https://docs.rs/vach"
 
 [dependencies]
 anyhow = "1.0.42"
