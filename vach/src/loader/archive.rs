@@ -29,7 +29,7 @@ impl Archive<Cursor<Vec<u8>>> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
-    pub fn from(mut handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
+    pub fn from(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
         Archive::with_config(handle, &HeaderConfig::default())
     }
 
