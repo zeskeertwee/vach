@@ -10,24 +10,13 @@ use std::{
 
 #[derive(Debug)]
 pub struct HeaderConfig {
-	pub magic: [u8; HeaderConfig::MAGIC_LENGTH],
+	pub magic: [u8; crate::MAGIC_LENGTH],
 	pub minimum_version: u16,
 	pub public_key: Option<esdalek::PublicKey>,
 }
 
 // Used to store data about headers and to validate magic and content version
 impl HeaderConfig {
-	// BASE_SIZE => 11 + 64 = 75
-	pub const BASE_SIZE: usize =
-		Self::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
-	pub const MAGIC: &'static [u8; 5] = b"VfACH";
-
-	// Data appears in this order
-	pub const MAGIC_LENGTH: usize = 5;
-	pub const FLAG_SIZE: usize = 2;
-	pub const VERSION_SIZE: usize = 2;
-	pub const CAPACITY_SIZE: usize = 2;
-
 	pub fn new(
 		magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey>,
 	) -> HeaderConfig {
@@ -73,13 +62,13 @@ impl fmt::Display for HeaderConfig {
 
 impl Default for HeaderConfig {
 	fn default() -> Self {
-		HeaderConfig::new(*HeaderConfig::MAGIC, crate::VERSION, None)
+		HeaderConfig::new(*crate::DEFAULT_MAGIC, crate::VERSION, None)
 	}
 }
 
 #[derive(Debug)]
 pub(crate) struct Header {
-	pub magic: [u8; HeaderConfig::MAGIC_LENGTH], // VfACH
+	pub magic: [u8; crate::MAGIC_LENGTH], // VfACH
 	pub flags: FlagType,
 	pub arch_version: u16,
 	pub capacity: u16,
@@ -88,7 +77,7 @@ pub(crate) struct Header {
 impl Default for Header {
 	fn default() -> Header {
 		Header {
-			magic: *HeaderConfig::MAGIC,
+			magic: *crate::DEFAULT_MAGIC,
 			flags: FlagType::default(),
 			arch_version: crate::VERSION,
 			capacity: 0,
@@ -97,24 +86,33 @@ impl Default for Header {
 }
 
 impl Header {
+	// BASE_SIZE => 11 + 64 = 75
+	pub(crate) const BASE_SIZE: usize =
+		crate::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
+
+	// Data appears in this order
+	pub(crate) const FLAG_SIZE: usize = 2;
+	pub(crate) const VERSION_SIZE: usize = 2;
+	pub(crate) const CAPACITY_SIZE: usize = 2;
+
 	pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
 		handle.seek(SeekFrom::Start(0))?;
-		let mut buffer = [0x69; HeaderConfig::BASE_SIZE];
+		let mut buffer = [0x69; Header::BASE_SIZE];
 		handle.read_exact(&mut buffer)?;
 
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: buffer[0..HeaderConfig::MAGIC_LENGTH].try_into()?,
+			magic: buffer[0..crate::MAGIC_LENGTH].try_into()?,
 			// Read flags, u16 from [u8;2]
 			flags: FlagType::from_bits(u16::from_le_bytes(
-				buffer[HeaderConfig::MAGIC_LENGTH..7].try_into()?,
+				buffer[crate::MAGIC_LENGTH..7].try_into()?,
 			))
 			.unwrap(),
 			// Read version, u16 from [u8;2]
 			arch_version: u16::from_le_bytes(buffer[7..9].try_into()?),
 			// Read the capacity of the archive, u16 from [u8;2]
-			capacity: u16::from_le_bytes(buffer[9..HeaderConfig::BASE_SIZE].try_into()?),
+			capacity: u16::from_le_bytes(buffer[9..Header::BASE_SIZE].try_into()?),
 		})
 	}
 }
