@@ -1,11 +1,4 @@
-Add a simple API to generate keypairs
-A simple way to load and add flags, to and from the Header and RegistryEntry
-Optimize the builder for memory not for speed
+Custom Flag encapsulation structure
 Use streams and abstain from buffering with vectors
 Correctly format flags
-Use rand_chacha20
-Reduce size of crate
-Compression and Signing as optional cargo features
-Inline more functions
 Add Builder::add_file() and Builder::add_dir() helper functions
-Header validation goes in the Header
