@@ -50,6 +50,7 @@ impl HeaderConfig {
 }
 
 impl fmt::Display for HeaderConfig {
+	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(
 			f,
@@ -61,6 +62,7 @@ impl fmt::Display for HeaderConfig {
 }
 
 impl Default for HeaderConfig {
+	#[inline]
 	fn default() -> Self {
 		HeaderConfig::new(*crate::DEFAULT_MAGIC, crate::VERSION, None)
 	}
@@ -75,6 +77,7 @@ pub(crate) struct Header {
 }
 
 impl Default for Header {
+	#[inline]
 	fn default() -> Header {
 		Header {
 			magic: *crate::DEFAULT_MAGIC,
@@ -94,6 +97,26 @@ impl Header {
 	pub(crate) const FLAG_SIZE: usize = 2;
 	pub(crate) const VERSION_SIZE: usize = 2;
 	pub(crate) const CAPACITY_SIZE: usize = 2;
+
+	pub(crate) fn validate(header: &Header, config: &HeaderConfig) -> anyhow::Result<()> {
+		// Validate magic
+		if header.magic != config.magic {
+			anyhow::bail!(format!(
+				"Invalid magic found in Header: {}",
+				str::from_utf8(&header.magic)?
+			));
+		};
+
+		// Validate version
+		if config.minimum_version > header.arch_version {
+			anyhow::bail!(format!(
+                "Minimum Archive Version requirement not met. Version found: {}, Minimum acceptable version: {}",
+                header.arch_version, config.minimum_version
+            ))
+		};
+
+		Ok(())
+	}
 
 	pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
 		handle.seek(SeekFrom::Start(0))?;
