@@ -11,7 +11,6 @@ pub(crate) mod writer;
 pub use rand;
 pub use bitflags;
 
-// Global constants
 /// Current file spec version, both `Loader` and `Builder`
 pub const VERSION: u16 = 13;
 
@@ -44,4 +43,8 @@ pub mod prelude {
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
+	pub use ed25519_dalek::{Keypair, PublicKey};
 }
+
+// Some utility functions to keep you happy
+pub mod utils;
