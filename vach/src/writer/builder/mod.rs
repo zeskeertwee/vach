@@ -1,9 +1,9 @@
 mod config;
 use super::leaf::{Leaf, CompressMode};
 use crate::global::{
-    header::HeaderConfig,
-    registry::RegistryEntry,
-    types::{FlagType, RegisterType},
+	header::HeaderConfig,
+	registry::RegistryEntry,
+	types::{FlagType, RegisterType},
 };
 pub use config::BuilderConfig;
 
@@ -12,138 +12,136 @@ use lz4_flex as lz4;
 use std::io::{self, BufWriter, Write, Read};
 
 pub struct Builder<'a> {
-    leafs: Vec<Leaf<'a>>,
+	leafs: Vec<Leaf<'a>>,
 }
 
 impl<'a> Default for Builder<'a> {
-    fn default() -> Builder<'a> {
-        Builder {
-            leafs: Vec::new(),
-        }
-    }
+	fn default() -> Builder<'a> {
+		Builder { leafs: Vec::new() }
+	}
 }
 
 impl<'a> Builder<'a> {
-    pub fn new() -> Builder<'a> { Builder::default() }
-    pub fn add(&mut self, data: impl Read + 'a, id: &str) -> anyhow::Result<()> {
-        let leaf = Leaf::from_handle(data)?.id(id);
-        self.add_leaf(leaf);
-        Ok(())
-    }
+	pub fn new() -> Builder<'a> {
+		Builder::default()
+	}
+	pub fn add(&mut self, data: impl Read + 'a, id: &str) -> anyhow::Result<()> {
+		let leaf = Leaf::from_handle(data)?.id(id);
+		self.add_leaf(leaf);
+		Ok(())
+	}
 
-    #[inline]
-    pub fn add_leaf(&mut self, leaf: Leaf<'a>){
-        self.leafs.push(leaf);
-    }
+	#[inline]
+	pub fn add_leaf(&mut self, leaf: Leaf<'a>) {
+		self.leafs.push(leaf);
+	}
 
-    pub fn dump<W: Write>(&mut self, target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
-        // Keep track of how many bytes are written
-        let mut size = 0usize;
+	pub fn dump<W: Write>(&mut self, target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
+		// Keep track of how many bytes are written
+		let mut size = 0usize;
 
-        // Write header in order defined in the spec document
-        let mut buffer = BufWriter::new( target);
-        buffer.write_all(&config.magic)?;
+		// Write header in order defined in the spec document
+		let mut buffer = BufWriter::new(target);
+		buffer.write_all(&config.magic)?;
 
-        // INSERT flags
-        let mut temp = config.flags;
-        if config.keypair.is_some() { temp.insert(FlagType::SIGNED) };
-        buffer.write_all(&temp.bits().to_le_bytes())?;
+		// INSERT flags
+		let mut temp = config.flags;
+		if config.keypair.is_some() {
+			temp.insert(FlagType::SIGNED)
+		};
+		buffer.write_all(&temp.bits().to_le_bytes())?;
 
-        // Write the version of the Archive Format|Builder|Loader
-        buffer.write_all(&crate::VERSION.to_le_bytes())?;
-        buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
+		// Write the version of the Archive Format|Builder|Loader
+		buffer.write_all(&crate::VERSION.to_le_bytes())?;
+		buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
-        // Update how many bytes have been written
-        size += HeaderConfig::BASE_SIZE;
+		// Update how many bytes have been written
+		size += HeaderConfig::BASE_SIZE;
 
-        let mut leaf_data = Vec::new();
+		let mut leaf_data = Vec::new();
 
-        // Calculate the size of the registry
-        let mut reg_size = 0usize;
-        for leaf in self.leafs.iter() {
-            reg_size += leaf.id.len() + RegistryEntry::MIN_SIZE
-        };
+		// Calculate the size of the registry
+		let mut reg_size = 0usize;
+		for leaf in self.leafs.iter() {
+			reg_size += leaf.id.len() + RegistryEntry::MIN_SIZE
+		}
 
-        // Start counting the offset of the leafs from the end of the registry
-        let mut leaf_offset = reg_size + HeaderConfig::BASE_SIZE;
+		// Start counting the offset of the leafs from the end of the registry
+		let mut leaf_offset = reg_size + HeaderConfig::BASE_SIZE;
 
-        // Populate the archive glob
-        for leaf in self.leafs.iter_mut() {
-            let mut entry = leaf.to_registry_entry();
-            let mut glob = Vec::new();
+		// Populate the archive glob
+		for leaf in self.leafs.iter_mut() {
+			let mut entry = leaf.to_registry_entry();
+			let mut glob = Vec::new();
 
-            // Create and compare compressed leaf data
-            match leaf.compress {
-                CompressMode::Never => {
-                    io::copy(&mut leaf.handle, &mut glob)?;
-                }
-                CompressMode::Always => {
-                    let mut compressor = lz4::frame::FrameEncoder::new(&mut glob);
-                    io::copy(&mut leaf.handle, &mut compressor)?;
-                }
-                CompressMode::Detect => {
-                    let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
-                    let length = io::copy(&mut leaf.handle, &mut compressor)?;
-                    let compressed_data = compressor.finish()?;
-    
-                    let ratio = compressed_data.len() as f32 / length as f32;
-                    if ratio < 1f32 {
-                        entry.flags.insert(FlagType::COMPRESSED);
-                        glob = compressed_data;
-                    } else {
-                        drop(compressed_data);
-                    };
-                }
-            }
+			// Create and compare compressed leaf data
+			match leaf.compress {
+				CompressMode::Never => {
+					io::copy(&mut leaf.handle, &mut glob)?;
+				}
+				CompressMode::Always => {
+					let mut compressor = lz4::frame::FrameEncoder::new(&mut glob);
+					io::copy(&mut leaf.handle, &mut compressor)?;
+				}
+				CompressMode::Detect => {
+					let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
+					let length = io::copy(&mut leaf.handle, &mut compressor)?;
+					let compressed_data = compressor.finish()?;
 
-            let glob_length = glob.len();
+					let ratio = compressed_data.len() as f32 / length as f32;
+					if ratio < 1f32 {
+						entry.flags.insert(FlagType::COMPRESSED);
+						glob = compressed_data;
+					} else {
+						drop(compressed_data);
+					};
+				}
+			}
 
-            // Buffer the contents of the leaf, to be written later
-            leaf_data.extend(&glob);
+			let glob_length = glob.len();
 
-            entry.location = leaf_offset as RegisterType;
-            leaf_offset += glob_length;
-            entry.offset = glob_length as RegisterType;
+			// Buffer the contents of the leaf, to be written later
+			leaf_data.extend(&glob);
 
-            if let Some(keypair) = &config.keypair {
-                // The reason we include the path in the signature is to prevent mangling in the registry,
-                // For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
-                // The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
-                glob.extend(leaf.id.as_bytes());
-                entry.signature = keypair.sign(&glob);
-            };
+			entry.location = leaf_offset as RegisterType;
+			leaf_offset += glob_length;
+			entry.offset = glob_length as RegisterType;
 
-            {
-                // Write to the registry
-                let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16), config.keypair.is_some());
-                entry_bytes.extend(leaf.id.as_bytes());
-                buffer.write_all(&entry_bytes)?;
-                size += entry_bytes.len();
-            };
+			if let Some(keypair) = &config.keypair {
+				// The reason we include the path in the signature is to prevent mangling in the registry,
+				// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
+				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
+				glob.extend(leaf.id.as_bytes());
+				entry.signature = keypair.sign(&glob);
+			};
 
-            drop(glob)
-        }
+			{
+				// Write to the registry
+				let mut entry_bytes =
+					entry.bytes(&(leaf.id.len() as u16), config.keypair.is_some());
+				entry_bytes.extend(leaf.id.as_bytes());
+				buffer.write_all(&entry_bytes)?;
+				size += entry_bytes.len();
+			};
 
-        // Write the glob
-        buffer.write_all(&leaf_data)?;
-        size += leaf_data.len();
+			drop(glob)
+		}
 
-        drop(leaf_data);
+		// Write the glob
+		buffer.write_all(&leaf_data)?;
+		size += leaf_data.len();
 
-        Ok(size)
-    }
+		drop(leaf_data);
+
+		Ok(size)
+	}
 }
 
 impl<'a> Read for Builder<'a> {
-    fn read(&mut self, target: &mut [u8]) -> Result<usize, io::Error> {
-        match self.dump(target, &BuilderConfig::default()) {
-            Ok(size) => Ok(size),
-            Err(err) => {
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    err.to_string()
-                ))
-            },
-        }
-    }
+	fn read(&mut self, target: &mut [u8]) -> Result<usize, io::Error> {
+		match self.dump(target, &BuilderConfig::default()) {
+			Ok(size) => Ok(size),
+			Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
+		}
+	}
 }

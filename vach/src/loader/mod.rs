@@ -1,2 +1,2 @@
-pub mod resource;
 pub mod archive;
+pub mod resource;

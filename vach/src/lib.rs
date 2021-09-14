@@ -25,23 +25,17 @@ pub const SECRET_KEY_LENGTH: usize = 32;
 pub const PUBLIC_KEY_LENGTH: usize = 32;
 
 /// Size of a signature
-pub const SIGNATURE_LENGTH: usize =  64;
+pub const SIGNATURE_LENGTH: usize = 64;
 
 /// Maximum size for any ID
 pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
 
 /// Where all crate logic resides
 pub mod prelude {
-    pub use crate::global::{
-        header::HeaderConfig,
-        types::*,
-    };
-    pub use crate::loader::{
-        archive::Archive,
-        resource::Resource
-    };
-    pub use crate::writer::{
-        builder::{Builder, BuilderConfig},
-        leaf::{Leaf, CompressMode}
-    };
+	pub use crate::global::{header::HeaderConfig, types::*};
+	pub use crate::loader::{archive::Archive, resource::Resource};
+	pub use crate::writer::{
+		builder::{Builder, BuilderConfig},
+		leaf::{Leaf, CompressMode},
+	};
 }
