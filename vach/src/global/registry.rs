@@ -23,11 +23,11 @@ impl Registry {
 }
 
 impl Registry {
-    pub fn from<T: Seek + Read>(handle: &mut T, header: &Header, read_sig: bool) -> anyhow::Result<Registry> {
+    pub fn from_handle<T: Seek + Read>(handle: &mut T, header: &Header, read_sig: bool) -> anyhow::Result<Registry> {
         // Generate and store Registry Entries
         let mut entries = HashMap::new();
         for _ in 0..header.capacity {
-            let (entry, id) = RegistryEntry::from(handle, read_sig)?;
+            let (entry, id) = RegistryEntry::from_handle(handle, read_sig)?;
             entries.insert(id, entry);
         };
 
@@ -129,7 +129,7 @@ impl RegistryEntry {
             offset: 0
         }
     }
-    pub(crate) fn from<T: Read + Seek>(handle: &mut T, read_sig: bool) -> anyhow::Result<(Self, String)> {
+    pub(crate) fn from_handle<T: Read + Seek>(handle: &mut T, read_sig: bool) -> anyhow::Result<(Self, String)> {
         let mut buffer = [0; RegistryEntry::MIN_SIZE];
         handle.read_exact(&mut buffer)?;
 

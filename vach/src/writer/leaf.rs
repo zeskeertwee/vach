@@ -29,7 +29,7 @@ impl<'a> Default for Leaf<'a> {
 }
 
 impl<'a> Leaf<'a> {
-	pub fn from(handle: impl Read + 'a) -> anyhow::Result<Leaf<'a>> {
+	pub fn from_handle(handle: impl Read + 'a) -> anyhow::Result<Leaf<'a>> {
 		Ok(Leaf {
 			handle: Box::new(handle),
 			id: String::new(),

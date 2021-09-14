@@ -22,7 +22,7 @@ impl HeaderConfig {
     pub const VERSION_SIZE: usize = 2;
     pub const CAPACITY_SIZE: usize = 2;
 
-    pub fn from( magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey> ) -> HeaderConfig {
+    pub fn new( magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey> ) -> HeaderConfig {
         HeaderConfig {
             magic,
             minimum_version,
@@ -65,7 +65,7 @@ impl fmt::Display for HeaderConfig {
 
 impl Default for HeaderConfig {
     fn default() -> Self {
-        HeaderConfig::from(*HeaderConfig::MAGIC, crate::VERSION, None)
+        HeaderConfig::new(*HeaderConfig::MAGIC, crate::VERSION, None)
     }
 }
 
@@ -89,7 +89,7 @@ impl Default for Header {
 }
 
 impl Header {
-    pub(crate) fn from<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
+    pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
         handle.seek(SeekFrom::Start(0))?;
         let mut buffer = [0x69; HeaderConfig::BASE_SIZE];
         handle.read_exact(&mut buffer)?;

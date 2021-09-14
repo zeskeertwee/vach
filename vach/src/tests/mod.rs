@@ -41,11 +41,11 @@ mod tests {
 
     #[test]
     fn header_config() -> anyhow::Result<()> {
-        let config = HeaderConfig::from(*b"VfACH", 0, None);
+        let config = HeaderConfig::new(*b"VfACH", 0, None);
         let mut file = File::open("test_data/simple/target.vach")?;
         format!("{}", &config);
 
-        let mut _header = Header::from(&mut file)?;
+        let mut _header = Header::from_handle(&mut file)?;
         format!("{}", _header);
 
         Archive::validate(&mut file, &config)?;
@@ -66,7 +66,7 @@ mod tests {
     #[test]
     fn load_bitflags() -> anyhow::Result<()> {
         let target = File::open(SIMPLE_TARGET)?;
-        let mut archive = Archive::from(target)?;
+        let mut archive = Archive::from_handle(target)?;
         let resource = archive.fetch("poem")?;
         let flags = Custom::from_bits(resource.flags.bits()).unwrap();
         dbg!(flags);
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn loader_no_signature() -> anyhow::Result<()> {
         let target = File::open(SIMPLE_TARGET)?;
-        let mut archive = Archive::from(target)?;
+        let mut archive = Archive::from_handle(target)?;
         let resource = archive.fetch("wasm")?;
 
         println!("{}", resource);
@@ -97,7 +97,7 @@ mod tests {
         builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
 
         builder.add_leaf(
-            Leaf::from(File::open("test_data/poem.txt")?)?
+            Leaf::from_handle(File::open("test_data/poem.txt")?)?
                 .compress(CompressMode::Never)
                 .version(10)
                 .id("poem")

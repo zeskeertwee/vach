@@ -29,15 +29,15 @@ impl Archive<Cursor<Vec<u8>>> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
-    pub fn from(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
+    pub fn from_handle(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
         Archive::with_config(handle, &HeaderConfig::default())
     }
 
     pub fn with_config(mut handle: T, config: &HeaderConfig) -> anyhow::Result<Archive<impl Seek + Read>> {
         Archive::validate(&mut handle, config)?;
 
-        let header = Header::from(&mut handle)?;
-        let registry = Registry::from(&mut handle, &header, config.public_key.is_some())?;
+        let header = Header::from_handle(&mut handle)?;
+        let registry = Registry::from_handle(&mut handle, &header, config.public_key.is_some())?;
 
         Ok(Archive { header, registry, handle: BufReader::new(handle), key: config.public_key })
     }
