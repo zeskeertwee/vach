@@ -3,7 +3,7 @@ use crate::{
 		registry::RegistryEntry
 	}
 };
-use std::{io::{Cursor, Read}};
+use std::{io::Read};
 
 pub struct Leaf<'a> {
     // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
@@ -16,7 +16,7 @@ pub struct Leaf<'a> {
 impl<'a> Default for Leaf<'a> {
     fn default() -> Leaf<'a> {
         Leaf {
-            handle: Box::new(Cursor::new(Vec::new())),
+            handle: Box::<&[u8]>::new(&[]),
             id: String::new(),
             content_version: 0,
             compress: true

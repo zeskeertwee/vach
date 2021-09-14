@@ -6,3 +6,4 @@ Correctly format flags
 Use rand_chacha20
 Reduce size of crate
 Compression and Signing as optional cargo features
+Default magic as one of the exported constants

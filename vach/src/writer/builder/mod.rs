@@ -27,7 +27,7 @@ impl<'a> Builder<'a> {
     pub fn new() -> Builder<'a> { Builder::default() }
     pub fn add(&mut self, data: impl Read + 'a, id: &str) -> anyhow::Result<()> {
         let leaf = Leaf::from(data)?.id(id);
-        self.leafs.push(leaf);
+        self.add_leaf(leaf);
         Ok(())
     }
     pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {

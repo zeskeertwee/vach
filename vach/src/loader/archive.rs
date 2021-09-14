@@ -29,7 +29,7 @@ impl Archive<Cursor<Vec<u8>>> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
-    pub fn from(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
+    pub fn from(mut handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
         Archive::with_config(handle, &HeaderConfig::default())
     }
 
@@ -56,7 +56,7 @@ impl<T: Seek + Read> Archive<T> {
         &self.registry.entries
     }
 
-    pub fn validate(handle: &mut T, config: &HeaderConfig) -> anyhow::Result<bool> {
+    pub fn validate(handle: &mut T, config: &HeaderConfig) -> anyhow::Result<()> {
         handle.seek(SeekFrom::Start(0))?;
 
         // Validate magic
@@ -82,7 +82,7 @@ impl<T: Seek + Read> Archive<T> {
             ))
         };
 
-        Ok(true)
+        Ok(())
     }
 }
 

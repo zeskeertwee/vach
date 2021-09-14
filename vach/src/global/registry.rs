@@ -24,8 +24,6 @@ impl Registry {
 
 impl Registry {
     pub fn from<T: Seek + Read>(handle: &mut T, header: &Header, read_sig: bool) -> anyhow::Result<Registry> {
-        handle.seek(SeekFrom::Start(HeaderConfig::BASE_SIZE as u64))?;
-
         // Generate and store Registry Entries
         let mut entries = HashMap::new();
         for _ in 0..header.capacity {
@@ -114,8 +112,8 @@ pub struct RegistryEntry {
     pub content_version: u8,
     pub signature: esdalek::Signature,
 
-    pub location: RegisterType,
-    pub offset: RegisterType,
+    pub(crate) location: RegisterType,
+    pub(crate) offset: RegisterType,
 }
 
 impl RegistryEntry {
