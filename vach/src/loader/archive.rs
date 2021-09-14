@@ -5,7 +5,7 @@ use crate::global::{
 	registry::{Registry, RegistryEntry},
 };
 use std::{
-	io::{BufReader, Cursor, Read, Seek, SeekFrom, Write},
+	io::{BufReader, Cursor, Read, Seek, Write},
 	str,
 };
 use ed25519_dalek as esdalek;
@@ -20,6 +20,7 @@ pub struct Archive<T> {
 }
 
 impl Archive<Cursor<Vec<u8>>> {
+	#[inline]
 	pub fn empty() -> Archive<Cursor<Vec<u8>>> {
 		Archive {
 			header: Header::default(),
@@ -39,9 +40,8 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
 	) -> anyhow::Result<Archive<impl Seek + Read>> {
-		Archive::validate(&mut handle, config)?;
-
 		let header = Header::from_handle(&mut handle)?;
+		Header::validate(&header, &config)?;
 		let registry = Registry::from_handle(&mut handle, &header, config.public_key.is_some())?;
 
 		Ok(Archive {
@@ -53,50 +53,22 @@ impl<T: Seek + Read> Archive<T> {
 	}
 
 	// Query functions
+	#[inline]
 	pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
 		self.registry.fetch(id, &mut self.handle, &self.key)
 	}
+	#[inline]
 	pub fn fetch_write(&mut self, id: &str, target: impl Write) -> anyhow::Result<()> {
 		self.registry
 			.fetch_write(id, &mut self.handle, &self.key, target)
 	}
+	#[inline]
 	pub fn fetch_entry(&mut self, id: &str) -> Option<&RegistryEntry> {
 		self.registry.fetch_entry(id)
 	}
+	#[inline]
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.registry.entries
-	}
-
-	pub fn validate(handle: &mut T, config: &HeaderConfig) -> anyhow::Result<()> {
-		handle.seek(SeekFrom::Start(0))?;
-
-		// Validate magic
-		let mut buffer = [0x72; crate::MAGIC_LENGTH];
-		handle.read_exact(&mut buffer)?;
-
-		if buffer != config.magic {
-			anyhow::bail!(format!(
-				"Invalid magic found in archive: {}",
-				str::from_utf8(&buffer)?
-			));
-		};
-
-		// Jump the flags
-		handle.seek(SeekFrom::Current(2))?;
-
-		// Validate version
-		let mut buffer = [0x72; Header::VERSION_SIZE];
-		handle.read_exact(&mut buffer)?;
-
-		let archive_version = u16::from_le_bytes(buffer);
-		if config.minimum_version > archive_version {
-			anyhow::bail!(format!(
-                "Minimum Version requirement not met. Version found: {}, Minimum acceptable version: {}",
-                archive_version, config.minimum_version
-            ))
-		};
-
-		Ok(())
 	}
 }
 

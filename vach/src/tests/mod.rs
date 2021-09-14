@@ -49,10 +49,10 @@ mod tests {
 		let mut file = File::open("test_data/simple/target.vach")?;
 		format!("{}", &config);
 
-		let mut _header = Header::from_handle(&mut file)?;
-		format!("{}", _header);
+		let header = Header::from_handle(&mut file)?;
+		format!("{}", header);
 
-		Archive::validate(&mut file, &config)?;
+		Header::validate(&header, &config)?;
 		Ok(())
 	}
 
@@ -166,15 +166,13 @@ mod tests {
 
 	#[test]
 	fn gen_keypair() -> anyhow::Result<()> {
-		use rand::rngs::OsRng;
-		use ed25519_dalek as esdalek;
+		use crate::utils::gen_keypair;
 
 		// NOTE: regenerating new keys will break some tests
 		let regenerate = false;
 
 		if regenerate {
-			let mut rng = OsRng;
-			let keypair = esdalek::Keypair::generate(&mut rng);
+			let keypair = gen_keypair();
 
 			std::fs::write(KEYPAIR, &keypair.to_bytes())?;
 		};
