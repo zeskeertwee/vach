@@ -1,6 +1,6 @@
 use crate::{
     global::{
-        header::{Header, HeaderConfig},
+        header::{Header},
         types::{RegisterType, FlagType}
     },
     loader::resource::Resource
