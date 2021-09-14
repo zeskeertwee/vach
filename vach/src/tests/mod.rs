@@ -98,13 +98,13 @@ mod tests {
 
         builder.add_leaf(
             Leaf::from(File::open("test_data/poem.txt")?)?
-                .compress(false)
+                .compress(CompressMode::Never)
                 .version(10)
                 .id("poem")
-        )?;
+        );
 
         let mut target = File::create(SIMPLE_TARGET)?;
-        builder.write(&mut target, &build_config)?;
+        builder.dump(&mut target, &build_config)?;
 
         Ok(())
     }
@@ -137,7 +137,7 @@ mod tests {
         builder.add(File::open("test_data/poem.txt")?, "poem")?;
 
         let mut target = File::create(SIGNED_TARGET)?;
-        builder.write(&mut target, &build_config)?;
+        builder.dump(&mut target, &build_config)?;
 
         Ok(())
     }
