@@ -42,6 +42,6 @@ pub mod prelude {
     };
     pub use crate::writer::{
         builder::{Builder, BuilderConfig},
-        leaf::Leaf
+        leaf::{Leaf, CompressMode}
     };
 }
