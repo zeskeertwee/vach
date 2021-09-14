@@ -1,10 +1,6 @@
 mod config;
 use super::leaf::{Leaf, CompressMode};
-use crate::global::{
-	header::HeaderConfig,
-	registry::RegistryEntry,
-	types::{FlagType, RegisterType},
-};
+use crate::global::{header::Header, registry::RegistryEntry, types::{FlagType, RegisterType}};
 pub use config::BuilderConfig;
 
 use ed25519_dalek::Signer;
@@ -56,7 +52,7 @@ impl<'a> Builder<'a> {
 		buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
 		// Update how many bytes have been written
-		size += HeaderConfig::BASE_SIZE;
+		size += Header::BASE_SIZE;
 
 		let mut leaf_data = Vec::new();
 
@@ -67,7 +63,7 @@ impl<'a> Builder<'a> {
 		}
 
 		// Start counting the offset of the leafs from the end of the registry
-		let mut leaf_offset = reg_size + HeaderConfig::BASE_SIZE;
+		let mut leaf_offset = reg_size + Header::BASE_SIZE;
 
 		// Populate the archive glob
 		for leaf in self.leafs.iter_mut() {

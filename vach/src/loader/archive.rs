@@ -71,7 +71,7 @@ impl<T: Seek + Read> Archive<T> {
 		handle.seek(SeekFrom::Start(0))?;
 
 		// Validate magic
-		let mut buffer = [0x72; HeaderConfig::MAGIC_LENGTH];
+		let mut buffer = [0x72; crate::MAGIC_LENGTH];
 		handle.read_exact(&mut buffer)?;
 
 		if buffer != config.magic {
@@ -85,7 +85,7 @@ impl<T: Seek + Read> Archive<T> {
 		handle.seek(SeekFrom::Current(2))?;
 
 		// Validate version
-		let mut buffer = [0x72; HeaderConfig::VERSION_SIZE];
+		let mut buffer = [0x72; Header::VERSION_SIZE];
 		handle.read_exact(&mut buffer)?;
 
 		let archive_version = u16::from_le_bytes(buffer);

@@ -1,10 +1,10 @@
-use crate::global::{types::FlagType, header::HeaderConfig};
+use crate::global::{types::FlagType};
 use std::io;
 use ed25519_dalek as esdalek;
 
 #[derive(Debug)]
 pub struct BuilderConfig {
-	pub magic: [u8; HeaderConfig::MAGIC_LENGTH],
+	pub magic: [u8; crate::MAGIC_LENGTH],
 	pub content_version: u16,
 	pub flags: FlagType,
 	pub keypair: Option<esdalek::Keypair>,
@@ -43,7 +43,7 @@ impl Default for BuilderConfig {
 		BuilderConfig {
 			flags: FlagType::default(),
 			keypair: None,
-			magic: *HeaderConfig::MAGIC,
+			magic: *crate::DEFAULT_MAGIC,
 			content_version: 0,
 		}
 	}
