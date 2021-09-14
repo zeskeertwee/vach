@@ -18,6 +18,7 @@ pub struct Leaf<'a> {
 }
 
 impl<'a> Default for Leaf<'a> {
+	#[inline]
 	fn default() -> Leaf<'a> {
 		Leaf {
 			handle: Box::<&[u8]>::new(&[]),
@@ -29,6 +30,7 @@ impl<'a> Default for Leaf<'a> {
 }
 
 impl<'a> Leaf<'a> {
+	#[inline]
 	pub fn from_handle(handle: impl Read + 'a) -> anyhow::Result<Leaf<'a>> {
 		Ok(Leaf {
 			handle: Box::new(handle),
@@ -43,17 +45,14 @@ impl<'a> Leaf<'a> {
 		entry
 	}
 
-	#[inline]
 	pub fn compress(mut self, compress: CompressMode) -> Self {
 		self.compress = compress;
 		self
 	}
-	#[inline]
 	pub fn version(mut self, version: u8) -> Self {
 		self.content_version = version;
 		self
 	}
-	#[inline]
 	pub fn id(mut self, id: &str) -> Self {
 		self.id = id.to_string();
 		self

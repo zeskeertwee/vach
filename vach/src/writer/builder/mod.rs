@@ -12,12 +12,14 @@ pub struct Builder<'a> {
 }
 
 impl<'a> Default for Builder<'a> {
+	#[inline]
 	fn default() -> Builder<'a> {
 		Builder { leafs: Vec::new() }
 	}
 }
 
 impl<'a> Builder<'a> {
+	#[inline]
 	pub fn new() -> Builder<'a> {
 		Builder::default()
 	}

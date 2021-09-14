@@ -21,6 +21,7 @@ pub(crate) struct Registry {
 }
 
 impl Registry {
+	#[inline]
 	pub fn empty() -> Registry {
 		Registry {
 			entries: HashMap::new(),
@@ -121,12 +122,14 @@ impl Registry {
 			anyhow::bail!(format!("Resource not found: {}", id))
 		}
 	}
+	#[inline]
 	pub fn fetch_entry(&self, id: &str) -> Option<&RegistryEntry> {
 		self.entries.get(id)
 	}
 }
 
 impl Default for Registry {
+	#[inline]
 	fn default() -> Registry {
 		Registry::empty()
 	}
@@ -146,6 +149,7 @@ impl RegistryEntry {
 	// 2(flags) + 1(content version) + 64(crate::SIGNATURE_LENGTH) + 8(location) + 8(offset) + 2(path length)
 	pub(crate) const MIN_SIZE: usize = 85;
 
+	#[inline]
 	pub(crate) fn empty() -> RegistryEntry {
 		RegistryEntry {
 			flags: FlagType::default(),
@@ -199,6 +203,7 @@ impl RegistryEntry {
 }
 
 impl Default for RegistryEntry {
+	#[inline]
 	fn default() -> RegistryEntry {
 		RegistryEntry::empty()
 	}

@@ -12,6 +12,7 @@ pub struct Resource {
 }
 
 impl Resource {
+	#[inline]
 	pub fn new(data: &[u8], entry: &RegistryEntry) -> Resource {
 		Resource {
 			data: Vec::from(data),
@@ -34,6 +35,7 @@ impl fmt::Display for Resource {
 }
 
 impl Default for Resource {
+	#[inline]
 	fn default() -> Resource {
 		Resource {
 			data: Vec::new(),
