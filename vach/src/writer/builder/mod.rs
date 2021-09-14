@@ -1,5 +1,5 @@
 mod config;
-use super::leaf::Leaf;
+use super::leaf::{Leaf, CompressMode};
 use crate::global::{
     header::HeaderConfig,
     registry::RegistryEntry,
@@ -30,12 +30,16 @@ impl<'a> Builder<'a> {
         self.add_leaf(leaf);
         Ok(())
     }
-    pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {
+
+    #[inline]
+    pub fn add_leaf(&mut self, leaf: Leaf<'a>){
         self.leafs.push(leaf);
-        Ok(())
     }
 
-    pub fn write<W: Write>(&mut self, target: &mut W, config: &BuilderConfig) -> anyhow::Result<()> {
+    pub fn dump<W: Write>(&mut self, target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
+        // Keep track of how many bytes are written
+        let mut size = 0usize;
+
         // Write header in order defined in the spec document
         let mut buffer = BufWriter::new( target);
         buffer.write_all(&config.magic)?;
@@ -48,6 +52,9 @@ impl<'a> Builder<'a> {
         // Write the version of the Archive Format|Builder|Loader
         buffer.write_all(&crate::VERSION.to_le_bytes())?;
         buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
+
+        // Update how many bytes have been written
+        size += HeaderConfig::BASE_SIZE;
 
         let mut leaf_data = Vec::new();
 
@@ -66,21 +73,28 @@ impl<'a> Builder<'a> {
             let mut glob = Vec::new();
 
             // Create and compare compressed leaf data
-            if leaf.compress {
-                let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
-                let length = io::copy(&mut leaf.handle, &mut compressor)?;
-                let compressed_data = compressor.finish()?;
-
-                let ratio = compressed_data.len() as f32 / length as f32;
-                if ratio < 1f32 {
-                    entry.flags.insert(FlagType::COMPRESSED);
-                    glob = compressed_data;
-                } else {
-                    drop(compressed_data);
-                };
-            } else {
-                io::copy(&mut leaf.handle, &mut glob)?;
-            };
+            match leaf.compress {
+                CompressMode::Never => {
+                    io::copy(&mut leaf.handle, &mut glob)?;
+                }
+                CompressMode::Always => {
+                    let mut compressor = lz4::frame::FrameEncoder::new(&mut glob);
+                    io::copy(&mut leaf.handle, &mut compressor)?;
+                }
+                CompressMode::Detect => {
+                    let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
+                    let length = io::copy(&mut leaf.handle, &mut compressor)?;
+                    let compressed_data = compressor.finish()?;
+    
+                    let ratio = compressed_data.len() as f32 / length as f32;
+                    if ratio < 1f32 {
+                        entry.flags.insert(FlagType::COMPRESSED);
+                        glob = compressed_data;
+                    } else {
+                        drop(compressed_data);
+                    };
+                }
+            }
 
             let glob_length = glob.len();
 
@@ -101,9 +115,10 @@ impl<'a> Builder<'a> {
 
             {
                 // Write to the registry
-                let mut entry_b = entry.bytes(&(leaf.id.len() as u16), config.keypair.is_some());
-                entry_b.extend(leaf.id.as_bytes());
-                buffer.write_all(&entry_b)?;
+                let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16), config.keypair.is_some());
+                entry_bytes.extend(leaf.id.as_bytes());
+                buffer.write_all(&entry_bytes)?;
+                size += entry_bytes.len();
             };
 
             drop(glob)
@@ -111,8 +126,24 @@ impl<'a> Builder<'a> {
 
         // Write the glob
         buffer.write_all(&leaf_data)?;
+        size += leaf_data.len();
+
         drop(leaf_data);
 
-        Ok(())
+        Ok(size)
+    }
+}
+
+impl<'a> Read for Builder<'a> {
+    fn read(&mut self, target: &mut [u8]) -> Result<usize, io::Error> {
+        match self.dump(target, &BuilderConfig::default()) {
+            Ok(size) => Ok(size),
+            Err(err) => {
+                Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    err.to_string()
+                ))
+            },
+        }
     }
 }
