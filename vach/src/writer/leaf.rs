@@ -26,7 +26,7 @@ impl<'a> Default for Leaf<'a> {
 			id: String::new(),
 			content_version: 0,
 			compress: CompressMode::Detect,
-			custom_registry_flags: Flags,
+			custom_registry_flags: Flags::default(),
 		}
 	}
 }

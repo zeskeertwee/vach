@@ -68,7 +68,8 @@ mod tests {
 		let mut archive = Archive::from_handle(target)?;
 		let resource = archive.fetch("poem")?;
 		let flags = Flags::from_bits(resource.flags.bits());
-		assert_eq!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
+		assert_eq!(flags.bits(), resource.flags.bits());
+		assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
 
 		Ok(())
 	}
