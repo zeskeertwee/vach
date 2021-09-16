@@ -1,7 +1,8 @@
-[package]
-name = "vf"
-version = "0.1.0"
-edition = "2018"
+[workspace]
+members = [
+    "vach",
+    "vf"
+]
 
-[dependencies]
-anyhow = "1.0.42"
+[profile.release]
+lto = true
