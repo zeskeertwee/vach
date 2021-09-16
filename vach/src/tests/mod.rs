@@ -40,7 +40,7 @@ mod tests {
 		let _leaf = Leaf::default();
 		let _builder = Builder::new();
 		let _builder_config = BuilderConfig::default();
-		let _flags = FlagType::default();
+		let _flags = Flags::default();
 	}
 
 	#[test]
@@ -57,23 +57,18 @@ mod tests {
 	}
 
 	// Custom bitflag tests
-	crate::bitflags::bitflags! {
-		#[derive(Default)]
-		struct Custom: u16 {
-			const TRENT = 0b_0000_1000_0000_0000;
-			const DRUMLIN = 0b_0000_0100_0000_0000;
-			const DJ = 0b_0000_0010_0000_0000;
-			const TANISHA = 0b_0000_0001_0000_0000;
-		}
-	}
+	const CUSTOM_FLAG_1: u16 = 0b_0000_1000_0000_0000;
+	const CUSTOM_FLAG_2: u16 = 0b_0000_0100_0000_0000;
+	const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
+	const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
 
 	#[test]
-	fn load_bitflags() -> anyhow::Result<()> {
+	fn custom_bitflags() -> anyhow::Result<()> {
 		let target = File::open(SIMPLE_TARGET)?;
 		let mut archive = Archive::from_handle(target)?;
 		let resource = archive.fetch("poem")?;
-		let flags = Custom::from_bits(resource.flags.bits()).unwrap();
-		dbg!(flags);
+		let flags = Flags::from_bits(resource.flags.bits());
+		assert_eq!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
 
 		Ok(())
 	}
@@ -100,11 +95,16 @@ mod tests {
 		builder.add(File::open("test_data/bee.script")?, "script")?;
 		builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
 
+
+		let mut poem_flags = Flags::default();
+		poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true);
+
 		builder.add_leaf(
 			Leaf::from_handle(File::open("test_data/poem.txt")?)?
 				.compress(CompressMode::Never)
 				.version(10)
-				.id("poem"),
+				.id("poem")
+				.flags(poem_flags),
 		);
 
 		let mut target = File::create(SIMPLE_TARGET)?;

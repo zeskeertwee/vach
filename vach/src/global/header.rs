@@ -1,4 +1,4 @@
-use crate::global::types::FlagType;
+use crate::global::types::Flags;
 use anyhow;
 use ed25519_dalek as esdalek;
 use std::{
@@ -71,7 +71,7 @@ impl Default for HeaderConfig {
 #[derive(Debug)]
 pub(crate) struct Header {
 	pub magic: [u8; crate::MAGIC_LENGTH], // VfACH
-	pub flags: FlagType,
+	pub flags: Flags,
 	pub arch_version: u16,
 	pub capacity: u16,
 }
@@ -81,7 +81,7 @@ impl Default for Header {
 	fn default() -> Header {
 		Header {
 			magic: *crate::DEFAULT_MAGIC,
-			flags: FlagType::default(),
+			flags: Flags::default(),
 			arch_version: crate::VERSION,
 			capacity: 0,
 		}
@@ -128,10 +128,9 @@ impl Header {
 			// Read magic, [u8;5]
 			magic: buffer[0..crate::MAGIC_LENGTH].try_into()?,
 			// Read flags, u16 from [u8;2]
-			flags: FlagType::from_bits(u16::from_le_bytes(
+			flags: Flags::from_bits(u16::from_le_bytes(
 				buffer[crate::MAGIC_LENGTH..7].try_into()?,
-			))
-			.unwrap(),
+			)),
 			// Read version, u16 from [u8;2]
 			arch_version: u16::from_le_bytes(buffer[7..9].try_into()?),
 			// Read the capacity of the archive, u16 from [u8;2]

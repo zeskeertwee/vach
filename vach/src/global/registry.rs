@@ -1,7 +1,7 @@
 use crate::{
 	global::{
-		header::{Header},
-		types::{RegisterType, FlagType},
+		header::Header,
+		types::{Flags, COMPRESSED_FLAG},
 	},
 	loader::resource::Resource,
 };
@@ -66,7 +66,7 @@ impl Registry {
 			};
 
 			// Decompress
-			if entry.flags.contains(FlagType::COMPRESSED) {
+			if entry.flags.contains(COMPRESSED_FLAG) {
 				io::copy(
 					&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)),
 					&mut target,
@@ -108,7 +108,7 @@ impl Registry {
 			};
 
 			// Decompress
-			if entry.flags.contains(FlagType::COMPRESSED) {
+			if entry.flags.contains(COMPRESSED_FLAG) {
 				io::copy(
 					&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)),
 					&mut res.data,
@@ -137,12 +137,12 @@ impl Default for Registry {
 
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
-	pub flags: FlagType,
+	pub flags: Flags,
 	pub content_version: u8,
 	pub signature: esdalek::Signature,
 
-	pub(crate) location: RegisterType,
-	pub(crate) offset: RegisterType,
+	pub(crate) location: u64,
+	pub(crate) offset: u64,
 }
 
 impl RegistryEntry {
@@ -152,7 +152,7 @@ impl RegistryEntry {
 	#[inline]
 	pub(crate) fn empty() -> RegistryEntry {
 		RegistryEntry {
-			flags: FlagType::default(),
+			flags: Flags::default(),
 			content_version: 0,
 			signature: esdalek::Signature::new([0; 64]),
 			location: 0,
@@ -167,7 +167,7 @@ impl RegistryEntry {
 
 		// Construct entry
 		let mut entry = RegistryEntry::empty();
-		entry.flags = FlagType::from_bits(u16::from_le_bytes(buffer[0..2].try_into()?)).unwrap();
+		entry.flags = Flags::from_bits(u16::from_le_bytes(buffer[0..2].try_into()?));
 		entry.content_version = buffer[2];
 
 		// Only produce a flag from data that is signed
@@ -175,8 +175,8 @@ impl RegistryEntry {
 			entry.signature = buffer[3..67].try_into()?
 		};
 
-		entry.location = RegisterType::from_le_bytes(buffer[67..75].try_into()?);
-		entry.offset = RegisterType::from_le_bytes(buffer[75..83].try_into()?);
+		entry.location = u64::from_le_bytes(buffer[67..75].try_into()?);
+		entry.offset = u64::from_le_bytes(buffer[75..83].try_into()?);
 
 		// Construct ID
 		let id_length = u16::from_le_bytes(buffer[83..RegistryEntry::MIN_SIZE].try_into()?);

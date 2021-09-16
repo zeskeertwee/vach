@@ -9,7 +9,6 @@ pub(crate) mod writer;
 
 // Re-exports
 pub use rand;
-pub use bitflags;
 
 /// Current file spec version, both `Loader` and `Builder`
 pub const VERSION: u16 = 13;

@@ -1,5 +1,5 @@
 use crate::{
-	global::{registry::RegistryEntry},
+	global::{registry::RegistryEntry, types::Flags},
 };
 use std::{io::Read};
 
@@ -15,6 +15,7 @@ pub struct Leaf<'a> {
 	pub id: String,
 	pub content_version: u8,
 	pub compress: CompressMode,
+	pub custom_registry_flags: Flags,
 }
 
 impl<'a> Default for Leaf<'a> {
@@ -25,6 +26,7 @@ impl<'a> Default for Leaf<'a> {
 			id: String::new(),
 			content_version: 0,
 			compress: CompressMode::Detect,
+			custom_registry_flags: Flags,
 		}
 	}
 }
@@ -34,9 +36,7 @@ impl<'a> Leaf<'a> {
 	pub fn from_handle(handle: impl Read + 'a) -> anyhow::Result<Leaf<'a>> {
 		Ok(Leaf {
 			handle: Box::new(handle),
-			id: String::new(),
-			content_version: 0,
-			compress: CompressMode::Detect,
+			..Default::default()
 		})
 	}
 	pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
@@ -55,6 +55,10 @@ impl<'a> Leaf<'a> {
 	}
 	pub fn id(mut self, id: &str) -> Self {
 		self.id = id.to_string();
+		self
+	}
+	pub fn flags(mut self, flags: Flags) -> Self {
+		self.custom_registry_flags = flags;
 		self
 	}
 }
