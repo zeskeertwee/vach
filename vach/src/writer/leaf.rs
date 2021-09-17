@@ -15,7 +15,7 @@ pub struct Leaf<'a> {
 	pub id: String,
 	pub content_version: u8,
 	pub compress: CompressMode,
-	pub custom_registry_flags: Flags,
+	pub flags: Flags,
 }
 
 impl<'a> Default for Leaf<'a> {
@@ -26,7 +26,7 @@ impl<'a> Default for Leaf<'a> {
 			id: String::new(),
 			content_version: 0,
 			compress: CompressMode::Detect,
-			custom_registry_flags: Flags::default(),
+			flags: Flags::default(),
 		}
 	}
 }
@@ -42,6 +42,7 @@ impl<'a> Leaf<'a> {
 	pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
 		let mut entry = RegistryEntry::empty();
 		entry.content_version = self.content_version;
+		entry.flags = self.flags;
 		entry
 	}
 
@@ -58,7 +59,7 @@ impl<'a> Leaf<'a> {
 		self
 	}
 	pub fn flags(mut self, flags: Flags) -> Self {
-		self.custom_registry_flags = flags;
+		self.flags = flags;
 		self
 	}
 }
