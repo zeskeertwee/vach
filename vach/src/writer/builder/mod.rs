@@ -1,6 +1,6 @@
 mod config;
 use super::leaf::{Leaf, CompressMode};
-use crate::global::{header::Header, registry::RegistryEntry, types::{Flags, SIGNED_FLAG, COMPRESSED_FLAG}};
+use crate::global::{header::Header, registry::RegistryEntry, types::{Flags}};
 pub use config::BuilderConfig;
 
 use ed25519_dalek::Signer;
@@ -45,7 +45,7 @@ impl<'a> Builder<'a> {
 		// INSERT flags
 		let mut temp = config.flags;
 		if config.keypair.is_some() {
-			temp._set(SIGNED_FLAG, true);
+			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
 		buffer.write_all(&temp.bits().to_le_bytes())?;
 
@@ -88,7 +88,7 @@ impl<'a> Builder<'a> {
 
 					let ratio = compressed_data.len() as f32 / length as f32;
 					if ratio < 1f32 {
-						entry.flags._set(COMPRESSED_FLAG, true);
+						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 						glob = compressed_data;
 					} else {
 						drop(compressed_data);
@@ -111,6 +111,7 @@ impl<'a> Builder<'a> {
 				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
 				glob.extend(leaf.id.as_bytes());
 				entry.signature = keypair.sign(&glob);
+				entry.flags.force_set(Flags::SIGNED_FLAG, true);
 			};
 
 			{
