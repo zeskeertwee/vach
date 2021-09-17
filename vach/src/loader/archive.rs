@@ -60,7 +60,6 @@ impl<T: Seek + Read> Archive<T> {
 	}
 
 	// Query functions
-	#[inline]
 	pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
 		let mut buffer = Vec::new();
 		let (flags, content_version) = self.fetch_write(id, &mut buffer)?;
@@ -70,7 +69,6 @@ impl<T: Seek + Read> Archive<T> {
 			data: buffer
 		})
 	}
-	#[inline]
 	pub fn fetch_write(&mut self, id: &str, mut target: impl Write) -> anyhow::Result<(FlagType, u8)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
@@ -108,7 +106,6 @@ impl<T: Seek + Read> Archive<T> {
 			anyhow::bail!(format!("Resource not found: {}", id))
 		}
 	}
-	#[inline]
 	pub fn fetch_entry(&mut self, id: &str) -> Option<RegistryEntry> {
 		match self.entries.get(id) {
 			 Some(entry) => { Some(entry.clone()) },
