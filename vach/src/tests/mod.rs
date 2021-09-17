@@ -1,10 +1,6 @@
 /// This is meant to mirror as closely as possible, how users should use the crate
 #[cfg(test)]
 mod tests {
-	// The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
-	// We still need to conduct tests on them tho.
-	use crate::global::{header::Header, registry::*};
-
 	// Boring, average every day contemporary imports
 	use crate::prelude::*;
 	use std::{
@@ -32,6 +28,10 @@ mod tests {
 
 	#[test]
 	fn defaults() {
+		// The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
+		// We still need to conduct tests on them tho.
+		use crate::global::{header::Header, registry::*};
+
 		let _header_config = HeaderConfig::default();
 		let _header = Header::default();
 		let _registry = Registry::empty();
@@ -40,11 +40,13 @@ mod tests {
 		let _leaf = Leaf::default();
 		let _builder = Builder::new();
 		let _builder_config = BuilderConfig::default();
-		let _flags = FlagType::default();
+		let _flags = Flags::default();
 	}
 
 	#[test]
 	fn header_config() -> anyhow::Result<()> {
+		// We need a private dependency, Header to test ot
+		use crate::global::header::Header;
 		let config = HeaderConfig::new(*b"VfACH", 0, None);
 		let mut file = File::open("test_data/simple/target.vach")?;
 		format!("{}", &config);
@@ -57,23 +59,19 @@ mod tests {
 	}
 
 	// Custom bitflag tests
-	crate::bitflags::bitflags! {
-		#[derive(Default)]
-		struct Custom: u16 {
-			const TRENT = 0b_0000_1000_0000_0000;
-			const DRUMLIN = 0b_0000_0100_0000_0000;
-			const DJ = 0b_0000_0010_0000_0000;
-			const TANISHA = 0b_0000_0001_0000_0000;
-		}
-	}
+	const CUSTOM_FLAG_1: u16 = 0b_0000_1000_0000_0000;
+	const CUSTOM_FLAG_2: u16 = 0b_0000_0100_0000_0000;
+	const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
+	const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
 
 	#[test]
-	fn load_bitflags() -> anyhow::Result<()> {
+	fn custom_bitflags() -> anyhow::Result<()> {
 		let target = File::open(SIMPLE_TARGET)?;
 		let mut archive = Archive::from_handle(target)?;
 		let resource = archive.fetch("poem")?;
-		let flags = Custom::from_bits(resource.flags.bits()).unwrap();
-		dbg!(flags);
+		let flags = Flags::from_bits(resource.flags.bits());
+		assert_eq!(flags.bits(), resource.flags.bits());
+		assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
 
 		Ok(())
 	}
@@ -100,11 +98,18 @@ mod tests {
 		builder.add(File::open("test_data/bee.script")?, "script")?;
 		builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
 
+		let mut poem_flags = Flags::default();
+		poem_flags.set(
+			CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4,
+			true,
+		)?;
+
 		builder.add_leaf(
 			Leaf::from_handle(File::open("test_data/poem.txt")?)?
 				.compress(CompressMode::Never)
 				.version(10)
-				.id("poem"),
+				.id("poem")
+				.flags(poem_flags),
 		);
 
 		let mut target = File::create(SIMPLE_TARGET)?;
@@ -178,5 +183,35 @@ mod tests {
 		};
 
 		Ok(())
+	}
+
+	#[test]
+	#[should_panic]
+	fn flag_restricted_access() {
+		let mut flag = Flags::from_bits(0b1111_1000_0000_0000);
+		flag.set(Flags::COMPRESSED_FLAG, true).unwrap();
+	}
+
+	#[test]
+	fn flags_set_intersects() {
+		let mut flag = Flags::empty();
+
+		flag.force_set(Flags::COMPRESSED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
+
+		flag.force_set(Flags::SIGNED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG, false);
+		assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG, false);
+		assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
 	}
 }

@@ -1,13 +1,13 @@
 use std::fmt;
 use crate::{
-	global::{registry::RegistryEntry, types::FlagType},
+	global::{registry::RegistryEntry, types::Flags},
 };
 
 // Basically data obtained from an archive
 #[derive(Debug)]
 pub struct Resource {
 	pub data: Vec<u8>,
-	pub flags: FlagType,
+	pub flags: Flags,
 	pub content_version: u8,
 }
 
@@ -39,7 +39,7 @@ impl Default for Resource {
 	fn default() -> Resource {
 		Resource {
 			data: Vec::new(),
-			flags: FlagType::default(),
+			flags: Flags::default(),
 			content_version: 0,
 		}
 	}

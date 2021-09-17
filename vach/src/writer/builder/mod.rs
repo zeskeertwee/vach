@@ -1,6 +1,6 @@
 mod config;
 use super::leaf::{Leaf, CompressMode};
-use crate::global::{header::Header, registry::RegistryEntry, types::{FlagType, RegisterType}};
+use crate::global::{header::Header, registry::RegistryEntry, types::{Flags}};
 pub use config::BuilderConfig;
 
 use ed25519_dalek::Signer;
@@ -45,7 +45,7 @@ impl<'a> Builder<'a> {
 		// INSERT flags
 		let mut temp = config.flags;
 		if config.keypair.is_some() {
-			temp.insert(FlagType::SIGNED)
+			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
 		buffer.write_all(&temp.bits().to_le_bytes())?;
 
@@ -88,7 +88,7 @@ impl<'a> Builder<'a> {
 
 					let ratio = compressed_data.len() as f32 / length as f32;
 					if ratio < 1f32 {
-						entry.flags.insert(FlagType::COMPRESSED);
+						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 						glob = compressed_data;
 					} else {
 						drop(compressed_data);
@@ -101,9 +101,9 @@ impl<'a> Builder<'a> {
 			// Buffer the contents of the leaf, to be written later
 			leaf_data.extend(&glob);
 
-			entry.location = leaf_offset as RegisterType;
+			entry.location = leaf_offset as u64;
 			leaf_offset += glob_length;
-			entry.offset = glob_length as RegisterType;
+			entry.offset = glob_length as u64;
 
 			if let Some(keypair) = &config.keypair {
 				// The reason we include the path in the signature is to prevent mangling in the registry,

@@ -9,7 +9,6 @@ pub(crate) mod writer;
 
 // Re-exports
 pub use rand;
-pub use bitflags;
 
 /// Current file spec version, both `Loader` and `Builder`
 pub const VERSION: u16 = 13;
@@ -30,7 +29,7 @@ pub const SIGNATURE_LENGTH: usize = 64;
 pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
 
 /// The default MAGIC used by `vach`
-pub const DEFAULT_MAGIC: &'static [u8; 5] = b"VfACH";
+pub const DEFAULT_MAGIC: &[u8; 5] = b"VfACH";
 
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;

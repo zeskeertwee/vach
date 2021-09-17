@@ -1,4 +1,4 @@
-use crate::global::{types::FlagType};
+use crate::global::types::Flags;
 use std::io;
 use ed25519_dalek as esdalek;
 
@@ -6,7 +6,7 @@ use ed25519_dalek as esdalek;
 pub struct BuilderConfig {
 	pub magic: [u8; crate::MAGIC_LENGTH],
 	pub content_version: u16,
-	pub flags: FlagType,
+	pub flags: Flags,
 	pub keypair: Option<esdalek::Keypair>,
 }
 
@@ -20,7 +20,7 @@ impl BuilderConfig {
 		self.content_version = version;
 		self
 	}
-	pub fn flags(mut self, flags: FlagType) -> Self {
+	pub fn flags(mut self, flags: Flags) -> Self {
 		self.flags = flags;
 		self
 	}
@@ -41,7 +41,7 @@ impl BuilderConfig {
 impl Default for BuilderConfig {
 	fn default() -> BuilderConfig {
 		BuilderConfig {
-			flags: FlagType::default(),
+			flags: Flags::default(),
 			keypair: None,
 			magic: *crate::DEFAULT_MAGIC,
 			content_version: 0,
