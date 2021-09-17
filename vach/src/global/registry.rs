@@ -1,7 +1,7 @@
 use crate::{
 	global::{
 		header::Header,
-		types::{Flags, COMPRESSED_FLAG},
+		types::{Flags},
 	},
 	loader::resource::Resource,
 };
@@ -66,7 +66,7 @@ impl Registry {
 			};
 
 			// Decompress
-			if entry.flags.contains(COMPRESSED_FLAG) {
+			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 				io::copy(
 					&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)),
 					&mut target,
@@ -108,7 +108,7 @@ impl Registry {
 			};
 
 			// Decompress
-			if entry.flags.contains(COMPRESSED_FLAG) {
+			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 				io::copy(
 					&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)),
 					&mut res.data,
