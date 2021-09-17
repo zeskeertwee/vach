@@ -1,10 +1,6 @@
 /// This is meant to mirror as closely as possible, how users should use the crate
 #[cfg(test)]
 mod tests {
-	// The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
-	// We still need to conduct tests on them tho.
-	use crate::global::{header::Header, registry::*};
-
 	// Boring, average every day contemporary imports
 	use crate::prelude::*;
 	use std::{
@@ -32,6 +28,10 @@ mod tests {
 
 	#[test]
 	fn defaults() {
+		// The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
+		// We still need to conduct tests on them tho.
+		use crate::global::{header::Header, registry::*};
+
 		let _header_config = HeaderConfig::default();
 		let _header = Header::default();
 		let _registry = Registry::empty();
@@ -45,6 +45,8 @@ mod tests {
 
 	#[test]
 	fn header_config() -> anyhow::Result<()> {
+		// We need a private dependency, Header to test ot
+		use crate::global::header::Header;
 		let config = HeaderConfig::new(*b"VfACH", 0, None);
 		let mut file = File::open("test_data/simple/target.vach")?;
 		format!("{}", &config);
@@ -96,9 +98,11 @@ mod tests {
 		builder.add(File::open("test_data/bee.script")?, "script")?;
 		builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
 
-
 		let mut poem_flags = Flags::default();
-		poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true);
+		poem_flags.set(
+			CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4,
+			true,
+		)?;
 
 		builder.add_leaf(
 			Leaf::from_handle(File::open("test_data/poem.txt")?)?
@@ -179,5 +183,35 @@ mod tests {
 		};
 
 		Ok(())
+	}
+
+	#[test]
+	#[should_panic]
+	fn flag_restricted_access() {
+		let mut flag = Flags::from_bits(0b1111_1000_0000_0000);
+		flag.set(Flags::COMPRESSED_FLAG, true).unwrap();
+	}
+
+	#[test]
+	fn flags_set_intersects() {
+		let mut flag = Flags::empty();
+
+		flag.force_set(Flags::COMPRESSED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
+
+		flag.force_set(Flags::SIGNED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG, false);
+		assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG, false);
+		assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
+
+		flag.force_set(Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG, true);
+		assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
 	}
 }
