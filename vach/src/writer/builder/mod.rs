@@ -111,7 +111,6 @@ impl<'a> Builder<'a> {
 				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
 				glob.extend(leaf.id.as_bytes());
 				entry.signature = keypair.sign(&glob);
-				entry.flags.force_set(Flags::SIGNED_FLAG, true);
 			};
 
 			{
