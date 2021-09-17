@@ -1,6 +1,6 @@
 mod config;
 use super::leaf::{Leaf, CompressMode};
-use crate::global::{header::Header, registry::RegistryEntry, types::{FlagType, RegisterType}};
+use crate::global::{header::Header, reg_entry::RegistryEntry, types::{FlagType, RegisterType}};
 pub use config::BuilderConfig;
 
 use ed25519_dalek::Signer;

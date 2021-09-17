@@ -1,6 +1,6 @@
 use std::fmt;
 use crate::{
-	global::{registry::RegistryEntry, types::FlagType},
+	global::{reg_entry::RegistryEntry, types::FlagType},
 };
 
 // Basically data obtained from an archive

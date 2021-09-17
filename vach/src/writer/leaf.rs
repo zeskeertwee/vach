@@ -1,5 +1,5 @@
 use crate::{
-	global::{registry::RegistryEntry},
+	global::{reg_entry::RegistryEntry},
 };
 use std::{io::Read};
 
