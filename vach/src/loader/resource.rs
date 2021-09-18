@@ -1,6 +1,6 @@
 use std::fmt;
 use crate::{
-	global::{registry::RegistryEntry, types::Flags},
+	global::{reg_entry::RegistryEntry, types::Flags},
 };
 
 // Basically data obtained from an archive
@@ -12,7 +12,6 @@ pub struct Resource {
 }
 
 impl Resource {
-	#[inline]
 	pub fn new(data: &[u8], entry: &RegistryEntry) -> Resource {
 		Resource {
 			data: Vec::from(data),
@@ -35,7 +34,7 @@ impl fmt::Display for Resource {
 }
 
 impl Default for Resource {
-	#[inline]
+	#[inline(always)]
 	fn default() -> Resource {
 		Resource {
 			data: Vec::new(),
