@@ -2,7 +2,7 @@ use anyhow;
 
 // Private utility function
 fn _contains(first: u16, other: u16) -> bool {
-	!((first & other) == 0)
+	(first & other) != 0
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
