@@ -12,14 +12,14 @@ pub struct Builder<'a> {
 }
 
 impl<'a> Default for Builder<'a> {
-	#[inline]
+	#[inline(always)]
 	fn default() -> Builder<'a> {
 		Builder { leafs: Vec::new() }
 	}
 }
 
 impl<'a> Builder<'a> {
-	#[inline]
+	#[inline(always)]
 	pub fn new() -> Builder<'a> {
 		Builder::default()
 	}
@@ -29,7 +29,7 @@ impl<'a> Builder<'a> {
 		Ok(())
 	}
 
-	#[inline]
+	#[inline(always)]
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) {
 		self.leafs.push(leaf);
 	}

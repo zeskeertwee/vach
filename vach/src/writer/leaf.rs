@@ -18,7 +18,7 @@ pub struct Leaf<'a> {
 }
 
 impl<'a> Default for Leaf<'a> {
-	#[inline]
+	#[inline(always)]
 	fn default() -> Leaf<'a> {
 		Leaf {
 			handle: Box::<&[u8]>::new(&[]),
@@ -30,7 +30,7 @@ impl<'a> Default for Leaf<'a> {
 }
 
 impl<'a> Leaf<'a> {
-	#[inline]
+	#[inline(always)]
 	pub fn from_handle(handle: impl Read + 'a) -> anyhow::Result<Leaf<'a>> {
 		Ok(Leaf {
 			handle: Box::new(handle),

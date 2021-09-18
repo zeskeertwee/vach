@@ -26,7 +26,7 @@ impl RegistryEntry {
 	// 2(flags) + 1(content version) + 64(crate::SIGNATURE_LENGTH) + 8(location) + 8(offset) + 2(path length)
 	pub(crate) const MIN_SIZE: usize = 85;
 
-	#[inline]
+	#[inline(always)]
 	pub(crate) fn empty() -> RegistryEntry {
 		RegistryEntry {
 			flags: FlagType::default(),
@@ -80,7 +80,7 @@ impl RegistryEntry {
 }
 
 impl Default for RegistryEntry {
-	#[inline]
+	#[inline(always)]
 	fn default() -> RegistryEntry {
 		RegistryEntry::empty()
 	}

@@ -22,7 +22,7 @@ pub struct Archive<T> {
 }
 
 impl Archive<Cursor<Vec<u8>>> {
-	#[inline]
+	#[inline(always)]
 	pub fn empty() -> Archive<Cursor<Vec<u8>>> {
 		Archive {
 			header: Header::default(),
@@ -35,6 +35,7 @@ impl Archive<Cursor<Vec<u8>>> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
+	#[inline(always)]
 	pub fn from_handle(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
@@ -43,7 +44,7 @@ impl<T: Seek + Read> Archive<T> {
 		mut handle: T, config: &HeaderConfig,
 	) -> anyhow::Result<Archive<impl Seek + Read>> {
 		let header = Header::from_handle(&mut handle)?;
-		Header::validate(&header, &config)?;
+		Header::validate(&header, config)?;
 		// Generate and store Registry Entries
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
@@ -112,11 +113,12 @@ impl<T: Seek + Read> Archive<T> {
 			 None => None,
 		}
 	}
-	#[inline]
+	#[inline(always)]
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> { &self.entries }
 }
 
 impl Default for Archive<Cursor<Vec<u8>>> {
+	#[inline(always)]
 	fn default() -> Archive<Cursor<Vec<u8>>> {
 		Archive::empty()
 	}
