@@ -30,11 +30,10 @@ mod tests {
 	fn defaults() {
 		// The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
 		// We still need to conduct tests on them tho.
-		use crate::global::{header::Header, registry::*};
+		use crate::global::{header::Header, reg_entry::*};
 
 		let _header_config = HeaderConfig::default();
 		let _header = Header::default();
-		let _registry = Registry::empty();
 		let _registry_entry = RegistryEntry::empty();
 		let _resource = Resource::default();
 		let _leaf = Leaf::default();

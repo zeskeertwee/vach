@@ -50,7 +50,6 @@ impl HeaderConfig {
 }
 
 impl fmt::Display for HeaderConfig {
-	#[inline]
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(
 			f,
@@ -62,7 +61,7 @@ impl fmt::Display for HeaderConfig {
 }
 
 impl Default for HeaderConfig {
-	#[inline]
+	#[inline(always)]
 	fn default() -> Self {
 		HeaderConfig::new(*crate::DEFAULT_MAGIC, crate::VERSION, None)
 	}
@@ -77,7 +76,7 @@ pub(crate) struct Header {
 }
 
 impl Default for Header {
-	#[inline]
+	#[inline(always)]
 	fn default() -> Header {
 		Header {
 			magic: *crate::DEFAULT_MAGIC,
