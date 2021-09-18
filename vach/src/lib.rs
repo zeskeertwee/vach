@@ -1,4 +1,5 @@
 #![allow(clippy::or_fun_call)]
+#![allow(clippy::manual_map)]
 
 /// All tests are included in this module.
 mod tests;
@@ -30,7 +31,7 @@ pub const SIGNATURE_LENGTH: usize = 64;
 pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
 
 /// The default MAGIC used by `vach`
-pub const DEFAULT_MAGIC: &'static [u8; 5] = b"VfACH";
+pub const DEFAULT_MAGIC: &[u8; 5] = b"VfACH";
 
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;
