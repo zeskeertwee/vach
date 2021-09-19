@@ -48,10 +48,10 @@ impl<T: Seek + Read> Archive<T> {
 
 		// Generate and store Registry Entries
 		let mut entries = HashMap::new();
-		for _ in 0..header.capacity {
+		(0..header.capacity).for_each(|_| {
 			let (entry, id) = RegistryEntry::from_handle(&mut handle, config.public_key.is_some())?;
 			entries.insert(id, entry);
-		};
+		});
 
 		Ok(Archive {
 			header,
