@@ -11,7 +11,6 @@ use std::{
 };
 use ed25519_dalek as esdalek;
 
-
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
 	pub flags: Flags,

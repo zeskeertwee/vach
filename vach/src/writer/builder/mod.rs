@@ -1,6 +1,10 @@
 mod config;
 use super::leaf::{Leaf, CompressMode};
-use crate::global::{header::Header, reg_entry::RegistryEntry, types::{Flags}};
+use crate::global::{
+	header::Header,
+	reg_entry::RegistryEntry,
+	types::{Flags},
+};
 pub use config::BuilderConfig;
 
 use ed25519_dalek::Signer;
@@ -34,12 +38,17 @@ impl<'a> Builder<'a> {
 		let directory = fs::read_dir(path)?;
 		for file in directory {
 			let uri = file?.path();
-			let v = uri.iter().map(|u| String::from(u.to_str().unwrap())).collect::<Vec<String>>();
+			let v = uri
+				.iter()
+				.map(|u| String::from(u.to_str().unwrap()))
+				.collect::<Vec<String>>();
 
 			if !uri.is_dir() {
 				// Therefore a file
 				let file = fs::File::open(uri)?;
-				let leaf = Leaf::from_handle(file)?.template(template).id(&format!("{}/{}", v[0], v[1]));
+				let leaf = Leaf::from_handle(file)?
+					.template(template)
+					.id(&format!("{}/{}", v[0], v[1]));
 
 				self.leafs.push(leaf);
 			}
@@ -93,7 +102,9 @@ impl<'a> Builder<'a> {
 
 			// Create and compare compressed leaf data
 			match leaf.compress {
-				CompressMode::Never => { io::copy(&mut leaf.handle, &mut glob)?; }
+				CompressMode::Never => {
+					io::copy(&mut leaf.handle, &mut glob)?;
+				}
 				CompressMode::Always => {
 					let mut compressor = lz4::frame::FrameEncoder::new(&mut glob);
 					io::copy(&mut leaf.handle, &mut compressor)?;
