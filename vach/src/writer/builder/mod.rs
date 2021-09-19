@@ -34,7 +34,7 @@ impl<'a> Builder<'a> {
 		let directory = fs::read_dir(path)?;
 		for file in directory {
 			let uri = file?.path();
-			let v: Vec<String> = uri.iter().map(|u| String::from(u.to_str().unwrap())).collect();
+			let v = uri.iter().map(|u| String::from(u.to_str().unwrap())).collect::<Vec<String>>();
 
 			if !uri.is_dir() {
 				// Therefore a file
