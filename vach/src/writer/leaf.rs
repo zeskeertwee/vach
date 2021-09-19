@@ -3,6 +3,7 @@ use crate::{
 };
 use std::{io::Read};
 
+#[derive(Clone, Copy)]
 pub enum CompressMode {
 	Always,
 	Detect,
@@ -46,6 +47,12 @@ impl<'a> Leaf<'a> {
 		entry
 	}
 
+	pub fn template(mut self, other: &Leaf) -> Self {
+		self.compress = other.compress;
+		self.content_version = other.content_version;
+		self.flags = other.flags;
+		self
+	}
 	pub fn compress(mut self, compress: CompressMode) -> Self {
 		self.compress = compress;
 		self

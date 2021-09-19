@@ -45,6 +45,7 @@ impl<T: Seek + Read> Archive<T> {
 	) -> anyhow::Result<Archive<impl Seek + Read>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
+
 		// Generate and store Registry Entries
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {

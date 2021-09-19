@@ -128,7 +128,7 @@ mod tests {
 		config.load_public_key(keypair)?;
 
 		let mut archive = Archive::with_config(target, &config)?;
-		let resource = archive.fetch("song")?;
+		let resource = archive.fetch("test_data/song.txt")?;
 		println!("{}", str::from_utf8(resource.data.as_slice())?);
 
 		Ok(())
@@ -140,9 +140,7 @@ mod tests {
 		let mut build_config = BuilderConfig::default();
 		build_config.load_keypair(File::open(KEYPAIR)?)?;
 
-		builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
-		builder.add(File::open("test_data/song.txt")?, "song")?;
-		builder.add(File::open("test_data/poem.txt")?, "poem")?;
+		builder.add_dir("test_data", &Leaf::default())?;
 
 		let mut target = File::create(SIGNED_TARGET)?;
 		builder.dump(&mut target, &build_config)?;
@@ -162,7 +160,7 @@ mod tests {
 
 		let mut archive = Archive::with_config(target, &config)?;
 		let mut string = Vec::new();
-		archive.fetch_write("song", &mut string)?;
+		archive.fetch_write("test_data/song.txt", &mut string)?;
 		println!("{}", str::from_utf8(&string)?);
 
 		Ok(())

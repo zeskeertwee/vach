@@ -28,6 +28,29 @@ impl<'a> Builder<'a> {
 		self.add_leaf(leaf);
 		Ok(())
 	}
+	pub fn add_dir(&mut self, path: &str, template: &Leaf) -> anyhow::Result<()> {
+		use std::fs;
+
+		let directory = fs::read_dir(path)?;
+		for file in directory {
+			let uri = file?.path();
+
+			if !uri.is_dir() {
+				// Therefore a file
+				let path = match uri.to_str().ok_or("Error constructing string from path provided: Invalid UTF-8 text") {
+					 Ok(path) => { String::from(path) },
+					 Err(err) => { anyhow::bail!(err) },
+				};
+
+				let file = fs::File::open(uri)?;
+				let leaf = Leaf::from_handle(file)?.template(template).id(&path);
+
+				self.leafs.push(leaf);
+			}
+		}
+
+		Ok(())
+	}
 
 	#[inline(always)]
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) {
@@ -74,9 +97,7 @@ impl<'a> Builder<'a> {
 
 			// Create and compare compressed leaf data
 			match leaf.compress {
-				CompressMode::Never => {
-					io::copy(&mut leaf.handle, &mut glob)?;
-				}
+				CompressMode::Never => { io::copy(&mut leaf.handle, &mut glob)?; }
 				CompressMode::Always => {
 					let mut compressor = lz4::frame::FrameEncoder::new(&mut glob);
 					io::copy(&mut leaf.handle, &mut compressor)?;
