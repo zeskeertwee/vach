@@ -34,16 +34,12 @@ impl<'a> Builder<'a> {
 		let directory = fs::read_dir(path)?;
 		for file in directory {
 			let uri = file?.path();
+			let v: Vec<String> = uri.iter().map(|u| String::from(u.to_str().unwrap())).collect();
 
 			if !uri.is_dir() {
 				// Therefore a file
-				let path = match uri.to_str().ok_or("Error constructing string from path provided: Invalid UTF-8 text") {
-					 Ok(path) => { String::from(path) },
-					 Err(err) => { anyhow::bail!(err) },
-				};
-
 				let file = fs::File::open(uri)?;
-				let leaf = Leaf::from_handle(file)?.template(template).id(&path);
+				let leaf = Leaf::from_handle(file)?.template(template).id(&format!("{}/{}", v[0], v[1]));
 
 				self.leafs.push(leaf);
 			}
