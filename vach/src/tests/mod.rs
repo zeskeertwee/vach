@@ -160,7 +160,7 @@ mod tests {
 
 		let mut archive = Archive::with_config(target, &config)?;
 		let mut string = Vec::new();
-		archive.fetch_write("song", &mut string)?;
+		archive.fetch_write("test_data/song.txt", &mut string)?;
 		println!("{}", str::from_utf8(&string)?);
 
 		Ok(())
