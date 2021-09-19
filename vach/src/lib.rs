@@ -1,4 +1,5 @@
 #![allow(clippy::or_fun_call)]
+#![allow(clippy::manual_map)]
 
 /// All tests are included in this module.
 mod tests;
