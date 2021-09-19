@@ -41,7 +41,7 @@ impl<T: Seek + Read> Archive<T> {
 		mut handle: T, config: &HeaderConfig,
 	) -> anyhow::Result<Archive<impl Seek + Read>> {
 		let header = Header::from_handle(&mut handle)?;
-		Header::validate(&header, &config)?;
+		Header::validate(&header, config)?;
 		let registry = Registry::from_handle(&mut handle, &header, config.public_key.is_some())?;
 
 		Ok(Archive {
