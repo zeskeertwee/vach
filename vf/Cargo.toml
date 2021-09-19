@@ -1,0 +1,12 @@
+[package]
+name = "vf"
+version = "0.1.0"
+edition = "2018"
+authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
+description = "A wrapper around the `vach` crate, for management of archives"
+license = "GPL-2.0"
+homepage = "https://github.com/sokorototo/vf"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
