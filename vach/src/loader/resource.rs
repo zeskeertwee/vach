@@ -1,24 +1,19 @@
 use std::fmt;
 use crate::{
-	global::{reg_entry::RegistryEntry, types::Flags},
+	global::{types::Flags},
 };
 
-// Basically data obtained from an archive
+/// Basically decompressed data obtained from an archive.
+/// Contains `data`, `flags` and `content_version` fields.
+/// Is returned by `archive.fetch()`
 #[derive(Debug)]
 pub struct Resource {
+	/// The decompressed data, stored in a vector of bytes.
 	pub data: Vec<u8>,
+	/// The flags extracted from the archive source and parsed into a struct
 	pub flags: Flags,
+	/// The content version extracted from the archive source
 	pub content_version: u8,
-}
-
-impl Resource {
-	pub fn new(data: &[u8], entry: &RegistryEntry) -> Resource {
-		Resource {
-			data: Vec::from(data),
-			flags: entry.flags,
-			content_version: entry.content_version,
-		}
-	}
 }
 
 impl fmt::Display for Resource {
