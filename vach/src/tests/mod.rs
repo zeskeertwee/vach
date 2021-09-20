@@ -105,7 +105,7 @@ mod tests {
 
 		builder.add_leaf(
 			Leaf::from_handle(File::open("test_data/poem.txt")?)?
-				.compress(CompressMode::Never)
+				.compress(CompressMode::Detect)
 				.version(10)
 				.id("poem")
 				.flags(poem_flags),
