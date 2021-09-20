@@ -28,7 +28,7 @@ impl Archive<Cursor<Vec<u8>>> {
 			header: Header::default(),
 			handle: Cursor::new(Vec::new()),
 			key: None,
-			entries: HashMap::new()
+			entries: HashMap::new(),
 		}
 	}
 }
@@ -51,7 +51,7 @@ impl<T: Seek + Read> Archive<T> {
 		for _ in 0..header.capacity {
 			let (entry, id) = RegistryEntry::from_handle(&mut handle, config.public_key.is_some())?;
 			entries.insert(id, entry);
-		};
+		}
 
 		Ok(Archive {
 			header,
@@ -65,10 +65,10 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
 		let mut buffer = Vec::new();
 		let (flags, content_version) = self.fetch_write(id, &mut buffer)?;
-		Ok(Resource{
+		Ok(Resource {
 			content_version,
 			flags,
-			data: buffer
+			data: buffer,
 		})
 	}
 	pub fn fetch_write(&mut self, id: &str, mut target: impl Write) -> anyhow::Result<(Flags, u8)> {
@@ -110,12 +110,14 @@ impl<T: Seek + Read> Archive<T> {
 	}
 	pub fn fetch_entry(&mut self, id: &str) -> Option<RegistryEntry> {
 		match self.entries.get(id) {
-			 Some(entry) => { Some(entry.clone()) },
-			 None => None,
+			Some(entry) => Some(entry.clone()),
+			None => None,
 		}
 	}
 	#[inline(always)]
-	pub fn entries(&self) -> &HashMap<String, RegistryEntry> { &self.entries }
+	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
+		&self.entries
+	}
 }
 
 impl Default for Archive<Cursor<Vec<u8>>> {

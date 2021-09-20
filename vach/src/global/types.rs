@@ -43,11 +43,11 @@ impl Flags {
 	}
 	pub(crate) fn force_set(&mut self, mask: u16, toggle: bool) {
 		if toggle {
-			 self.bits |= mask;
+			self.bits |= mask;
 		} else {
-			 self.bits &= !mask;
+			self.bits &= !mask;
 		}
-  }
+	}
 
 	#[inline(always)]
 	pub fn contains(&self, mask: u16) -> bool {
