@@ -25,8 +25,8 @@ impl fmt::Display for Resource {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(
 			f,
-			"[Resource] size: {length} bytes, content version: {version}, flags: {flags:b}",
-			length = self.data.len(),
+			"[Resource] size: {size} bytes, content version: {version}, flags: {flags:#016b}",
+			size = self.data.len(),
 			flags = &self.flags.bits(),
 			version = &self.content_version
 		)

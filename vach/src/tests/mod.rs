@@ -46,7 +46,7 @@ mod tests {
 	fn header_config() -> anyhow::Result<()> {
 		// We need a private dependency, Header to test ot
 		use crate::global::header::Header;
-		let config = HeaderConfig::new(*b"VfACH", 0, None);
+		let config = HeaderConfig::new(*b"VfACH",  None);
 		let mut file = File::open("test_data/simple/target.vach")?;
 		format!("{}", &config);
 
@@ -76,19 +76,19 @@ mod tests {
 	}
 
 	#[test]
-	fn loader_no_signature() -> anyhow::Result<()> {
+	fn fetch_no_signature() -> anyhow::Result<()> {
 		let target = File::open(SIMPLE_TARGET)?;
 		let mut archive = Archive::from_handle(target)?;
-		let resource = archive.fetch("wasm")?;
+		let resource = archive.fetch("poem")?;
 
 		println!("{}", resource);
-		println!("{}", archive.fetch_entry("wasm").unwrap());
+		println!("{}", archive.fetch_entry("poem").unwrap());
 
 		Ok(())
 	}
 
 	#[test]
-	fn writer_no_signature() -> anyhow::Result<()> {
+	fn builder_no_signature() -> anyhow::Result<()> {
 		let mut builder = Builder::default();
 		let build_config = BuilderConfig::default();
 
@@ -118,7 +118,7 @@ mod tests {
 	}
 
 	#[test]
-	fn loader_with_signature() -> anyhow::Result<()> {
+	fn fetch_with_signature() -> anyhow::Result<()> {
 		let target = File::open(SIGNED_TARGET)?;
 
 		// Load keypair
@@ -129,14 +129,19 @@ mod tests {
 
 		let mut archive = Archive::with_config(target, &config)?;
 		let resource = archive.fetch("test_data/song.txt")?;
-		println!("{}", str::from_utf8(resource.data.as_slice())?);
+		let song = str::from_utf8(resource.data.as_slice())?;
+
+		// Check identity of retrieved data
+		println!("{}", song);
+		assert_eq!(song.len(), 1977);
 
 		Ok(())
 	}
 
 	#[test]
-	fn writer_with_signature() -> anyhow::Result<()> {
+	fn builder_with_signature() -> anyhow::Result<()> {
 		let mut builder = Builder::default();
+
 		let mut build_config = BuilderConfig::default();
 		build_config.load_keypair(File::open(KEYPAIR)?)?;
 
@@ -159,9 +164,13 @@ mod tests {
 		config.load_public_key(keypair)?;
 
 		let mut archive = Archive::with_config(target, &config)?;
-		let mut string = Vec::new();
-		archive.fetch_write("test_data/song.txt", &mut string)?;
-		println!("{}", str::from_utf8(&string)?);
+		let mut song = Vec::new();
+
+		archive.fetch_write("test_data/poem.txt", &mut song)?;
+
+		// Assert identity of retrieved data
+		println!("{}", str::from_utf8(&song)?);
+		assert_eq!(song.len(), 345);
 
 		Ok(())
 	}

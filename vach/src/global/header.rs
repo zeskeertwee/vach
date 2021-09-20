@@ -8,38 +8,39 @@ use std::{
 	str,
 };
 
+/// An abstraction layer for configuring and giving extra information to the `Archive` loader.
+/// Used exclusively in archive source and integrity validation.
 #[derive(Debug)]
 pub struct HeaderConfig {
-	pub magic: [u8; crate::MAGIC_LENGTH],
-	pub minimum_version: u16,
+	/// If the archive has a custom magic sequence, pass the custom _MAGIC_ sequence here.
+	/// The custom _MAGIC_ sequence can then be used to validate archive sources.
+	 pub magic: [u8; crate::MAGIC_LENGTH],
+	/// An ed25519 public key. **If no key is provided, is `None`, then signature validation is ignored**. Even if the
+	/// archive source has signatures.
 	pub public_key: Option<esdalek::PublicKey>,
 }
 
-// Used to store data about headers and to validate magic and content version
 impl HeaderConfig {
+	/// Construct a new `HeaderConfig` struct.
+	/// ```ignore
+	/// use vach::{prelude::HeaderConfig, utils};
+	/// let public_key = utils::read_keypair(READ_HANDLE)?.public;
+	/// let config = HeaderConfig::new(*b"_TEST",  Some(public_key));
+	/// ```
 	pub fn new(
-		magic: [u8; 5], minimum_version: u16, key: Option<esdalek::PublicKey>,
+		magic: [u8; 5], key: Option<esdalek::PublicKey>,
 	) -> HeaderConfig {
 		HeaderConfig {
 			magic,
-			minimum_version,
 			public_key: key,
 		}
 	}
 
-	// Setters
-	pub fn minimum_version(mut self, version: u16) -> HeaderConfig {
-		self.minimum_version = version;
-		self
-	}
-	pub fn magic(mut self, magic: [u8; 5]) -> HeaderConfig {
-		self.magic = magic;
-		self
-	}
-	pub fn key(mut self, key: Option<esdalek::PublicKey>) -> HeaderConfig {
-		self.public_key = key;
-		self
-	}
+	/// Shorthand to load and parse an ed25519 public key from a `Read` handle, into this `HeaderConfig`,
+	/// ```ignore
+	/// let keypair_file = File::open(KEYPAIR)?;
+	/// config.load_public_key(keypair_file)?;
+	/// ```
 	pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> anyhow::Result<()> {
 		let mut keypair_bytes = [4; crate::PUBLIC_KEY_LENGTH];
 		handle.read_exact(&mut keypair_bytes)?;
@@ -53,9 +54,9 @@ impl fmt::Display for HeaderConfig {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(
 			f,
-			"[HeaderConfig] magic: {}, minimum_version: {}",
+			"[HeaderConfig] magic: {}, has_public_key: {}",
 			str::from_utf8(&self.magic).expect("Error constructing str from HeaderConfig::Magic"),
-			self.minimum_version
+			self.public_key.is_some()
 		)
 	}
 }
@@ -63,7 +64,7 @@ impl fmt::Display for HeaderConfig {
 impl Default for HeaderConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		HeaderConfig::new(*crate::DEFAULT_MAGIC, crate::VERSION, None)
+		HeaderConfig::new(*crate::DEFAULT_MAGIC, None)
 	}
 }
 
@@ -107,10 +108,10 @@ impl Header {
 		};
 
 		// Validate version
-		if config.minimum_version > header.arch_version {
+		if crate::VERSION > header.arch_version {
 			anyhow::bail!(format!(
-                "Minimum Archive Version requirement not met. Version found: {}, Minimum acceptable version: {}",
-                header.arch_version, config.minimum_version
+                "The provided archive source has version: {}. While the loader has a version: {}. The current loader is out of date!",
+                header.arch_version, crate::VERSION
             ))
 		};
 

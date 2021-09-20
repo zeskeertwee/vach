@@ -103,23 +103,26 @@ impl<'a> Builder<'a> {
 			// Create and compare compressed leaf data
 			match leaf.compress {
 				CompressMode::Never => {
-					io::copy(&mut leaf.handle, &mut glob)?;
+					leaf.handle.read_to_end(&mut glob)?;
 				}
 				CompressMode::Always => {
 					let mut compressor = lz4::frame::FrameEncoder::new(&mut glob);
 					io::copy(&mut leaf.handle, &mut compressor)?;
 				}
 				CompressMode::Detect => {
+					let mut buffer = Vec::new();
+					leaf.handle.read_to_end(&mut buffer)?;
+
 					let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
-					let length = io::copy(&mut leaf.handle, &mut compressor)?;
-					let compressed_data = compressor.finish()?;
+					let length = io::copy(&mut buffer.as_slice(), &mut compressor)?;
+					let mut compressed_data = compressor.finish()?;
 
 					let ratio = compressed_data.len() as f32 / length as f32;
 					if ratio < 1f32 {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-						glob = compressed_data;
+						glob.append(&mut compressed_data);
 					} else {
-						drop(compressed_data);
+						buffer.as_slice().read_to_end(&mut glob)?;
 					};
 				}
 			}
