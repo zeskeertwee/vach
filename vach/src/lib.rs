@@ -1,5 +1,8 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::manual_map)]
+#![deny(missing_docs)]
+
+//! MT
 
 /// All tests are included in this module.
 mod tests;
