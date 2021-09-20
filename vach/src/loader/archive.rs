@@ -15,7 +15,7 @@ use hashbrown::HashMap;
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching data and information about said data.
-/// It is configurable and can be configured using the `HeaderConfig` struct.
+/// It can be configured using the `HeaderConfig` struct.
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
@@ -26,14 +26,20 @@ pub struct Archive<T> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
+	/// Load an `Archive` with the default settings from a `Read` target.
+	/// The same as doing:
+	/// ```ignore
+	/// Archive::with_config(READ_HANDLE, &HeaderConfig::default())?;
+	/// ```
 	#[inline(always)]
 	pub fn from_handle(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
-	pub fn with_config(
-		mut handle: T, config: &HeaderConfig,
-	) -> anyhow::Result<Archive<impl Seek + Read>> {
+	/// Given a read handle, this will read and parse the data into an `Archive` struct.
+	/// Provide a refference to `HeaderConfig` and it will be used to validate the source and for further configuration.
+	/// If parsing fails, an `Err()` is returned.
+	pub fn with_config( mut handle: T, config: &HeaderConfig ) -> anyhow::Result<Archive<impl Seek + Read>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
@@ -53,7 +59,7 @@ impl<T: Seek + Read> Archive<T> {
 	}
 
 	/// Fetch a `Resource` with the given `ID`.
-	/// If the `ID` does not exist within the source, `None` is returned.
+	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
 		let mut buffer = Vec::new();
 		let (flags, content_version) = self.fetch_write(id, &mut buffer)?;
@@ -63,9 +69,10 @@ impl<T: Seek + Read> Archive<T> {
 			data: buffer,
 		})
 	}
-	/// Fetch data with the given `ID` and write it directly into the given `target`.
+
+	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
 	/// Returns a tuple containing the `Flags` and `content_version` of the data.
-	pub fn fetch_write(&mut self, id: &str, mut target: impl Write) -> anyhow::Result<(Flags, u8)> {
+	pub fn fetch_write<W: Write>(&mut self, id: &str, mut target: W) -> anyhow::Result<(Flags, u8)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			handle.seek(SeekFrom::Start(entry.location))?;
@@ -116,7 +123,7 @@ impl<T: Seek + Read> Archive<T> {
 			anyhow::bail!(format!("Resource not found: {}", id))
 		}
 	}
-	/// Fetch an `RegistryEntry` from this `Archive`.
+	/// Fetch a `RegistryEntry` from this `Archive`.
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
 	/// If no data has the given `id`, then None is returned.
 	pub fn fetch_entry(&mut self, id: &str) -> Option<RegistryEntry> {

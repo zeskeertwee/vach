@@ -11,6 +11,7 @@ use ed25519_dalek::Signer;
 use lz4_flex as lz4;
 use std::io::{self, BufWriter, Write, Read};
 
+/// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
 }
@@ -23,15 +24,22 @@ impl<'a> Default for Builder<'a> {
 }
 
 impl<'a> Builder<'a> {
+	/// Instantiates a new `Builder` with an empty processing queue.
 	#[inline(always)]
 	pub fn new() -> Builder<'a> {
 		Builder::default()
 	}
-	pub fn add(&mut self, data: impl Read + 'a, id: &str) -> anyhow::Result<()> {
+	/// Appends a read handle wrapped in a `Leaf` into the processing queue.
+	/// The `data` is wrapped in the default `Leaf`.
+	/// The second argument is the `ID` with which the embedded data will be tagged
+	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> anyhow::Result<()> {
 		let leaf = Leaf::from_handle(data)?.id(id);
 		self.add_leaf(leaf);
 		Ok(())
 	}
+	/// Loads all files from a directory and appends them into the processing queue.
+	/// A `Leaf` is passed as a template from which the wrapping `Leaf`s shall be based on.
+	/// Appended `Leaf`s have an `ID` of: `<directory_name>/<file_name>`. For example: "sounds/footstep.wav", "sample/script.data"
 	pub fn add_dir(&mut self, path: &str, template: &Leaf) -> anyhow::Result<()> {
 		use std::fs;
 
@@ -58,10 +66,14 @@ impl<'a> Builder<'a> {
 	}
 
 	#[inline(always)]
+	/// Append a preconstructed `Leaf` into the processing queue.
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) {
 		self.leafs.push(leaf);
 	}
 
+	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.
+	/// Custom *`MAGIC`*, Header flags and a `Keypair` can be presented using the `BuilderConfig` struct.
+	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the archive source.
 	pub fn dump<W: Write>(&mut self, target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
 		// Keep track of how many bytes are written
 		let mut size = 0usize;
@@ -167,6 +179,7 @@ impl<'a> Builder<'a> {
 }
 
 impl<'a> Read for Builder<'a> {
+	/// DOes exactly what `Builder::dump()` does, only uses `BuilderConfig::default()` for configuration.
 	fn read(&mut self, target: &mut [u8]) -> Result<usize, io::Error> {
 		match self.dump(target, &BuilderConfig::default()) {
 			Ok(size) => Ok(size),

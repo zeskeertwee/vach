@@ -8,7 +8,7 @@ use std::{
 	str,
 };
 
-/// An abstraction layer for configuring and giving extra information to the `Archive` loader.
+/// Used to configure and give extra information to the `Archive` loader.
 /// Used exclusively in archive source and integrity validation.
 #[derive(Debug)]
 pub struct HeaderConfig {
