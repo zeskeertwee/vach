@@ -1,5 +1,8 @@
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::manual_map)]
+#![deny(missing_docs)]
+
+//! MT
 
 /// All tests are included in this module.
 mod tests;
@@ -35,7 +38,7 @@ pub const DEFAULT_MAGIC: &[u8; 5] = b"VfACH";
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;
 
-/// Where all crate logic resides
+/// Where all crate logic resides; This module stores all `structs` associated with this crate. Constants can be accesses directly with `crate::<CONSTANT>`
 pub mod prelude {
 	pub use crate::global::{header::HeaderConfig, types::*};
 	pub use crate::loader::{archive::Archive, resource::Resource};
@@ -46,5 +49,5 @@ pub mod prelude {
 	pub use ed25519_dalek::{Keypair, PublicKey};
 }
 
-// Some utility functions to keep you happy
+/// Some utility functions to keep you happy
 pub mod utils;
