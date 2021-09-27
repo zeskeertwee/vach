@@ -134,6 +134,7 @@ mod tests {
 		// Check identity of retrieved data
 		println!("{}", song);
 		assert_eq!(song.len(), 1977);
+		assert!(resource.is_valid);
 
 		Ok(())
 	}
@@ -166,7 +167,8 @@ mod tests {
 		let mut archive = Archive::with_config(target, &config)?;
 		let mut song = Vec::new();
 
-		archive.fetch_write("test_data/poem.txt", &mut song)?;
+		let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
+		assert!(metadata.2);
 
 		// Assert identity of retrieved data
 		println!("{}", str::from_utf8(&song)?);

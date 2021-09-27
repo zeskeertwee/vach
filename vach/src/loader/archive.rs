@@ -62,19 +62,22 @@ impl<T: Seek + Read> Archive<T> {
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
 		let mut buffer = Vec::new();
-		let (flags, content_version) = self.fetch_write(id, &mut buffer)?;
+		let (flags, content_version, validated) = self.fetch_write(id, &mut buffer)?;
+
 		Ok(Resource {
 			content_version,
 			flags,
 			data: buffer,
+			is_valid: validated
 		})
 	}
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
-	/// Returns a tuple containing the `Flags` and `content_version` of the data.
-	pub fn fetch_write<W: Write>(&mut self, id: &str, mut target: W) -> anyhow::Result<(Flags, u8)> {
+	/// Returns a tuple containing the `Flags`, `content_version` and `is_valid`, ie validity, of the data.
+	pub fn fetch_write<W: Write>(&mut self, id: &str, mut target: W) -> anyhow::Result<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
+			let mut is_valid = false;
 			handle.seek(SeekFrom::Start(entry.location))?;
 
 			let mut take = handle.take(entry.offset);
@@ -88,12 +91,8 @@ impl<T: Seek + Read> Archive<T> {
 				// The ID is part of the signature, this prevents redirects d by mangling the registry entry
 				buffer.extend(id.as_bytes());
 
-				if let Err(error) = pub_key.verify(&buffer, &entry.signature) {
-					anyhow::bail!(format!(
-						"({}): Invalid signature found for leaf with ID: {}",
-						error, id
-					))
-				};
+				// If there is an error the data is flagged as invalid
+				is_valid = pub_key.verify(&buffer, &entry.signature).is_ok();
 
 				// Decompress
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
@@ -105,7 +104,7 @@ impl<T: Seek + Read> Archive<T> {
 					io::copy(&mut buffer.take(entry.offset), &mut target)?;
 				};
 
-				Ok((entry.flags, entry.content_version))
+				Ok((entry.flags, entry.content_version, is_valid))
 			} else {
 				// Decompress
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
@@ -117,7 +116,7 @@ impl<T: Seek + Read> Archive<T> {
 					io::copy(&mut take, &mut target)?;
 				};
 
-				Ok((entry.flags, entry.content_version))
+				Ok((entry.flags, entry.content_version, is_valid))
 			}
 		} else {
 			anyhow::bail!(format!("Resource not found: {}", id))

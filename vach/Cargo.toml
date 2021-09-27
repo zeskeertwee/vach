@@ -1,6 +1,6 @@
 [package]
 name = "vach"
-version = "0.1.3"
+version = "0.1.5"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
@@ -21,7 +21,7 @@ keywords = [
 documentation = "https://docs.rs/vach"
 
 [dependencies]
-anyhow = "1.0.42"
+anyhow = "1.0.44"
 ed25519-dalek = "1.0.1"
 lz4_flex = "0.9.0"
 rand = "0.7.0"

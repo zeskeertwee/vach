@@ -14,6 +14,8 @@ pub struct Resource {
 	pub flags: Flags,
 	/// The content version extracted from the archive source
 	pub content_version: u8,
+	/// If a `Resource` has been validated against tampering, corruption or obsolescence, then this value becomes false
+	pub is_valid: bool
 }
 
 impl fmt::Display for Resource {
@@ -35,6 +37,7 @@ impl Default for Resource {
 			data: Vec::new(),
 			flags: Flags::default(),
 			content_version: 0,
+			is_valid: false
 		}
 	}
 }
