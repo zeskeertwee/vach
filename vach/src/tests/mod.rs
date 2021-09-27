@@ -81,8 +81,9 @@ mod tests {
 		let mut archive = Archive::from_handle(target)?;
 		let resource = archive.fetch("poem")?;
 
-		println!("{}", resource);
-		println!("{}", archive.fetch_entry("poem").unwrap());
+		assert_eq!(345, resource.data.len());
+		assert_eq!(archive.fetch_entry("poem").unwrap().offset, resource.data.len() as u64);
+		println!("{}", String::from_utf8(resource.data)?);
 
 		Ok(())
 	}

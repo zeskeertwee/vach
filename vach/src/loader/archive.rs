@@ -37,7 +37,7 @@ impl<T: Seek + Read> Archive<T> {
 	}
 
 	/// Given a read handle, this will read and parse the data into an `Archive` struct.
-	/// Provide a refference to `HeaderConfig` and it will be used to validate the source and for further configuration.
+	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
 	/// If parsing fails, an `Err()` is returned.
 	pub fn with_config( mut handle: T, config: &HeaderConfig ) -> anyhow::Result<Archive<impl Seek + Read>> {
 		let header = Header::from_handle(&mut handle)?;
