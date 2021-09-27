@@ -46,7 +46,7 @@ impl<T: Seek + Read> Archive<T> {
 		// Generate and store Registry Entries
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
-			let (entry, id) = RegistryEntry::from_handle(&mut handle, config.public_key.is_some())?;
+			let (entry, id) = RegistryEntry::from_handle(&mut handle, header.flags.contains(Flags::SIGNED_FLAG))?;
 			entries.insert(id, entry);
 		}
 
@@ -92,7 +92,13 @@ impl<T: Seek + Read> Archive<T> {
 				buffer.extend(id.as_bytes());
 
 				// If there is an error the data is flagged as invalid
-				is_valid = pub_key.verify(&buffer, &entry.signature).is_ok();
+				if entry.signature.is_some() {
+					if let Err(info) = pub_key.verify(&buffer, &entry.signature.unwrap()) {
+						 eprintln!("{}", &info);
+					} else {
+						is_valid = true;
+					}
+				};
 
 				// Decompress
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {

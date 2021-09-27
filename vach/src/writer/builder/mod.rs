@@ -46,6 +46,8 @@ impl<'a> Builder<'a> {
 		let directory = fs::read_dir(path)?;
 		for file in directory {
 			let uri = file?.path();
+
+			// BUG: Fix this DUMB DUMB code
 			let v = uri
 				.iter()
 				.map(|u| String::from(u.to_str().unwrap()))
@@ -101,7 +103,8 @@ impl<'a> Builder<'a> {
 		// Calculate the size of the registry
 		let mut reg_size = 0usize;
 		for leaf in self.leafs.iter() {
-			reg_size += leaf.id.len() + RegistryEntry::MIN_SIZE
+			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
+			reg_size += leaf.id.len() + RegistryEntry::MIN_SIZE + ( if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 } );
 		}
 
 		// Start counting the offset of the leafs from the end of the registry
@@ -153,13 +156,13 @@ impl<'a> Builder<'a> {
 				// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
 				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
 				glob.extend(leaf.id.as_bytes());
-				entry.signature = keypair.sign(&glob);
+				entry.signature = Some(keypair.sign(&glob));
 			};
 
 			{
 				// Write to the registry
 				let mut entry_bytes =
-					entry.bytes(&(leaf.id.len() as u16), config.keypair.is_some());
+					entry.bytes(&(leaf.id.len() as u16));
 				entry_bytes.extend(leaf.id.as_bytes());
 				buffer.write_all(&entry_bytes)?;
 				size += entry_bytes.len();

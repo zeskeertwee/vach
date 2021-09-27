@@ -128,6 +128,7 @@ mod tests {
 		config.load_public_key(keypair)?;
 
 		let mut archive = Archive::with_config(target, &config)?;
+		dbg!(archive.entries());
 		let resource = archive.fetch("test_data/song.txt")?;
 		let song = str::from_utf8(resource.data.as_slice())?;
 
@@ -149,7 +150,7 @@ mod tests {
 		builder.add_dir("test_data", &Leaf::default())?;
 
 		let mut target = File::create(SIGNED_TARGET)?;
-		builder.dump(&mut target, &build_config)?;
+		println!("Number of bytes written: {}, into signed archive.", builder.dump(&mut target, &build_config)?);
 
 		Ok(())
 	}
