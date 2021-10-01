@@ -81,19 +81,19 @@ impl<'a> Builder<'a> {
 		let mut size = 0usize;
 
 		// Write header in order defined in the spec document
-		let mut buffer = BufWriter::new(target);
-		buffer.write_all(&config.magic)?;
+		let mut wtr = BufWriter::new(target);
+		wtr.write_all(&config.magic)?;
 
 		// INSERT flags
 		let mut temp = config.flags;
 		if config.keypair.is_some() {
 			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
-		buffer.write_all(&temp.bits().to_le_bytes())?;
+		wtr.write_all(&temp.bits().to_le_bytes())?;
 
 		// Write the version of the Archive Format|Builder|Loader
-		buffer.write_all(&crate::VERSION.to_le_bytes())?;
-		buffer.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
+		wtr.write_all(&crate::VERSION.to_le_bytes())?;
+		wtr.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
 		// Update how many bytes have been written
 		size += Header::BASE_SIZE;
@@ -159,20 +159,20 @@ impl<'a> Builder<'a> {
 				entry.signature = Some(keypair.sign(&glob));
 			};
 
+			drop(glob);
+
 			{
 				// Write to the registry
 				let mut entry_bytes =
 					entry.bytes(&(leaf.id.len() as u16));
 				entry_bytes.extend(leaf.id.as_bytes());
-				buffer.write_all(&entry_bytes)?;
+				wtr.write_all(&entry_bytes)?;
 				size += entry_bytes.len();
 			};
-
-			drop(glob)
 		}
 
 		// Write the glob
-		buffer.write_all(&leaf_data)?;
+		wtr.write_all(&leaf_data)?;
 		size += leaf_data.len();
 
 		drop(leaf_data);

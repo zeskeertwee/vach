@@ -41,7 +41,7 @@ impl Flags {
 	}
 
 	/// Returns a error if mask contains a reserved bit.
-	/// Set a flag into the underlyingm structure.
+	/// Set a flag into the underlying structure.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
 	/// ```
 	/// use vach::prelude::Flags;

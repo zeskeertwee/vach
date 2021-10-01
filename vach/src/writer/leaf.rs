@@ -20,8 +20,8 @@ pub enum CompressMode {
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
 	/// The data which the `Leaf` is attached to.
-	pub handle: Box<dyn Read + 'a>, // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
-	/// The `ID` under which the embedded data will be refferenced
+	pub(crate) handle: Box<dyn Read + 'a>, // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
@@ -47,7 +47,7 @@ impl<'a> Default for Leaf<'a> {
 impl<'a> Leaf<'a> {
 	#[inline(always)]
 	/// Wrap a `Leaf` around the given handle.
-	/// Using the `Default` configuratuion.
+	/// Using the `Default` configuration.
 	///```
 	/// use vach::prelude::Leaf;
 	/// use std::io::Cursor;
