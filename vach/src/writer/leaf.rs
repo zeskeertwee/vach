@@ -96,7 +96,7 @@ impl<'a> Leaf<'a> {
 		self.compress = compress;
 		self
 	}
-		/// Setter used to set the `content_version` of a `Leaf`
+	/// Setter used to set the `content_version` of a `Leaf`
 	/// ```rust
 	/// use vach::prelude::{Leaf};
 	///
