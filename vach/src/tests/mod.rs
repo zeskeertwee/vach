@@ -46,7 +46,7 @@ mod tests {
 	fn header_config() -> anyhow::Result<()> {
 		// We need a private dependency, Header to test ot
 		use crate::global::header::Header;
-		let config = HeaderConfig::new(*b"VfACH",  None);
+		let config = HeaderConfig::new(*b"VfACH", None);
 		let mut file = File::open("test_data/simple/target.vach")?;
 		format!("{}", &config);
 
@@ -82,7 +82,10 @@ mod tests {
 		let resource = archive.fetch("poem")?;
 
 		assert_eq!(345, resource.data.len());
-		assert_eq!(archive.fetch_entry("poem").unwrap().offset, resource.data.len() as u64);
+		assert_eq!(
+			archive.fetch_entry("poem").unwrap().offset,
+			resource.data.len() as u64
+		);
 		println!("{}", String::from_utf8(resource.data)?);
 
 		Ok(())
@@ -151,7 +154,10 @@ mod tests {
 		builder.add_dir("test_data", &Leaf::default())?;
 
 		let mut target = File::create(SIGNED_TARGET)?;
-		println!("Number of bytes written: {}, into signed archive.", builder.dump(&mut target, &build_config)?);
+		println!(
+			"Number of bytes written: {}, into signed archive.",
+			builder.dump(&mut target, &build_config)?
+		);
 
 		Ok(())
 	}

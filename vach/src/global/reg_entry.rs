@@ -54,7 +54,7 @@ impl RegistryEntry {
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
 		if read_sig {
-			let mut buffer  = [0u8; crate::SIGNATURE_LENGTH];
+			let mut buffer = [0u8; crate::SIGNATURE_LENGTH];
 			handle.read_exact(&mut buffer)?;
 			entry.signature = Some(buffer.try_into()?);
 		};

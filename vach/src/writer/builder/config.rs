@@ -54,7 +54,7 @@ impl Default for BuilderConfig {
 		BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
-			magic: *crate::DEFAULT_MAGIC
+			magic: *crate::DEFAULT_MAGIC,
 		}
 	}
 }

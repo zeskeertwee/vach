@@ -104,7 +104,7 @@ impl<'a> Builder<'a> {
 		let mut reg_size = 0usize;
 		for leaf in self.leafs.iter() {
 			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-			reg_size += leaf.id.len() + RegistryEntry::MIN_SIZE + ( if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 } );
+			reg_size += leaf.id.len() + RegistryEntry::MIN_SIZE + (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 });
 		}
 
 		// Start counting the offset of the leafs from the end of the registry
@@ -163,8 +163,7 @@ impl<'a> Builder<'a> {
 
 			{
 				// Write to the registry
-				let mut entry_bytes =
-					entry.bytes(&(leaf.id.len() as u16));
+				let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
 				entry_bytes.extend(leaf.id.as_bytes());
 				wtr.write_all(&entry_bytes)?;
 				size += entry_bytes.len();

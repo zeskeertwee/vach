@@ -14,7 +14,7 @@ use std::{
 pub struct HeaderConfig {
 	/// If the archive has a custom magic sequence, pass the custom _MAGIC_ sequence here.
 	/// The custom _MAGIC_ sequence can then be used to validate archive sources.
-	 pub magic: [u8; crate::MAGIC_LENGTH],
+	pub magic: [u8; crate::MAGIC_LENGTH],
 	/// An ed25519 public key. **If no key is provided, is `None`, then signature validation is ignored**. Even if the
 	/// archive source has signatures.
 	pub public_key: Option<esdalek::PublicKey>,
@@ -27,9 +27,7 @@ impl HeaderConfig {
 	/// let public_key = utils::read_keypair(READ_HANDLE)?.public;
 	/// let config = HeaderConfig::new(*b"_TEST",  Some(public_key));
 	/// ```
-	pub fn new(
-		magic: [u8; 5], key: Option<esdalek::PublicKey>,
-	) -> HeaderConfig {
+	pub fn new(magic: [u8; 5], key: Option<esdalek::PublicKey>) -> HeaderConfig {
 		HeaderConfig {
 			magic,
 			public_key: key,

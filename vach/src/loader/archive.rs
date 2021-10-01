@@ -39,14 +39,17 @@ impl<T: Seek + Read> Archive<T> {
 	/// Given a read handle, this will read and parse the data into an `Archive` struct.
 	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
 	/// If parsing fails, an `Err()` is returned.
-	pub fn with_config( mut handle: T, config: &HeaderConfig ) -> anyhow::Result<Archive<impl Seek + Read>> {
+	pub fn with_config(
+		mut handle: T, config: &HeaderConfig,
+	) -> anyhow::Result<Archive<impl Seek + Read>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
 		// Generate and store Registry Entries
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
-			let (entry, id) = RegistryEntry::from_handle(&mut handle, header.flags.contains(Flags::SIGNED_FLAG))?;
+			let (entry, id) =
+				RegistryEntry::from_handle(&mut handle, header.flags.contains(Flags::SIGNED_FLAG))?;
 			entries.insert(id, entry);
 		}
 
@@ -68,13 +71,15 @@ impl<T: Seek + Read> Archive<T> {
 			content_version,
 			flags,
 			data: buffer,
-			is_valid: validated
+			is_valid: validated,
 		})
 	}
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
 	/// Returns a tuple containing the `Flags`, `content_version` and `is_valid`, ie validity, of the data.
-	pub fn fetch_write<W: Write>(&mut self, id: &str, mut target: W) -> anyhow::Result<(Flags, u8, bool)> {
+	pub fn fetch_write<W: Write>(
+		&mut self, id: &str, mut target: W,
+	) -> anyhow::Result<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_valid = false;
@@ -94,7 +99,7 @@ impl<T: Seek + Read> Archive<T> {
 				// If there is an error the data is flagged as invalid
 				if entry.signature.is_some() {
 					if let Err(info) = pub_key.verify(&buffer, &entry.signature.unwrap()) {
-						 eprintln!("{}", &info);
+						eprintln!("{}", &info);
 					} else {
 						is_valid = true;
 					}
@@ -114,10 +119,7 @@ impl<T: Seek + Read> Archive<T> {
 			} else {
 				// Decompress
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					io::copy(
-						&mut lz4::frame::FrameDecoder::new(take),
-						&mut target,
-					)?;
+					io::copy(&mut lz4::frame::FrameDecoder::new(take), &mut target)?;
 				} else {
 					io::copy(&mut take, &mut target)?;
 				};
