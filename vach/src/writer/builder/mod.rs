@@ -129,10 +129,10 @@ impl<'a> Builder<'a> {
 					leaf.handle.read_to_end(&mut buffer)?;
 
 					let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
-					let length = io::copy(&mut buffer.as_slice(), &mut compressor)?;
+					io::copy(&mut buffer.as_slice(), &mut compressor)?;
 					let mut compressed_data = compressor.finish()?;
 
-					let ratio = compressed_data.len() as f32 / length as f32;
+					let ratio = compressed_data.len() as f32 / buffer.len() as f32;
 					if ratio < 1f32 {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 						glob.append(&mut compressed_data);

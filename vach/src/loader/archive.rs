@@ -9,7 +9,7 @@ use std::{
 	io::{self, BufReader, Cursor, Read, Seek, SeekFrom, Write},
 	str,
 };
-use ed25519_dalek::{self as esdalek, Verifier};
+use ed25519_dalek::{self as esdalek};
 use lz4_flex as lz4;
 use hashbrown::HashMap;
 
@@ -98,7 +98,7 @@ impl<T: Seek + Read> Archive<T> {
 
 				// If there is an error the data is flagged as invalid
 				if entry.signature.is_some() {
-					if let Err(info) = pub_key.verify(&buffer, &entry.signature.unwrap()) {
+					if let Err(info) = pub_key.verify_strict(&buffer, &entry.signature.unwrap()) {
 						eprintln!("{}", &info);
 					} else {
 						is_valid = true;
