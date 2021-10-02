@@ -9,7 +9,7 @@ pub use config::BuilderConfig;
 
 use ed25519_dalek::Signer;
 use lz4_flex as lz4;
-use std::io::{self, BufWriter, Write, Read};
+use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
@@ -76,9 +76,14 @@ impl<'a> Builder<'a> {
 	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.
 	/// Custom *`MAGIC`*, Header flags and a `Keypair` can be presented using the `BuilderConfig` struct.
 	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the archive source.
-	pub fn dump<W: Write>(&mut self, target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
-		// Keep track of how many bytes are written
+	pub fn dump<W: Write + Seek>(&mut self, mut target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
+		// Keep track of how many bytes are written, and where bytes are being written
 		let mut size = 0usize;
+		let mut reg_offset = 0;
+		let mut leaf_offset = Header::BASE_SIZE;
+
+		// Start at the very start of the file
+		target.seek(SeekFrom::Start(0))?;
 
 		// Write header in order defined in the spec document
 		let mut wtr = BufWriter::new(target);
@@ -97,31 +102,27 @@ impl<'a> Builder<'a> {
 
 		// Update how many bytes have been written
 		size += Header::BASE_SIZE;
-
-		let mut leaf_data = Vec::new();
+		reg_offset += Header::BASE_SIZE;
 
 		// Calculate the size of the registry
-		let mut reg_size = 0usize;
 		for leaf in self.leafs.iter() {
 			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-			reg_size += leaf.id.len() + RegistryEntry::MIN_SIZE + (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 });
-		}
-
+			leaf_offset += leaf.id.len() + RegistryEntry::MIN_SIZE + (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 });
+		};
 		// Start counting the offset of the leafs from the end of the registry
-		let mut leaf_offset = reg_size + Header::BASE_SIZE;
 
 		// Populate the archive glob
 		for leaf in self.leafs.iter_mut() {
 			let mut entry = leaf.to_registry_entry();
-			let mut glob = Vec::new();
+			let mut leaf_bytes = Vec::new();
 
 			// Create and compare compressed leaf data
 			match leaf.compress {
 				CompressMode::Never => {
-					leaf.handle.read_to_end(&mut glob)?;
+					leaf.handle.read_to_end(&mut leaf_bytes)?;
 				}
 				CompressMode::Always => {
-					let mut compressor = lz4::frame::FrameEncoder::new(&mut glob);
+					let mut compressor = lz4::frame::FrameEncoder::new(&mut leaf_bytes);
 					io::copy(&mut leaf.handle, &mut compressor)?;
 				}
 				CompressMode::Detect => {
@@ -135,17 +136,19 @@ impl<'a> Builder<'a> {
 					let ratio = compressed_data.len() as f32 / buffer.len() as f32;
 					if ratio < 1f32 {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-						glob.append(&mut compressed_data);
+						leaf_bytes.append(&mut compressed_data);
 					} else {
-						buffer.as_slice().read_to_end(&mut glob)?;
+						buffer.as_slice().read_to_end(&mut leaf_bytes)?;
 					};
 				}
 			}
 
-			let glob_length = glob.len();
+			let glob_length = leaf_bytes.len();
 
 			// Buffer the contents of the leaf, to be written later
-			leaf_data.extend(&glob);
+			wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+			wtr.write_all(&leaf_bytes)?;
+			size += glob_length;
 
 			entry.location = leaf_offset as u64;
 			leaf_offset += glob_length;
@@ -155,37 +158,25 @@ impl<'a> Builder<'a> {
 				// The reason we include the path in the signature is to prevent mangling in the registry,
 				// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
 				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
-				glob.extend(leaf.id.as_bytes());
-				entry.signature = Some(keypair.sign(&glob));
+				leaf_bytes.extend(leaf.id.as_bytes());
+				entry.signature = Some(keypair.sign(&leaf_bytes));
 			};
 
-			drop(glob);
-
 			{
-				// Write to the registry
+				// Fetch bytes
 				let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
 				entry_bytes.extend(leaf.id.as_bytes());
+
+				// Write to the registry
+				wtr.seek(SeekFrom::Start(reg_offset as u64))?;
 				wtr.write_all(&entry_bytes)?;
+
+				// Update offsets
+				reg_offset += entry_bytes.len();
 				size += entry_bytes.len();
 			};
 		}
 
-		// Write the glob
-		wtr.write_all(&leaf_data)?;
-		size += leaf_data.len();
-
-		drop(leaf_data);
-
 		Ok(size)
-	}
-}
-
-impl<'a> Read for Builder<'a> {
-	/// DOes exactly what `Builder::dump()` does, only uses `BuilderConfig::default()` for configuration.
-	fn read(&mut self, target: &mut [u8]) -> Result<usize, io::Error> {
-		match self.dump(target, &BuilderConfig::default()) {
-			Ok(size) => Ok(size),
-			Err(err) => Err(io::Error::new(io::ErrorKind::Other, err.to_string())),
-		}
 	}
 }
