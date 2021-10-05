@@ -3,11 +3,7 @@
 mod tests {
 	// Boring, average every day contemporary imports
 	use crate::prelude::*;
-	use std::{
-		fs::{File},
-		io::{Seek, SeekFrom},
-		str,
-	};
+	use std::{fs::{File}, io::{Cursor, Seek, SeekFrom}, str};
 
 	// Contains both the public key and secret key in the same file:
 	// secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -82,11 +78,14 @@ mod tests {
 		let resource = archive.fetch("poem")?;
 
 		assert_eq!(345, resource.data.len());
-		assert_eq!(
-			archive.fetch_entry("poem").unwrap().offset,
-			resource.data.len() as u64
-		);
+		assert!(!resource.secured);
+		assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
+
 		println!("{}", String::from_utf8(resource.data)?);
+
+		let hello = archive.fetch("greeting")?;
+		assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data)?);
+		assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
 		Ok(())
 	}
@@ -108,11 +107,17 @@ mod tests {
 		)?;
 
 		builder.add_leaf(
-			Leaf::from_handle(File::open("test_data/poem.txt")?)?
-				.compress(CompressMode::Detect)
+			Leaf::from_handle(File::open("test_data/poem.txt")?)
+				.compress(CompressMode::Always)
 				.version(10)
 				.id("poem")
 				.flags(poem_flags),
+		);
+
+		builder.add_leaf(
+			Leaf::from_handle(Cursor::new(b"Hello, Cassandra!"))
+				.compress(CompressMode::Never)
+				.id("greeting"),
 		);
 
 		let mut target = File::create(SIMPLE_TARGET)?;
@@ -139,7 +144,7 @@ mod tests {
 		// Check identity of retrieved data
 		println!("{}", song);
 		assert_eq!(song.len(), 1977);
-		assert!(resource.is_valid);
+		assert!(resource.secured);
 
 		Ok(())
 	}
