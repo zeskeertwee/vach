@@ -3,11 +3,7 @@
 mod tests {
 	// Boring, average every day contemporary imports
 	use crate::prelude::*;
-	use std::{
-		fs::{File},
-		io::{Seek, SeekFrom},
-		str,
-	};
+	use std::{fs::{File}, io::{Cursor, Seek, SeekFrom}, str};
 
 	// Contains both the public key and secret key in the same file:
 	// secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -46,7 +42,7 @@ mod tests {
 	fn header_config() -> anyhow::Result<()> {
 		// We need a private dependency, Header to test ot
 		use crate::global::header::Header;
-		let config = HeaderConfig::new(*b"VfACH",  None);
+		let config = HeaderConfig::new(*b"VfACH", None);
 		let mut file = File::open("test_data/simple/target.vach")?;
 		format!("{}", &config);
 
@@ -81,8 +77,15 @@ mod tests {
 		let mut archive = Archive::from_handle(target)?;
 		let resource = archive.fetch("poem")?;
 
-		println!("{}", resource);
-		println!("{}", archive.fetch_entry("poem").unwrap());
+		assert_eq!(345, resource.data.len());
+		assert!(!resource.secured);
+		assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
+
+		println!("{}", String::from_utf8(resource.data)?);
+
+		let hello = archive.fetch("greeting")?;
+		assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data)?);
+		assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
 		Ok(())
 	}
@@ -104,11 +107,17 @@ mod tests {
 		)?;
 
 		builder.add_leaf(
-			Leaf::from_handle(File::open("test_data/poem.txt")?)?
-				.compress(CompressMode::Detect)
+			Leaf::from_handle(File::open("test_data/poem.txt")?)
+				.compress(CompressMode::Always)
 				.version(10)
 				.id("poem")
 				.flags(poem_flags),
+		);
+
+		builder.add_leaf(
+			Leaf::from_handle(Cursor::new(b"Hello, Cassandra!"))
+				.compress(CompressMode::Never)
+				.id("greeting"),
 		);
 
 		let mut target = File::create(SIMPLE_TARGET)?;
@@ -128,12 +137,14 @@ mod tests {
 		config.load_public_key(keypair)?;
 
 		let mut archive = Archive::with_config(target, &config)?;
+		dbg!(archive.entries());
 		let resource = archive.fetch("test_data/song.txt")?;
 		let song = str::from_utf8(resource.data.as_slice())?;
 
 		// Check identity of retrieved data
 		println!("{}", song);
 		assert_eq!(song.len(), 1977);
+		assert!(resource.secured);
 
 		Ok(())
 	}
@@ -148,7 +159,10 @@ mod tests {
 		builder.add_dir("test_data", &Leaf::default())?;
 
 		let mut target = File::create(SIGNED_TARGET)?;
-		builder.dump(&mut target, &build_config)?;
+		println!(
+			"Number of bytes written: {}, into signed archive.",
+			builder.dump(&mut target, &build_config)?
+		);
 
 		Ok(())
 	}
@@ -166,7 +180,8 @@ mod tests {
 		let mut archive = Archive::with_config(target, &config)?;
 		let mut song = Vec::new();
 
-		archive.fetch_write("test_data/poem.txt", &mut song)?;
+		let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
+		assert!(metadata.2);
 
 		// Assert identity of retrieved data
 		println!("{}", str::from_utf8(&song)?);

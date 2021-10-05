@@ -19,9 +19,8 @@ pub enum CompressMode {
 /// Allows for multiple types of data implementing `io::Read` to be used under one structure.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
-	/// The data which the `Leaf` is attached to.
-	pub handle: Box<dyn Read + 'a>, // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
-	/// The `ID` under which the embedded data will be refferenced
+	pub(crate) handle: Box<dyn Read + 'a>, // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
@@ -32,6 +31,7 @@ pub struct Leaf<'a> {
 }
 
 impl<'a> Default for Leaf<'a> {
+	/// The default leaf holds no bytes at all, this is expected to be used as a stencil|template.
 	#[inline(always)]
 	fn default() -> Leaf<'a> {
 		Leaf {
@@ -47,18 +47,18 @@ impl<'a> Default for Leaf<'a> {
 impl<'a> Leaf<'a> {
 	#[inline(always)]
 	/// Wrap a `Leaf` around the given handle.
-	/// Using the `Default` configuratuion.
+	/// Using the `Default` configuration.
 	///```
 	/// use vach::prelude::Leaf;
 	/// use std::io::Cursor;
 	///
-	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).unwrap();
+	/// let leaf = Leaf::from_handle(Cursor::new(vec![]));
 	///```
-	pub fn from_handle<H: Read + 'a>(handle: H) -> anyhow::Result<Leaf<'a>> {
-		Ok(Leaf {
+	pub fn from_handle<H: Read + 'a>(handle: H) -> Leaf<'a> {
+		Leaf {
 			handle: Box::new(handle),
 			..Default::default()
-		})
+		}
 	}
 	pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
 		let mut entry = RegistryEntry::empty();
@@ -76,7 +76,7 @@ impl<'a> Leaf<'a> {
 	///    .version(12)
 	///    .compress(CompressMode::Always);
 	///
-	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).unwrap().template(&template);
+	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
 	/// ```
 	pub fn template(mut self, other: &Leaf) -> Self {
 		self.compress = other.compress;
@@ -96,7 +96,7 @@ impl<'a> Leaf<'a> {
 		self.compress = compress;
 		self
 	}
-		/// Setter used to set the `content_version` of a `Leaf`
+	/// Setter used to set the `content_version` of a `Leaf`
 	/// ```rust
 	/// use vach::prelude::{Leaf};
 	///

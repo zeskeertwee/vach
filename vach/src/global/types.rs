@@ -1,4 +1,5 @@
 use anyhow;
+use std::fmt;
 
 // Private utility function
 fn _contains(first: u16, other: u16) -> bool {
@@ -6,7 +7,7 @@ fn _contains(first: u16, other: u16) -> bool {
 }
 
 /// Abstracted flag access and manipulation `struct`.
-/// A "mini-bitflags" of sorts.
+/// A knock-off minimal bitflags of sorts.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Flags {
 	bits: u16,
@@ -16,7 +17,7 @@ pub struct Flags {
 // basically just a tiny, scoped version of bitflags
 impl Flags {
 	// Scoped constants
-	/// The flags used within the library, therefore interaction is disallowed.
+	/// The flags used within the crate, to whom all access is denied.
 	/// Any interaction with set will cause an exception.
 	pub const RESERVED_MASK: u16 = 0b1111_0000_0000_0000;
 	/// The flag that represents compressed sources
@@ -34,14 +35,19 @@ impl Flags {
 	pub fn bits(&self) -> u16 {
 		self.bits
 	}
-	/// Yield a new empty `Flags` instance
+	/// Yield a new empty `Flags` instance.
+	/// ```
+	/// use vach::prelude::Flags;
+	/// let flag = Flags::from_bits(0b0000_0000_0000_0000);
+	/// assert_eq!(Flags::empty(), flag);
+	/// ```
 	#[inline(always)]
 	pub fn empty() -> Self {
 		Self { bits: 0 }
 	}
 
 	/// Returns a error if mask contains a reserved bit.
-	/// Set a flag into the underlyingm structure.
+	/// Set a flag into the underlying structure.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
 	/// ```
 	/// use vach::prelude::Flags;
@@ -92,4 +98,10 @@ impl Default for Flags {
 	fn default() -> Self {
 		Self { bits: 0 }
 	}
+}
+
+impl fmt::Display for Flags{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#016b}", self.bits)
+    }
 }
