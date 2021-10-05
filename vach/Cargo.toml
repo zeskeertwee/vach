@@ -19,6 +19,10 @@ keywords = [
 	"format"
 ]
 documentation = "https://docs.rs/vach"
+include = [
+	"**/*.rs",
+	"Cargo.toml"
+]
 
 [dependencies]
 anyhow = "1.0.44"
