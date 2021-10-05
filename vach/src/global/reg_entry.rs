@@ -73,9 +73,12 @@ impl RegistryEntry {
 		buffer.extend_from_slice(&self.location.to_le_bytes());
 		buffer.extend_from_slice(&self.offset.to_le_bytes());
 		buffer.extend_from_slice(&id_length.to_le_bytes());
-		if self.signature.is_some() {
-			buffer.extend_from_slice(&self.signature.unwrap().to_bytes())
+
+		// Only write signature if one exists
+		if let Some(signature) = self.signature {
+			buffer.extend_from_slice(&signature.to_bytes())
 		};
+
 		buffer
 	}
 }

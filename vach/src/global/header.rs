@@ -46,6 +46,9 @@ impl HeaderConfig {
 		self.public_key = Some(public_key);
 		Ok(())
 	}
+
+	/// Shorthand to load a PublicKey into the HeaderConfig
+	pub fn key(mut self, public_key: esdalek::PublicKey) -> HeaderConfig { self.public_key = Some(public_key); self }
 }
 
 impl fmt::Display for HeaderConfig {
@@ -53,7 +56,10 @@ impl fmt::Display for HeaderConfig {
 		write!(
 			f,
 			"[HeaderConfig] magic: {}, has_public_key: {}",
-			str::from_utf8(&self.magic).expect("Error constructing str from HeaderConfig::Magic"),
+			match str::from_utf8(&self.magic) {
+				 Ok(_str) => { _str },
+				 Err(_) => { return fmt::Result::Err(fmt::Error); },
+			},
 			self.public_key.is_some()
 		)
 	}
@@ -100,7 +106,7 @@ impl Header {
 		// Validate magic
 		if header.magic != config.magic {
 			anyhow::bail!(format!(
-				"Invalid magic found in Header: {}",
+				"Invalid magic found in Header, possible incompatibility with given source: {}",
 				str::from_utf8(&header.magic)?
 			));
 		};
