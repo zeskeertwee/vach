@@ -33,7 +33,7 @@ impl<'a> Builder<'a> {
 	/// The `data` is wrapped in the default `Leaf`.
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> anyhow::Result<()> {
-		let leaf = Leaf::from_handle(data)?.id(id);
+		let leaf = Leaf::from_handle(data).id(id);
 		self.add_leaf(leaf);
 		Ok(())
 	}
@@ -56,7 +56,7 @@ impl<'a> Builder<'a> {
 			if !uri.is_dir() {
 				// Therefore a file
 				let file = fs::File::open(uri)?;
-				let leaf = Leaf::from_handle(file)?
+				let leaf = Leaf::from_handle(file)
 					.template(template)
 					.id(&format!("{}/{}", v[0], v[1]));
 
@@ -122,8 +122,10 @@ impl<'a> Builder<'a> {
 					leaf.handle.read_to_end(&mut leaf_bytes)?;
 				}
 				CompressMode::Always => {
-					let mut compressor = lz4::frame::FrameEncoder::new(&mut leaf_bytes);
+					let mut compressor = lz4::frame::FrameEncoder::new(leaf_bytes);
 					io::copy(&mut leaf.handle, &mut compressor)?;
+					leaf_bytes = compressor.finish()?;
+					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 				}
 				CompressMode::Detect => {
 					let mut buffer = Vec::new();
