@@ -1,4 +1,4 @@
-name: Rust
+name: unit-tests
 
 on:
   push:
@@ -18,9 +18,5 @@ jobs:
     - uses: actions/checkout@v2
     - name: Build
       run: cargo build
-    - name: Build simple vach targets
-      run: cargo test --package vach --lib --all-features -- tests::tests::builder_with_signature --exact --nocapture
-    - name: Build signed vach targets
-      run: cargo test --package vach --lib --all-features -- tests::tests::builder_no_signature --exact --nocapture
     - name: Run tests
       run: cargo test --verbose -- --test-threads=1
