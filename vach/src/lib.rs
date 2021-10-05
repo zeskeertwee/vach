@@ -46,7 +46,7 @@ pub mod prelude {
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
-	pub use ed25519_dalek::{Keypair, PublicKey};
+	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
 }
 
 /// Some utility functions to keep you happy
