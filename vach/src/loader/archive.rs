@@ -14,8 +14,8 @@ use lz4_flex as lz4;
 use hashbrown::HashMap;
 
 /// A wrapper for loading data from archive sources.
-/// It also provides query functions for fetching data and information about said data.
-/// It can be configured using the `HeaderConfig` struct.
+/// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
+/// It can be customized with the `HeaderConfig` struct.
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
@@ -26,10 +26,10 @@ pub struct Archive<T> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
-	/// Load an `Archive` with the default settings from a `Read` target.
+	/// Load an `Archive` with the default settings from a `source.
 	/// The same as doing:
 	/// ```ignore
-	/// Archive::with_config(READ_HANDLE, &HeaderConfig::default())?;
+	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
 	/// ```
 	#[inline(always)]
 	pub fn from_handle(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
@@ -71,18 +71,18 @@ impl<T: Seek + Read> Archive<T> {
 			content_version,
 			flags,
 			data: buffer,
-			is_valid: validated,
+			secured: validated,
 		})
 	}
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
-	/// Returns a tuple containing the `Flags`, `content_version` and `is_valid`, ie validity, of the data.
+	/// Returns a tuple containing the `Flags`, `content_version` and `secure`, ie validity, of the data.
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
 	) -> anyhow::Result<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
-			let mut is_valid = false;
+			let mut is_secure = false;
 			handle.seek(SeekFrom::Start(entry.location))?;
 
 			let mut take = handle.take(entry.offset);
@@ -97,13 +97,9 @@ impl<T: Seek + Read> Archive<T> {
 				buffer.extend(id.as_bytes());
 
 				// If there is an error the data is flagged as invalid
-				if entry.signature.is_some() {
-					if let Err(info) = pub_key.verify_strict(&buffer, &entry.signature.unwrap()) {
-						eprintln!("{}", &info);
-					} else {
-						is_valid = true;
-					}
-				};
+				if let Some(signature) = entry.signature {
+					is_secure = pub_key.verify_strict(&buffer, &signature).is_ok();
+				}
 
 				// Decompress
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
@@ -115,7 +111,7 @@ impl<T: Seek + Read> Archive<T> {
 					io::copy(&mut buffer.take(entry.offset), &mut target)?;
 				};
 
-				Ok((entry.flags, entry.content_version, is_valid))
+				Ok((entry.flags, entry.content_version, is_secure))
 			} else {
 				// Decompress
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
@@ -124,7 +120,7 @@ impl<T: Seek + Read> Archive<T> {
 					io::copy(&mut take, &mut target)?;
 				};
 
-				Ok((entry.flags, entry.content_version, is_valid))
+				Ok((entry.flags, entry.content_version, is_secure))
 			}
 		} else {
 			anyhow::bail!(format!("Resource not found: {}", id))
@@ -139,7 +135,8 @@ impl<T: Seek + Read> Archive<T> {
 			None => None,
 		}
 	}
-	/// Returns a reference to the underlying `HashMap`. This hashmap stores `RegistryEntry` values and uses `String` keys
+
+	/// Returns a reference to the underlying `HashMap`. This hashmap stores `RegistryEntry` values and uses `String` keys.
 	#[inline(always)]
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
