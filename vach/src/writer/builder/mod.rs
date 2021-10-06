@@ -3,7 +3,7 @@ use super::leaf::{Leaf, CompressMode};
 use crate::global::{
 	header::Header,
 	reg_entry::RegistryEntry,
-	types::{Flags},
+	types::Flags,
 };
 pub use config::BuilderConfig;
 
