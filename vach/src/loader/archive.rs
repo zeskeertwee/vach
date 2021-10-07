@@ -16,6 +16,7 @@ use hashbrown::HashMap;
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
 /// It can be customized with the `HeaderConfig` struct.
+/// Buffers all calls to the underlying handle with `BufReader`, so avoid passing in a buffered handle.
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
