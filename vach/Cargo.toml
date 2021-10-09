@@ -1,6 +1,6 @@
 [package]
 name = "vach"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
@@ -22,7 +22,8 @@ documentation = "https://docs.rs/vach"
 readme = "../README.md"
 include = [
 	"Cargo.toml",
-	"src/*"
+	"src/*",
+	"../README.md"
 ]
 
 [dependencies]
