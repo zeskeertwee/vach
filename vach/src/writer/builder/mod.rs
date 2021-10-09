@@ -3,7 +3,7 @@ use super::leaf::{Leaf, CompressMode};
 use crate::global::{
 	header::Header,
 	reg_entry::RegistryEntry,
-	types::{Flags},
+	types::Flags,
 };
 pub use config::BuilderConfig;
 
@@ -165,6 +165,13 @@ impl<'a> Builder<'a> {
 			};
 
 			{
+				// Make sure the ID is not too big or else it will break the archive
+				if leaf.id.len() >= u16::MAX.into() {
+					let mut copy = leaf.id.clone();
+					copy.truncate(25);
+					anyhow::bail!(format!("The maximum size of any id is: {}. The leaf with ID: {}..., has an ID with length: {}", crate::MAX_ID_LENGTH, copy, leaf.id.len()))
+				};
+
 				// Fetch bytes
 				let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
 				entry_bytes.extend(leaf.id.as_bytes());

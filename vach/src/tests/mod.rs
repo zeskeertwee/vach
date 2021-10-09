@@ -156,7 +156,7 @@ mod tests {
 		let mut build_config = BuilderConfig::default();
 		build_config.load_keypair(File::open(KEYPAIR)?)?;
 
-		builder.add_dir("test_data", &Leaf::default())?;
+		builder.add_dir("test_data", &Leaf::default().compress(CompressMode::Detect))?;
 
 		let mut target = File::create(SIGNED_TARGET)?;
 		println!(
