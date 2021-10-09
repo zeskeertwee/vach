@@ -19,6 +19,7 @@ keywords = [
 	"format"
 ]
 documentation = "https://docs.rs/vach"
+readme = "../README.md"
 
 [dependencies]
 anyhow = "1.0.44"
