@@ -20,6 +20,10 @@ keywords = [
 ]
 documentation = "https://docs.rs/vach"
 readme = "../README.md"
+include = [
+	"Cargo.toml",
+	"src/*"
+]
 
 [dependencies]
 anyhow = "1.0.44"
