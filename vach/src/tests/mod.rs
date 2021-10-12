@@ -77,7 +77,12 @@ mod tests {
 		let mut archive = Archive::from_handle(target)?;
 		let resource = archive.fetch("poem")?;
 
-		assert_eq!(345, resource.data.len());
+		// Windows bullshit
+		#[cfg(target_os = "windows")]
+		{ assert_eq!(resource.data.len(), 359); }
+		#[cfg(not(any(target_os = "windows", target_os = "ios")))]
+		{ assert_eq!(resource.data.len(), 345); }
+
 		assert!(!resource.secured);
 		assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
 
@@ -143,7 +148,13 @@ mod tests {
 
 		// Check identity of retrieved data
 		println!("{}", song);
-		assert_eq!(song.len(), 1977);
+
+		// Windows bullshit
+		#[cfg(target_os = "windows")]
+		{ assert_eq!(song.len(), 2041); }
+		#[cfg(not(any(target_os = "windows", target_os = "ios")))]
+		{ assert_eq!(song.len(), 1977); }
+
 		assert!(resource.secured);
 
 		Ok(())
@@ -185,7 +196,12 @@ mod tests {
 
 		// Assert identity of retrieved data
 		println!("{}", str::from_utf8(&song)?);
-		assert_eq!(song.len(), 345);
+
+		// Windows bullshit
+		#[cfg(target_os = "windows")]
+		{ assert_eq!(song.len(), 359); }
+		#[cfg(not(any(target_os = "windows", target_os = "ios")))]
+		{ assert_eq!(song.len(), 345); }
 
 		Ok(())
 	}
