@@ -48,7 +48,10 @@ impl HeaderConfig {
 	}
 
 	/// Shorthand to load a PublicKey into the HeaderConfig
-	pub fn key(mut self, public_key: esdalek::PublicKey) -> HeaderConfig { self.public_key = Some(public_key); self }
+	pub fn key(mut self, public_key: esdalek::PublicKey) -> HeaderConfig {
+		self.public_key = Some(public_key);
+		self
+	}
 }
 
 impl fmt::Display for HeaderConfig {
@@ -57,8 +60,12 @@ impl fmt::Display for HeaderConfig {
 			f,
 			"[HeaderConfig] magic: {}, has_public_key: {}",
 			match str::from_utf8(&self.magic) {
-				 Ok(_str) => { _str },
-				 Err(_) => { return fmt::Result::Err(fmt::Error); },
+				Ok(_str) => {
+					_str
+				}
+				Err(_) => {
+					return fmt::Result::Err(fmt::Error);
+				}
 			},
 			self.public_key.is_some()
 		)

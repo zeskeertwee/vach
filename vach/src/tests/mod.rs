@@ -3,7 +3,11 @@
 mod tests {
 	// Boring, average every day contemporary imports
 	use crate::prelude::*;
-	use std::{fs::{File}, io::{Cursor, Seek, SeekFrom}, str};
+	use std::{
+		fs::{File},
+		io::{Cursor, Seek, SeekFrom},
+		str,
+	};
 
 	// Contains both the public key and secret key in the same file:
 	// secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -79,9 +83,13 @@ mod tests {
 
 		// Windows bullshit
 		#[cfg(target_os = "windows")]
-		{ assert_eq!(resource.data.len(), 359); }
+		{
+			assert_eq!(resource.data.len(), 359);
+		}
 		#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-		{ assert_eq!(resource.data.len(), 345); }
+		{
+			assert_eq!(resource.data.len(), 345);
+		}
 
 		assert!(!resource.secured);
 		assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
@@ -151,9 +159,13 @@ mod tests {
 
 		// Windows bullshit
 		#[cfg(target_os = "windows")]
-		{ assert_eq!(song.len(), 2041); }
+		{
+			assert_eq!(song.len(), 2041);
+		}
 		#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-		{ assert_eq!(song.len(), 1977); }
+		{
+			assert_eq!(song.len(), 1977);
+		}
 
 		assert!(resource.secured);
 
@@ -199,9 +211,13 @@ mod tests {
 
 		// Windows bullshit
 		#[cfg(target_os = "windows")]
-		{ assert_eq!(song.len(), 359); }
+		{
+			assert_eq!(song.len(), 359);
+		}
 		#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-		{ assert_eq!(song.len(), 345); }
+		{
+			assert_eq!(song.len(), 345);
+		}
 
 		Ok(())
 	}

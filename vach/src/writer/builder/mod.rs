@@ -1,10 +1,6 @@
 mod config;
 use super::leaf::{Leaf, CompressMode};
-use crate::global::{
-	header::Header,
-	reg_entry::RegistryEntry,
-	types::Flags,
-};
+use crate::global::{header::Header, reg_entry::RegistryEntry, types::Flags};
 pub use config::BuilderConfig;
 
 use ed25519_dalek::Signer;
@@ -76,7 +72,9 @@ impl<'a> Builder<'a> {
 	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.
 	/// Custom *`MAGIC`*, Header flags and a `Keypair` can be presented using the `BuilderConfig` struct.
 	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the archive source.
-	pub fn dump<W: Write + Seek>(&mut self, mut target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
+	pub fn dump<W: Write + Seek>(
+		&mut self, mut target: W, config: &BuilderConfig,
+	) -> anyhow::Result<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		let mut size = 0usize;
 		let mut reg_offset = 0;
@@ -107,8 +105,10 @@ impl<'a> Builder<'a> {
 		// Calculate the size of the registry
 		for leaf in self.leafs.iter() {
 			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-			leaf_offset += leaf.id.len() + RegistryEntry::MIN_SIZE + (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 });
-		};
+			leaf_offset += leaf.id.len()
+				+ RegistryEntry::MIN_SIZE
+				+ (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 });
+		}
 		// Start counting the offset of the leafs from the end of the registry
 
 		// Populate the archive glob
