@@ -6,9 +6,6 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/zeskeertwee/virtfs-rs/main/media/logo.png" alt=".vach logo" width="180" height="180">
 </p>
-<h1 align=center>
-  <strong>vach</strong>
-</h1>
 <p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
 <p align=center>
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a> |
@@ -20,6 +17,8 @@
 <p align=center>
  <a href="https://docs.rs/vach">Docs</a> | <a href="https://github.com/zeskeertwee/virtfs-rs">Repo</a>
 </p>
+
+---
 
 `vach`, pronounced like "fuck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected ( _once encryption is implemented_ ). It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for [compression](https://github.com/PSeitz/lz4_flex), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#) and archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 

@@ -62,7 +62,7 @@ let target = File::open("sounds.vach")?;
 let mut archive = Archive::from_handle(target)?;
 let resource: Resource = archive.fetch("ambient")?;
 
-// By default all reources are flagged as NOT secured
+// By default all resources are flagged as NOT secured
 println!("{}", Sound::new(&resource.data)?);
 assert!(!resource.secured);
 
@@ -128,7 +128,7 @@ let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_b
 let target = File::open("sounds.vach")?;
 let mut archive = Archive::with_config(target, &config)?;
 
-// Reources are marked as secure (=true) if the signatures match the data
+// Resources are marked as secure (=true) if the signatures match the data
 let resource = archive.fetch("ambient")?;
 println!("{}", Sound::new(&resource.data)?);
 assert!(resource.secured);
@@ -143,4 +143,4 @@ assert!(resource.secured);
 - [ ] An official **CLI**.
 - [ ] Data encryption.
 - [ ] Skynet, (coming very soon).
-- [ ] `Some(exmalpes)` directory instead of `None`
+- [ ] `Some(examples)` directory instead of `None`
