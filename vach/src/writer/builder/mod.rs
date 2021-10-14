@@ -107,7 +107,11 @@ impl<'a> Builder<'a> {
 			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
 			leaf_offset += leaf.id.len()
 				+ RegistryEntry::MIN_SIZE
-				+ (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 });
+				+ (if config.keypair.is_some() {
+					crate::SIGNATURE_LENGTH
+				} else {
+					0
+				});
 		}
 		// Start counting the offset of the leafs from the end of the registry
 

@@ -1,8 +1,4 @@
-use crate::{
-	global::{
-		types::{Flags},
-	},
-};
+use crate::global::types::Flags;
 
 use std::{
 	convert::TryInto,
