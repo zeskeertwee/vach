@@ -1,11 +1,12 @@
+use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
+
 mod config;
+pub use config::BuilderConfig;
 use super::leaf::{Leaf, CompressMode};
 use crate::global::{header::Header, reg_entry::RegistryEntry, types::Flags};
-pub use config::BuilderConfig;
 
-use ed25519_dalek::Signer;
 use lz4_flex as lz4;
-use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
+use ed25519_dalek::Signer;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
@@ -25,6 +26,7 @@ impl<'a> Builder<'a> {
 	pub fn new() -> Builder<'a> {
 		Builder::default()
 	}
+
 	/// Appends a read handle wrapped in a `Leaf` into the processing queue.
 	/// The `data` is wrapped in the default `Leaf`.
 	/// The second argument is the `ID` with which the embedded data will be tagged
@@ -33,6 +35,7 @@ impl<'a> Builder<'a> {
 		self.add_leaf(leaf);
 		Ok(())
 	}
+
 	/// Loads all files from a directory and appends them into the processing queue.
 	/// A `Leaf` is passed as a template from which the wrapping `Leaf`s shall be based on.
 	/// Appended `Leaf`s have an `ID` of: `<directory_name>/<file_name>`. For example: "sounds/footstep.wav", "sample/script.data"

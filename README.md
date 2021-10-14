@@ -42,14 +42,15 @@ let config = BuilderConfig::default();
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-builder.add(File::open("test_data/background.wav")?, "ambient")?;
-builder.add(File::open("test_data/footstep.wav")?, "ftstep")?;
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello")?;
+// builder.add(File::open("test_data/background.wav")?, "ambient");
+// builder.add(File::open("test_data/footstep.wav")?, "ftstep");
+builder.add(Cursor::new(b"Hello, Cassandra!"), "hello");
 
-let mut target = File::create("sounds.vach")?;
+// let mut target = File::create("sounds.vach")?;
+let mut target = Cursor::new(Vec::new());
 
 // The number of bytes written to the file
-let size = builder.dump(&mut target, &config)?;
+let size = builder.dump(&mut target, &config).unwrap();
 ```
 
 ##### > Loading resources from an unsigned `.vach` file
@@ -73,7 +74,7 @@ let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buf
 ##### > Build a signed `.vach` file
 
 ```rust
-use std::fs::File;
+use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig, Keypair};
 use vach::utils::gen_keypair;
 
@@ -82,12 +83,14 @@ let config: BuilderConfig = BuilderConfig::default().keypair(keypair);
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-builder.add(File::open("test_data/background.wav")?, "ambient")?;
-builder.add(File::open("test_data/footstep.wav")?, "ftstep")?;
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello")?;
+// builder.add(File::open("test_data/background.wav")?, "ambient");
+// builder.add(File::open("test_data/footstep.wav")?, "ftstep");
+builder.add(Cursor::new(b"Hello, Cassandra!"), "hello");
 
-let mut target = File::create("sounds.vach")?;
-builder.dump(&mut target, &config)?;
+// let mut target = File::create("sounds.vach")?;
+let mut target = Cursor::new(Vec::new());
+
+builder.dump(&mut target, &config).unwrap();
 ```
 
 ##### > Serialize and de-serialize a `Keypair`, `SecretKey` and `PublicKey`
@@ -95,6 +98,7 @@ builder.dump(&mut target, &config)?;
 As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/), you could refer to their docs to read further about them.
 
 ```rust
+use vach;
 use vach::prelude::{Keypair, SecretKey, PublicKey};
 use vach::utils::gen_keypair;
 
@@ -104,14 +108,14 @@ let secret : SecretKey = keypair.secret;
 let public : PublicKey = keypair.public;
 
 // Serialize
-let public_key_bytes : [u8; crate::PUBLIC_KEY_LENGTH] = public.to_bytes();
-let secret_key_bytes : [u8; crate::SECRET_KEY_LENGTH] = secret.to_bytes();
-let keypair_bytes  : [u8; crate::KEYPAIR_LENGTH]    = keypair.to_bytes();
+let public_key_bytes : [u8; vach::PUBLIC_KEY_LENGTH] = public.to_bytes();
+let secret_key_bytes : [u8; vach::SECRET_KEY_LENGTH] = secret.to_bytes();
+// let keypair_bytes : [u8; vach::KEYPAIR_LENGTH]    = keypair.to_bytes();
 
 // Deserialize
-let public_key : PublicKey = PublicKey::from_bytes(&public_key_bytes)?;
-let secret_key : SecretKey = SecretKey::from_bytes(&secret_key_bytes)?;
-let keypair  : Keypair   = Keypair::from_bytes(&keypair_bytes)?;
+let public_key : PublicKey = PublicKey::from_bytes(&public_key_bytes).unwrap();
+let secret_key : SecretKey = SecretKey::from_bytes(&secret_key_bytes).unwrap();
+// let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 ```
 
 ##### > Load resources from a signed `.vach` source

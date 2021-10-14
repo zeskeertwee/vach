@@ -2,12 +2,13 @@
 #[cfg(test)]
 mod tests {
 	// Boring, average every day contemporary imports
-	use crate::prelude::*;
 	use std::{
 		fs::{File},
 		io::{Cursor, Seek, SeekFrom},
 		str,
 	};
+
+	use crate::prelude::*;
 
 	// Contains both the public key and secret key in the same file:
 	// secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]

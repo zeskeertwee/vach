@@ -1,15 +1,17 @@
-use anyhow;
+use std::{
+	io::{self, BufReader, Cursor, Read, Seek, SeekFrom, Write},
+	str,
+};
+
 use super::resource::Resource;
 use crate::global::{
 	header::{Header, HeaderConfig},
 	reg_entry::{RegistryEntry},
 	types::{Flags},
 };
-use std::{
-	io::{self, BufReader, Cursor, Read, Seek, SeekFrom, Write},
-	str,
-};
-use ed25519_dalek::{self as esdalek};
+
+use anyhow;
+use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
 use hashbrown::HashMap;
 

@@ -1,5 +1,5 @@
-use anyhow;
 use std::fmt;
+use anyhow;
 
 // Private utility function
 fn _contains(first: u16, other: u16) -> bool {
@@ -16,7 +16,6 @@ pub struct Flags {
 // based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
 // basically just a tiny, scoped version of bitflags
 impl Flags {
-	// Scoped constants
 	/// The flags used within the crate, to whom all access is denied.
 	/// Any interaction with set will cause an exception.
 	pub const RESERVED_MASK: u16 = 0b1111_0000_0000_0000;
@@ -24,6 +23,8 @@ impl Flags {
 	pub const COMPRESSED_FLAG: u16 = 0b_1000_0000_0000_0000;
 	/// The flag that represents sources with signatures
 	pub const SIGNED_FLAG: u16 = 0b_0100_0000_0000_0000;
+	/// The flag that represents sources with signatures
+	pub const LINK_FLAG: u16 = 0b_0010_0000_0000_0000;
 
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u16` number
