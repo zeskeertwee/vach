@@ -88,43 +88,36 @@ impl<T: Seek + Read> Archive<T> {
 			let mut is_secure = false;
 			handle.seek(SeekFrom::Start(entry.location))?;
 
-			let take = handle.take(entry.offset);
+			let mut old_take = handle.take(entry.offset);
+
+			let mut raw = vec![];
+			let raw_size = old_take.read_to_end(&mut raw)?;
+
+			// Signature validation
+			// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
+			if let Some(pub_key) = &self.key {
+				// If there is an error the data is flagged as invalid
+				raw.extend(id.as_bytes());
+				if let Some(signature) = entry.signature {
+					is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
+				}
+			}
 
 			// Dynamically dispatched reader
+			let new_take = raw.take(raw_size as u64);
 			let mut rdr: Box<dyn Read>;
 
 			// Add read layers
 			// 1: Decompression layer
 			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-				rdr = Box::new(lz4::frame::FrameDecoder::new(take));
+				rdr = Box::new(lz4::frame::FrameDecoder::new(new_take));
 			} else {
-				rdr = Box::new(take)
+				rdr = Box::new(new_take)
 			};
 
-			// Signature validation
-			// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
-			if let Some(pub_key) = &self.key {
-				// Read  all the data into a buffer, then validate the signature
-				let mut buffer = Vec::new();
-				rdr.read_to_end(&mut buffer)?;
+			io::copy(&mut rdr, &mut target)?;
 
-				// The ID is part of the signature, this prevents redirects d by mangling the registry entry
-				buffer.extend(id.as_bytes());
-
-				// If there is an error the data is flagged as invalid
-				if let Some(signature) = entry.signature {
-					is_secure = pub_key.verify_strict(&buffer, &signature).is_ok();
-				}
-
-				// Write out stuff
-				io::copy(&mut buffer.take(entry.offset), &mut target)?;
-
-				Ok((entry.flags, entry.content_version, is_secure))
-			} else {
-				io::copy(&mut rdr, &mut target)?;
-
-				Ok((entry.flags, entry.content_version, is_secure))
-			}
+			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
 			anyhow::bail!(format!("Resource not found: {}", id))
 		}
