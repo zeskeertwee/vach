@@ -21,10 +21,12 @@ impl Flags {
 	pub const RESERVED_MASK: u16 = 0b1111_0000_0000_0000;
 	/// The flag that represents compressed sources
 	pub const COMPRESSED_FLAG: u16 = 0b_1000_0000_0000_0000;
-	/// The flag that represents sources with signatures
+	/// The flag that announces that the archive source has signatures
 	pub const SIGNED_FLAG: u16 = 0b_0100_0000_0000_0000;
-	/// The flag that represents sources with signatures
+	/// The flag that marks registry entries as links rather than leaf pointers
 	pub const LINK_FLAG: u16 = 0b_0010_0000_0000_0000;
+	/// The flag that shows data in the leaf in encrypted
+	pub const ENCRYPTED_FLAG: u16 = 0b_0001_0000_0000_0000;
 
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u16` number

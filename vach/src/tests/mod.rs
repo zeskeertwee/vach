@@ -80,6 +80,7 @@ mod tests {
 	fn fetch_no_signature() -> anyhow::Result<()> {
 		let target = File::open(SIMPLE_TARGET)?;
 		let mut archive = Archive::from_handle(target)?;
+		dbg!(archive.entries());
 		let resource = archive.fetch("poem")?;
 
 		// Windows bullshit
@@ -126,13 +127,13 @@ mod tests {
 				.version(10)
 				.id("poem")
 				.flags(poem_flags),
-		);
+		)?;
 
 		builder.add_leaf(
 			Leaf::from_handle(Cursor::new(b"Hello, Cassandra!"))
 				.compress(CompressMode::Never)
 				.id("greeting"),
-		);
+		)?;
 
 		let mut target = File::create(SIMPLE_TARGET)?;
 		builder.dump(&mut target, &build_config)?;

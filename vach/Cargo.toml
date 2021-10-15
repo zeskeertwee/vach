@@ -19,7 +19,7 @@ keywords = [
 	"format"
 ]
 documentation = "https://docs.rs/vach"
-readme = "../README.md"
+readme = "https://raw.githubusercontent.com/zeskeertwee/virtfs-rs/main/README.md"
 include = [
 	"Cargo.toml",
 	"src/*",
@@ -32,3 +32,5 @@ ed25519-dalek = "1.0.1"
 lz4_flex = "0.9.0"
 rand = "0.7.0"
 hashbrown = "0.11.2"
+cryptostream = "0.3.1"
+openssl = "0.10.36"

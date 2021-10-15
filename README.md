@@ -42,9 +42,9 @@ let config = BuilderConfig::default();
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-// builder.add(File::open("test_data/background.wav")?, "ambient");
-// builder.add(File::open("test_data/footstep.wav")?, "ftstep");
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello");
+// builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
+// builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
+builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
 let mut target = Cursor::new(Vec::new());
@@ -83,9 +83,9 @@ let config: BuilderConfig = BuilderConfig::default().keypair(keypair);
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-// builder.add(File::open("test_data/background.wav")?, "ambient");
-// builder.add(File::open("test_data/footstep.wav")?, "ftstep");
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello");
+// builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
+// builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
+builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
 let mut target = Cursor::new(Vec::new());

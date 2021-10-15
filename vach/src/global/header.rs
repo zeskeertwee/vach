@@ -1,12 +1,14 @@
-use crate::global::types::Flags;
-use anyhow;
-use ed25519_dalek as esdalek;
 use std::{
 	convert::TryInto,
 	fmt,
 	io::{Read, Seek, SeekFrom},
 	str,
 };
+
+use crate::global::types::Flags;
+
+use anyhow;
+use ed25519_dalek as esdalek;
 
 /// Used to configure and give extra information to the `Archive` loader.
 /// Used exclusively in archive source and integrity validation.
@@ -22,10 +24,9 @@ pub struct HeaderConfig {
 
 impl HeaderConfig {
 	/// Construct a new `HeaderConfig` struct.
-	/// ```ignore
-	/// use vach::{prelude::HeaderConfig, utils};
-	/// let public_key = utils::read_keypair(READ_HANDLE)?.public;
-	/// let config = HeaderConfig::new(*b"_TEST",  Some(public_key));
+	/// ```
+	/// use vach::prelude::HeaderConfig;
+	/// let config = HeaderConfig::new(*b"_TEST",  None);
 	/// ```
 	pub fn new(magic: [u8; 5], key: Option<esdalek::PublicKey>) -> HeaderConfig {
 		HeaderConfig {

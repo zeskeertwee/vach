@@ -1,5 +1,5 @@
 use std::{
-	io::{self, BufReader, Cursor, Read, Seek, SeekFrom, Write},
+	io::{self, BufReader, Read, Seek, SeekFrom, Write},
 	str,
 };
 
@@ -88,13 +88,25 @@ impl<T: Seek + Read> Archive<T> {
 			let mut is_secure = false;
 			handle.seek(SeekFrom::Start(entry.location))?;
 
-			let mut take = handle.take(entry.offset);
+			let take = handle.take(entry.offset);
 
+			// Dynamically dispatched reader
+			let mut rdr: Box<dyn Read>;
+
+			// Add read layers
+			// 1: Decompression layer
+			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+				rdr = Box::new(lz4::frame::FrameDecoder::new(take));
+			} else {
+				rdr = Box::new(take)
+			};
+
+			// Signature validation
 			// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 			if let Some(pub_key) = &self.key {
 				// Read  all the data into a buffer, then validate the signature
 				let mut buffer = Vec::new();
-				take.read_to_end(&mut buffer)?;
+				rdr.read_to_end(&mut buffer)?;
 
 				// The ID is part of the signature, this prevents redirects d by mangling the registry entry
 				buffer.extend(id.as_bytes());
@@ -104,24 +116,12 @@ impl<T: Seek + Read> Archive<T> {
 					is_secure = pub_key.verify_strict(&buffer, &signature).is_ok();
 				}
 
-				// Decompress
-				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					io::copy(
-						&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)),
-						&mut target,
-					)?;
-				} else {
-					io::copy(&mut buffer.take(entry.offset), &mut target)?;
-				};
+				// Write out stuff
+				io::copy(&mut buffer.take(entry.offset), &mut target)?;
 
 				Ok((entry.flags, entry.content_version, is_secure))
 			} else {
-				// Decompress
-				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					io::copy(&mut lz4::frame::FrameDecoder::new(take), &mut target)?;
-				} else {
-					io::copy(&mut take, &mut target)?;
-				};
+				io::copy(&mut rdr, &mut target)?;
 
 				Ok((entry.flags, entry.content_version, is_secure))
 			}
@@ -146,12 +146,12 @@ impl<T: Seek + Read> Archive<T> {
 	}
 }
 
-impl Default for Archive<Cursor<Vec<u8>>> {
+impl Default for Archive<&[u8]> {
 	#[inline(always)]
-	fn default() -> Archive<Cursor<Vec<u8>>> {
+	fn default() -> Archive<&'static [u8]> {
 		Archive {
 			header: Header::default(),
-			handle: Cursor::new(Vec::new()),
+			handle: &[],
 			key: None,
 			entries: HashMap::new(),
 		}

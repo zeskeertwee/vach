@@ -2,7 +2,7 @@ use crate::global::types::Flags;
 use std::io;
 use ed25519_dalek as esdalek;
 
-/// Alows for the customization of valid `vach` archives during their construction.
+/// Allows for the customization of valid `vach` archives during their construction.
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
 #[derive(Debug)]
 pub struct BuilderConfig {
@@ -12,6 +12,8 @@ pub struct BuilderConfig {
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the archive source will be signed.
 	pub keypair: Option<esdalek::Keypair>,
+	/// Whether to encrypt the Leaf's in the archive
+	pub encrypt: bool
 }
 
 impl BuilderConfig {
@@ -40,6 +42,15 @@ impl BuilderConfig {
 		self.magic = magic;
 		self
 	}
+	/// Setter for the `encrypt` field
+	///```
+	///use vach::prelude::BuilderConfig;
+	/// let config = BuilderConfig::default().encrypt(true);
+	///```
+	pub fn encrypt(mut self, encrypt: bool) -> BuilderConfig {
+		self.encrypt = encrypt;
+		self
+	}
 
 	// Keypair helpers
 	/// Parses and stores a keypair from a source.
@@ -55,6 +66,7 @@ impl Default for BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
 			magic: *crate::DEFAULT_MAGIC,
+			encrypt: false
 		}
 	}
 }

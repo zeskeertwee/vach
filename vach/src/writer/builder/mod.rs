@@ -7,16 +7,21 @@ use crate::global::{header::Header, reg_entry::RegistryEntry, types::Flags};
 
 use lz4_flex as lz4;
 use ed25519_dalek::Signer;
+use hashbrown::HashSet;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
+	pub(crate) set: HashSet<String>,
 }
 
 impl<'a> Default for Builder<'a> {
 	#[inline(always)]
 	fn default() -> Builder<'a> {
-		Builder { leafs: Vec::new() }
+		Builder {
+			leafs: Vec::new(),
+			set: HashSet::new(),
+		}
 	}
 }
 
@@ -32,7 +37,7 @@ impl<'a> Builder<'a> {
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> anyhow::Result<()> {
 		let leaf = Leaf::from_handle(data).id(id);
-		self.add_leaf(leaf);
+		self.add_leaf(leaf)?;
 		Ok(())
 	}
 
@@ -59,7 +64,7 @@ impl<'a> Builder<'a> {
 					.template(template)
 					.id(&format!("{}/{}", v[0], v[1]));
 
-				self.leafs.push(leaf);
+				self.add_leaf(leaf)?;
 			}
 		}
 
@@ -68,8 +73,16 @@ impl<'a> Builder<'a> {
 
 	#[inline(always)]
 	/// Append a preconstructed `Leaf` into the processing queue.
-	pub fn add_leaf(&mut self, leaf: Leaf<'a>) {
+	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {
+		{
+			// Make sure no two leaves are written with the same ID
+			if !self.set.insert(leaf.id.clone()) {
+				anyhow::bail!(format!("A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", leaf.id));
+			};
+		}
+
 		self.leafs.push(leaf);
+		Ok(())
 	}
 
 	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.
@@ -123,7 +136,7 @@ impl<'a> Builder<'a> {
 			let mut entry = leaf.to_registry_entry();
 			let mut leaf_bytes = Vec::new();
 
-			// Create and compare compressed leaf data
+			// Compression comes first
 			match leaf.compress {
 				CompressMode::Never => {
 					leaf.handle.read_to_end(&mut leaf_bytes)?;
@@ -169,6 +182,7 @@ impl<'a> Builder<'a> {
 				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
 				leaf_bytes.extend(leaf.id.as_bytes());
 				entry.signature = Some(keypair.sign(&leaf_bytes));
+				drop(leaf_bytes);
 			};
 
 			{
