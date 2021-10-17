@@ -5,7 +5,7 @@ edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
 license = "GPL-2.0"
-homepage = "https://github.com/zeskeertwee/virtfs-rs"
+repository = "https://github.com/zeskeertwee/virtfs-rs"
 categories = [
 	"parsing",
 	"games",
@@ -13,10 +13,10 @@ categories = [
 ]
 keywords = [
 	"archive",
-	"secure",
-	"storage",
-	"vach",
-	"format"
+	"filesystem",
+	"compression",
+	"game",
+	"assets"
 ]
 documentation = "https://docs.rs/vach"
 readme = "https://raw.githubusercontent.com/zeskeertwee/virtfs-rs/main/README.md"
