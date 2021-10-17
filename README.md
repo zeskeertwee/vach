@@ -25,9 +25,17 @@
 
 ---
 
+### 🤷 Who is what, when where?
+
+- **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
+- **vf:** An asset management system utilizing **vach** for transmission and adds features like hot reloading, caching and archive management. **WIP 🚧**
+- **vach-cli:** A CLI tool for dealing with `.vach` files. **WIP 🚧**
+
+---
+
 ### 👄 Terminologies
 
-- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file or `io::Cursor`, that matches the `vach` spec and is thus a valid archive.
+- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or `io::Cursor`, that matches the `vach` spec and is thus a valid archive.
 - **Leaf:** Any actual data endpoint within an archive, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding `leaf`. For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
@@ -182,5 +190,6 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 - [ ] An official **CLI**.
 - [ ] Data encryption.
+- [ ] Benchmarks.
 - [ ] Skynet, (coming very soon).
 - [ ] `Some(examples)` directory instead of `None`
