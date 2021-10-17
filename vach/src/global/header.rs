@@ -53,6 +53,12 @@ impl HeaderConfig {
 		self.public_key = Some(public_key);
 		self
 	}
+
+	/// Setter for the magic into a HeaderConfig
+	pub fn magic(mut self, magic: [u8; 5]) -> HeaderConfig {
+		self.magic = magic;
+		self
+	}
 }
 
 impl fmt::Display for HeaderConfig {
