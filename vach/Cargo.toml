@@ -19,7 +19,7 @@ keywords = [
 	"assets"
 ]
 documentation = "https://docs.rs/vach"
-readme = "https://raw.githubusercontent.com/zeskeertwee/virtfs-rs/main/README.md"
+readme = "../README.md"
 include = [
 	"Cargo.toml",
 	"src/*",
