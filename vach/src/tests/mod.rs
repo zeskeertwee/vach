@@ -247,6 +247,48 @@ mod tests {
 	}
 
 	#[test]
+	fn consolidated_example() -> anyhow::Result<()> {
+		use crate::utils::{gen_keypair, read_keypair};
+
+		const MAGIC: &[u8; 5] = b"CSDTD";
+		let mut target = Cursor::new(Vec::<u8>::new());
+
+		// Data to be written
+		let data_1 = b"Around The World, Fatter better stronker" as &[u8];
+		let data_2 = b"Imagine if this made sense" as &[u8];
+		let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
+
+		// Builder definition
+		let keypair_bytes = gen_keypair().to_bytes();
+		let config = BuilderConfig::default().magic(*MAGIC).keypair(read_keypair(&keypair_bytes as &[u8])?);
+		let mut builder = Builder::new();
+
+		// Add data
+		builder.add_leaf(Leaf::from_handle(data_1).id("d1").compress(CompressMode::Always))?;
+		builder.add_leaf(Leaf::from_handle(data_2).id("d2").compress(CompressMode::Never))?;
+		builder.add_leaf(Leaf::from_handle(data_3).id("d3").compress(CompressMode::Detect))?;
+
+		// Dump data
+		builder.dump(&mut target, &config)?;
+
+		// Just because
+		drop(builder);
+		drop(config);
+
+		// Load data
+		let config = HeaderConfig::default().magic(*MAGIC).key(read_keypair(&keypair_bytes as &[u8])?.public);
+		let mut archive = Archive::with_config(target, &config)?;
+
+		// Quick assertions
+		assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
+		assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
+		assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
+
+		// All seems ok
+		Ok(())
+	}
+
+	#[test]
 	fn flags_set_intersects() {
 		let mut flag = Flags::empty();
 
