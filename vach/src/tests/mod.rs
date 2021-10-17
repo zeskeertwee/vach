@@ -260,13 +260,27 @@ mod tests {
 
 		// Builder definition
 		let keypair_bytes = gen_keypair().to_bytes();
-		let config = BuilderConfig::default().magic(*MAGIC).keypair(read_keypair(&keypair_bytes as &[u8])?);
+		let config = BuilderConfig::default()
+			.magic(*MAGIC)
+			.keypair(read_keypair(&keypair_bytes as &[u8])?);
 		let mut builder = Builder::new();
 
 		// Add data
-		builder.add_leaf(Leaf::from_handle(data_1).id("d1").compress(CompressMode::Always))?;
-		builder.add_leaf(Leaf::from_handle(data_2).id("d2").compress(CompressMode::Never))?;
-		builder.add_leaf(Leaf::from_handle(data_3).id("d3").compress(CompressMode::Detect))?;
+		builder.add_leaf(
+			Leaf::from_handle(data_1)
+				.id("d1")
+				.compress(CompressMode::Always),
+		)?;
+		builder.add_leaf(
+			Leaf::from_handle(data_2)
+				.id("d2")
+				.compress(CompressMode::Never),
+		)?;
+		builder.add_leaf(
+			Leaf::from_handle(data_3)
+				.id("d3")
+				.compress(CompressMode::Detect),
+		)?;
 
 		// Dump data
 		builder.dump(&mut target, &config)?;
@@ -276,7 +290,9 @@ mod tests {
 		drop(config);
 
 		// Load data
-		let config = HeaderConfig::default().magic(*MAGIC).key(read_keypair(&keypair_bytes as &[u8])?.public);
+		let config = HeaderConfig::default()
+			.magic(*MAGIC)
+			.key(read_keypair(&keypair_bytes as &[u8])?.public);
 		let mut archive = Archive::with_config(target, &config)?;
 
 		// Quick assertions

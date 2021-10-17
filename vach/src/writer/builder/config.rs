@@ -13,7 +13,7 @@ pub struct BuilderConfig {
 	/// An optional keypair. If a key is provided, then the archive source will be signed.
 	pub keypair: Option<esdalek::Keypair>,
 	/// Whether to encrypt the Leaf's in the archive
-	pub encrypt: bool
+	pub encrypt: bool,
 }
 
 impl BuilderConfig {
@@ -66,7 +66,7 @@ impl Default for BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
 			magic: *crate::DEFAULT_MAGIC,
-			encrypt: false
+			encrypt: false,
 		}
 	}
 }
