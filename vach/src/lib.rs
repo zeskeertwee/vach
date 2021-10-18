@@ -171,7 +171,7 @@ pub const DEFAULT_MAGIC: &[u8; 5] = b"VfACH";
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;
 
-/// Where all crate logic resides; This module stores all `structs` associated with this crate. Constants can be accesses directly with `crate::<CONSTANT>`
+/// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses directly with `crate::<CONSTANT>`
 pub mod prelude {
 	pub use crate::global::{header::HeaderConfig, types::*};
 	pub use crate::loader::{archive::Archive, resource::Resource};
@@ -180,6 +180,25 @@ pub mod prelude {
 		leaf::{Leaf, CompressMode},
 	};
 	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
+}
+
+/// Import keypairs and signatures from here, mirrors from `ed25519_dalek`
+pub mod crypto {
+	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
+}
+
+/// Import `Builder` related data structures and logic from here
+pub mod builder {
+	pub use crate::writer::{
+		builder::{Builder, BuilderConfig},
+		leaf::{Leaf, CompressMode},
+	};
+}
+
+/// Loader-based logic and data-structures from here
+pub mod archive {
+	pub use crate::loader::{archive::Archive, resource::Resource};
+	pub use crate::global::{reg_entry::RegistryEntry, header::HeaderConfig};
 }
 
 /// Some utility functions to keep you happy
