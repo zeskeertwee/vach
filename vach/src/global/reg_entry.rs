@@ -7,10 +7,14 @@ use std::{
 };
 use ed25519_dalek as esdalek;
 
+/// Stand-alone meta-data from an archive entry(Leaf). This can be parsed without reading data about the leaf.
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
+	/// The flags extracted from the archive entry and parsed into a struct
 	pub flags: Flags,
+	/// The content version of the extracted archive entry
 	pub content_version: u8,
+	/// The signature of the extracted archive entry
 	pub signature: Option<esdalek::Signature>,
 
 	pub(crate) location: u64,
@@ -31,6 +35,7 @@ impl RegistryEntry {
 			offset: 0,
 		}
 	}
+	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
 	pub(crate) fn from_handle<T: Read + Seek>(
 		mut handle: T, read_sig: bool,
 	) -> anyhow::Result<(Self, String)> {
@@ -62,6 +67,7 @@ impl RegistryEntry {
 		Ok((entry, id))
 	}
 
+	/// Serializes a `RegistryEntry` struct into an array of bytes
 	pub(crate) fn bytes(&self, id_length: &u16) -> Vec<u8> {
 		let mut buffer = Vec::new();
 		buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
