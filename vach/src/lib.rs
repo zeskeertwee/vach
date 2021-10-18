@@ -173,7 +173,7 @@ pub const MAGIC_LENGTH: usize = 5;
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses directly with `crate::<CONSTANT>`
 pub mod prelude {
-	pub use crate::global::{header::HeaderConfig, types::*};
+	pub use crate::global::{header::HeaderConfig, types::*, reg_entry::RegistryEntry};
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
