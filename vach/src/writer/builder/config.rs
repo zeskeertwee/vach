@@ -6,13 +6,13 @@ use ed25519_dalek as esdalek;
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
 #[derive(Debug)]
 pub struct BuilderConfig {
-	/// Stores a custom magic sequence that identifies an source as a valid archive source.
+	/// Used to write a unique magic sequence into the write target.
 	pub magic: [u8; crate::MAGIC_LENGTH],
-	/// Flags that are found in the `Header` section of an archive source
+	/// Flags to be written into the `Header` section of the write target.
 	pub flags: Flags,
-	/// An optional keypair. If a key is provided, then the archive source will be signed.
+	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
-	/// Whether to encrypt the Leaf's in the archive
+	/// Use encryption when writing into the target.
 	pub encrypt: bool,
 }
 
