@@ -1,4 +1,0 @@
-Custom Flag encapsulation structure
-Use streams and abstain from buffering with vectors
-Correctly format flags
-Add Builder::add_file() and Builder::add_dir() helper functions
