@@ -21,7 +21,7 @@ impl Flags {
 	pub const RESERVED_MASK: u16 = 0b1111_0000_0000_0000;
 	/// The flag that represents compressed sources
 	pub const COMPRESSED_FLAG: u16 = 0b_1000_0000_0000_0000;
-	/// The flag that announces that the archive source has signatures
+	/// The flag that denotes that the archive source has signatures
 	pub const SIGNED_FLAG: u16 = 0b_0100_0000_0000_0000;
 	/// The flag that marks registry entries as links rather than leaf pointers
 	pub const LINK_FLAG: u16 = 0b_0010_0000_0000_0000;
@@ -31,7 +31,7 @@ impl Flags {
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u16` number
 	pub fn from_bits(bits: u16) -> Self {
-		Self { bits }
+		Flags { bits }
 	}
 	/// Returns a copy of the underlying number.
 	#[inline(always)]
@@ -46,7 +46,7 @@ impl Flags {
 	/// ```
 	#[inline(always)]
 	pub fn empty() -> Self {
-		Self { bits: 0 }
+		Flags { bits: 0 }
 	}
 
 	/// Returns a error if mask contains a reserved bit.
@@ -99,7 +99,7 @@ impl Flags {
 impl Default for Flags {
 	#[inline(always)]
 	fn default() -> Self {
-		Self { bits: 0 }
+		Flags { bits: 0 }
 	}
 }
 
