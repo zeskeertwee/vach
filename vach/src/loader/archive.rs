@@ -6,8 +6,8 @@ use std::{
 use super::resource::Resource;
 use crate::global::{
 	header::{Header, HeaderConfig},
-	reg_entry::{RegistryEntry},
-	types::{Flags},
+	reg_entry::RegistryEntry,
+	types::Flags,
 };
 
 use anyhow;
