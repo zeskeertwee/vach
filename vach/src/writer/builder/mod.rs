@@ -89,7 +89,7 @@ impl<'a> Builder<'a> {
 
 	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.
 	/// Custom *`MAGIC`*, Header flags and a `Keypair` can be presented using the `BuilderConfig` struct.
-	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the archive source.
+	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the write target.
 	pub fn dump<W: Write + Seek>(
 		&mut self, mut target: W, config: &BuilderConfig,
 	) -> anyhow::Result<usize> {
