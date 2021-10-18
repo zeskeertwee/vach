@@ -179,7 +179,7 @@ pub mod prelude {
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
-	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
+	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
 }
 
 /// Import keypairs and signatures from here, mirrors from `ed25519_dalek`
@@ -187,7 +187,7 @@ pub mod crypto {
 	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
 }
 
-/// Import `Builder` related data structures and logic from here
+/// `Builder` related data structures and logic
 pub mod builder {
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
@@ -195,7 +195,7 @@ pub mod builder {
 	};
 }
 
-/// Loader-based logic and data-structures from here
+/// Loader-based logic and data-structures
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{reg_entry::RegistryEntry, header::HeaderConfig};
