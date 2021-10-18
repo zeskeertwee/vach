@@ -29,9 +29,9 @@ mod tests {
 
 	#[test]
 	fn defaults() {
-		// The reason we are pulling the header and the registry from the global namespace is because they are not exposed outside of the crate, pub(crate)
+		// The reason we are pulling the header directly from global namespace is because it's not exposed to the public API
 		// We still need to conduct tests on them tho.
-		use crate::global::{header::Header, reg_entry::*};
+		use crate::global::header::Header;
 
 		let _header_config = HeaderConfig::default();
 		let _header = Header::default();
@@ -254,7 +254,7 @@ mod tests {
 		let mut target = Cursor::new(Vec::<u8>::new());
 
 		// Data to be written
-		let data_1 = b"Around The World, Fatter better stronker" as &[u8];
+		let data_1 = b"Around The World, Fatter wetter stronker" as &[u8];
 		let data_2 = b"Imagine if this made sense" as &[u8];
 		let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
@@ -290,9 +290,9 @@ mod tests {
 		drop(config);
 
 		// Load data
-		let config = HeaderConfig::default()
-			.magic(*MAGIC)
-			.key(read_keypair(&keypair_bytes as &[u8])?.public);
+		let mut config = HeaderConfig::default().magic(*MAGIC);
+		config.load_public_key(&keypair_bytes[32..])?;
+
 		let mut archive = Archive::with_config(target, &config)?;
 
 		// Quick assertions
