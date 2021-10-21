@@ -8,7 +8,7 @@ fn _contains(first: u16, other: u16) -> bool {
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
 	bits: u16,
 }
@@ -105,6 +105,16 @@ impl Default for Flags {
 
 impl fmt::Display for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "{:#016b}", self.bits)
+		let compress = if self.contains(Flags::COMPRESSED_FLAG) { "COMPRESSED" } else { "" };
+		let signed = if self.contains(Flags::SIGNED_FLAG) { "SIGNED" } else { "" };
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { "ENCRYPTED" } else { "" };
+
+		write!(f, "Flags<-{}-{}-{}->: {:#016b}", signed, encrypted, compress, self.bits)
 	}
+}
+
+impl fmt::Debug for Flags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self, f)
+    }
 }
