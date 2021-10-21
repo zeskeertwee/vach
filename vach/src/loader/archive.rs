@@ -4,13 +4,17 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::global::{
-	header::{Header, HeaderConfig},
-	reg_entry::RegistryEntry,
-	types::Flags,
+use crate::{
+	global::{
+		header::{Header, HeaderConfig},
+		reg_entry::RegistryEntry,
+		types::Flags,
+	},
+	utils::{transform_iv, transform_key},
 };
 
 use anyhow;
+use chacha20stream::Sink;
 use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
 use hashbrown::HashMap;
@@ -104,18 +108,36 @@ impl<T: Seek + Read> Archive<T> {
 			}
 
 			// Dynamically dispatched reader
-			let new_take = raw.take(raw_size as u64);
-			let mut rdr: Box<dyn Read>;
+			raw.truncate(raw_size);
 
 			// Add read layers
-			// 1: Decompression layer
+			// 1: Decryption layer
+			if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
+				if let Some(public_key) = self.key {
+					let mut buffer = vec![];
+					let mut sink = Sink::decrypt(
+						&mut buffer,
+						transform_key(&public_key)?,
+						transform_iv(&self.header.magic)?,
+					)?;
+					sink.write_all(raw.as_slice())?;
+					sink.flush()?;
+
+					raw = buffer
+				} else {
+					anyhow::bail!(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id))
+				}
+			}
+			// 2: Decompression layer
 			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-				rdr = Box::new(lz4::frame::FrameDecoder::new(new_take));
-			} else {
-				rdr = Box::new(new_take)
+				let mut rdr = lz4::frame::FrameDecoder::new(raw.as_slice());
+				let mut buffer = vec![];
+				rdr.read_to_end(&mut buffer)?;
+
+				raw = buffer;
 			};
 
-			io::copy(&mut rdr, &mut target)?;
+			io::copy(&mut raw.as_slice(), &mut target)?;
 
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {

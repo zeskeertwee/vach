@@ -85,6 +85,7 @@ impl<'a> Leaf<'a> {
 		self.compress = other.compress;
 		self.content_version = other.content_version;
 		self.flags = other.flags;
+		self.encrypt = other.encrypt;
 		self
 	}
 
