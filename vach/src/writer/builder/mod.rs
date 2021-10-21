@@ -1,9 +1,13 @@
 use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
 
 mod config;
+use chacha20stream::Sink;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, CompressMode};
-use crate::global::{header::Header, reg_entry::RegistryEntry, types::Flags};
+use crate::{
+	global::{header::Header, reg_entry::RegistryEntry, types::Flags},
+	utils::{transform_iv, transform_key},
+};
 
 use lz4_flex as lz4;
 use ed25519_dalek::Signer;
@@ -167,10 +171,27 @@ impl<'a> Builder<'a> {
 				}
 			}
 
-			let glob_length = leaf_bytes.len();
+			// Encryption comes after
+			if leaf.encrypt {
+				if let Some(keypair) = &config.keypair {
+					let mut encrypted_buffer = Vec::new();
+					let mut sink = Sink::encrypt(
+						&mut encrypted_buffer,
+						transform_key(&keypair.public)?,
+						transform_iv(&config.magic)?,
+					)?;
+
+					sink.write_all(leaf_bytes.as_slice())?;
+					sink.flush()?;
+
+					leaf_bytes = encrypted_buffer;
+					leaf.flags.force_set(Flags::ENCRYPTED_FLAG, true);
+				}
+			}
 
 			// Buffer the contents of the leaf, to be written later
 			wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+			let glob_length = leaf_bytes.len();
 			wtr.write_all(&leaf_bytes)?;
 			size += glob_length;
 
