@@ -185,7 +185,8 @@ impl<'a> Builder<'a> {
 					sink.flush()?;
 
 					leaf_bytes = encrypted_buffer;
-					leaf.flags.force_set(Flags::ENCRYPTED_FLAG, true);
+
+					entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
 				}
 			}
 
