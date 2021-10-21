@@ -179,12 +179,12 @@ pub mod prelude {
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
-	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
+	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
 }
 
 /// Import keypairs and signatures from here, mirrors from `ed25519_dalek`
 pub mod crypto {
-	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
+	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
 }
 
 /// `Builder` related data structures and logic
