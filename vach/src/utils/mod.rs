@@ -24,7 +24,7 @@ pub(crate) fn transform_key(public_key: &esdalek::PublicKey) -> anyhow::Result<c
 
 pub(crate) fn transform_iv(magic: &[u8; 5]) -> anyhow::Result<c20stream::IV> {
 	let mut iv_bytes = vec![0; 7];
-	iv_bytes.write(magic)?;
+	iv_bytes.write_all(magic)?;
 	let iv_bytes: [u8; 12] = iv_bytes.as_slice().try_into()?;
 	Ok(c20stream::IV::from_bytes(iv_bytes))
 }
