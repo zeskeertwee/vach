@@ -2,8 +2,7 @@
 
 #![cfg(test)]
 // Boring, average every day contemporary imports
-use std::{fs::{File}, io::{Cursor, Seek, SeekFrom, Write}, str};
-
+use std::{ fs::File, io::{Cursor, Seek, SeekFrom, Write}, str };
 
 use crate::prelude::*;
 
@@ -14,6 +13,7 @@ const KEYPAIR: &str = "test_data/pair.pub";
 // The paths to the Archives, to be written|loaded
 const SIGNED_TARGET: &str = "test_data/signed/target.vach";
 const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
+const ENCRYPTED_TARGET: &str = "test_data/encrypted/target.vach";
 
 #[test]
 fn log_constants() {
@@ -22,6 +22,54 @@ fn log_constants() {
 	dbg!(crate::SIGNATURE_LENGTH);
 	dbg!(crate::SECRET_KEY_LENGTH);
 	dbg!(crate::MAX_ID_LENGTH);
+}
+
+// Custom bitflag tests
+const CUSTOM_FLAG_1: u16 = 0b_0000_1000_0000_0000;
+const CUSTOM_FLAG_2: u16 = 0b_0000_0100_0000_0000;
+const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
+const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
+
+#[test]
+fn custom_bitflags() -> anyhow::Result<()> {
+	let target = File::open(SIMPLE_TARGET)?;
+	let mut archive = Archive::from_handle(target)?;
+	let entry = archive.fetch_entry("poem").unwrap();
+	let flags = Flags::from_bits(entry.flags.bits());
+	assert_eq!(flags.bits(), entry.flags.bits());
+	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
+
+	Ok(())
+}
+
+#[test]
+#[should_panic]
+fn flag_restricted_access() {
+	let mut flag = Flags::from_bits(0b1111_1000_0000_0000);
+	flag.set(Flags::COMPRESSED_FLAG, true).unwrap();
+}
+
+#[test]
+fn flags_set_intersects() {
+	let mut flag = Flags::empty();
+
+	flag.force_set(Flags::COMPRESSED_FLAG, true);
+	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
+
+	flag.force_set(Flags::COMPRESSED_FLAG, true);
+	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
+
+	flag.force_set(Flags::SIGNED_FLAG, true);
+	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
+
+	flag.force_set(Flags::COMPRESSED_FLAG, false);
+	assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
+
+	flag.force_set(Flags::COMPRESSED_FLAG, false);
+	assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
+
+	flag.force_set(Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG, true);
+	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
 }
 
 #[test]
@@ -52,53 +100,6 @@ fn header_config() -> anyhow::Result<()> {
 	format!("{}", header);
 
 	Header::validate(&header, &config)?;
-	Ok(())
-}
-
-// Custom bitflag tests
-const CUSTOM_FLAG_1: u16 = 0b_0000_1000_0000_0000;
-const CUSTOM_FLAG_2: u16 = 0b_0000_0100_0000_0000;
-const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
-const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
-
-#[test]
-fn custom_bitflags() -> anyhow::Result<()> {
-	let target = File::open(SIMPLE_TARGET)?;
-	let mut archive = Archive::from_handle(target)?;
-	let resource = archive.fetch("poem")?;
-	let flags = Flags::from_bits(resource.flags.bits());
-	assert_eq!(flags.bits(), resource.flags.bits());
-	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
-
-	Ok(())
-}
-
-#[test]
-fn fetch_no_signature() -> anyhow::Result<()> {
-	let target = File::open(SIMPLE_TARGET)?;
-	let mut archive = Archive::from_handle(target)?;
-	dbg!(archive.entries());
-	let resource = archive.fetch("poem")?;
-
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(resource.data.len(), 359);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(resource.data.len(), 345);
-	}
-
-	assert!(!resource.secured);
-	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
-
-	println!("{}", String::from_utf8(resource.data)?);
-
-	let hello = archive.fetch("greeting")?;
-	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data)?);
-	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
-
 	Ok(())
 }
 
@@ -139,6 +140,69 @@ fn builder_no_signature() -> anyhow::Result<()> {
 }
 
 #[test]
+fn fetch_no_signature() -> anyhow::Result<()> {
+	let target = File::open(SIMPLE_TARGET)?;
+	let mut archive = Archive::from_handle(target)?;
+	dbg!(archive.entries());
+	let resource = archive.fetch("poem")?;
+
+	// Windows bullshit
+	#[cfg(target_os = "windows")]
+	{
+		assert_eq!(resource.data.len(), 359);
+	}
+	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
+	{
+		assert_eq!(resource.data.len(), 345);
+	}
+
+	assert!(!resource.secured);
+	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
+
+	println!("{}", String::from_utf8(resource.data)?);
+
+	let hello = archive.fetch("greeting")?;
+	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data)?);
+	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
+
+	Ok(())
+}
+
+#[test]
+fn gen_keypair() -> anyhow::Result<()> {
+	use crate::utils::gen_keypair;
+
+	// NOTE: regenerating new keys will break some tests
+	let regenerate = false;
+
+	if regenerate {
+		let keypair = gen_keypair();
+
+		std::fs::write(KEYPAIR, &keypair.to_bytes())?;
+	};
+
+	Ok(())
+}
+
+#[test]
+fn builder_with_signature() -> anyhow::Result<()> {
+	let mut builder = Builder::default();
+
+	let mut build_config = BuilderConfig::default();
+	build_config.load_keypair(File::open(KEYPAIR)?)?;
+
+	builder.add_dir("test_data", &Leaf::default().compress(CompressMode::Detect))?;
+
+	let mut target = File::create(SIGNED_TARGET)?;
+	println!(
+		"Number of bytes written: {}, into signed archive.",
+		builder.dump(&mut target, &build_config)?
+	);
+
+	Ok(())
+}
+
+#[test]
 fn fetch_with_signature() -> anyhow::Result<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -166,24 +230,6 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 	}
 
 	assert!(resource.secured);
-
-	Ok(())
-}
-
-#[test]
-fn builder_with_signature() -> anyhow::Result<()> {
-	let mut builder = Builder::default();
-
-	let mut build_config = BuilderConfig::default();
-	build_config.load_keypair(File::open(KEYPAIR)?)?;
-
-	builder.add_dir("test_data", &Leaf::default().compress(CompressMode::Detect))?;
-
-	let mut target = File::create(SIGNED_TARGET)?;
-	println!(
-		"Number of bytes written: {}, into signed archive.",
-		builder.dump(&mut target, &build_config)?
-	);
 
 	Ok(())
 }
@@ -221,22 +267,6 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn gen_keypair() -> anyhow::Result<()> {
-	use crate::utils::gen_keypair;
-
-	// NOTE: regenerating new keys will break some tests
-	let regenerate = false;
-
-	if regenerate {
-		let keypair = gen_keypair();
-
-		std::fs::write(KEYPAIR, &keypair.to_bytes())?;
-	};
-
-	Ok(())
-}
-
-#[test]
 fn keypair_encryption() -> anyhow::Result<()> {
 	use crate::utils::{gen_keypair, transform_iv, transform_key};
 	use chacha20stream::Sink;
@@ -248,7 +278,7 @@ fn keypair_encryption() -> anyhow::Result<()> {
 	let key = transform_key(&gen_keypair().public)?;
 
 	let mut wtr = Sink::encrypt(&mut encrypted, key.clone(), iv.clone())?;
-	wtr.write(plaintext)?;
+	wtr.write_all(plaintext)?;
 	wtr.flush()?;
 
 	assert_ne!(encrypted, plaintext);
@@ -263,10 +293,55 @@ fn keypair_encryption() -> anyhow::Result<()> {
 }
 
 #[test]
-#[should_panic]
-fn flag_restricted_access() {
-	let mut flag = Flags::from_bits(0b1111_1000_0000_0000);
-	flag.set(Flags::COMPRESSED_FLAG, true).unwrap();
+fn builder_with_encryption() -> anyhow::Result<()> {
+	let mut builder = Builder::default();
+
+	let mut build_config = BuilderConfig::default();
+	build_config.load_keypair(File::open(KEYPAIR)?)?;
+
+	builder.add_dir(
+		"test_data",
+		&Leaf::default().encrypt(true).compress(CompressMode::Always),
+	)?;
+
+	let mut target = File::create(ENCRYPTED_TARGET)?;
+	println!(
+		"Number of bytes written: {}, into encrypted and fully compressed archive.",
+		builder.dump(&mut target, &build_config)?
+	);
+	Ok(())
+}
+
+#[test]
+fn fetch_from_encrypted() -> anyhow::Result<()> {
+	let target = File::open(ENCRYPTED_TARGET)?;
+
+	// Load keypair
+	let mut config = HeaderConfig::default();
+	let mut keypair = File::open(KEYPAIR)?;
+	keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
+	config.load_public_key(keypair)?;
+
+	let mut archive = Archive::with_config(target, &config)?;
+	let resource = archive.fetch("test_data/song.txt")?;
+	let song = str::from_utf8(resource.data.as_slice())?;
+
+	// Check identity of retrieved data
+	println!("{}", song);
+
+	// Windows bullshit
+	#[cfg(target_os = "windows")]
+	{
+		assert_eq!(song.len(), 2041);
+	}
+	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
+	{
+		assert_eq!(song.len(), 1977);
+	}
+
+	assert!(resource.secured);
+
+	Ok(())
 }
 
 #[test]
@@ -325,27 +400,4 @@ fn consolidated_example() -> anyhow::Result<()> {
 
 	// All seems ok
 	Ok(())
-}
-
-#[test]
-fn flags_set_intersects() {
-	let mut flag = Flags::empty();
-
-	flag.force_set(Flags::COMPRESSED_FLAG, true);
-	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
-
-	flag.force_set(Flags::COMPRESSED_FLAG, true);
-	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
-
-	flag.force_set(Flags::SIGNED_FLAG, true);
-	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
-
-	flag.force_set(Flags::COMPRESSED_FLAG, false);
-	assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
-
-	flag.force_set(Flags::COMPRESSED_FLAG, false);
-	assert_eq!(flag.bits(), Flags::SIGNED_FLAG);
-
-	flag.force_set(Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG, true);
-	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
 }
