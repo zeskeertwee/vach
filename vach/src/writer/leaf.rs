@@ -28,6 +28,8 @@ pub struct Leaf<'a> {
 	pub compress: CompressMode,
 	/// The flags that will go into the archive write target.
 	pub flags: Flags,
+	/// Use encryption when writing into the target.
+	pub encrypt: bool,
 }
 
 impl<'a> Default for Leaf<'a> {
@@ -40,6 +42,7 @@ impl<'a> Default for Leaf<'a> {
 			content_version: 0,
 			compress: CompressMode::Never,
 			flags: Flags::default(),
+			encrypt: false,
 		}
 	}
 }
@@ -124,6 +127,15 @@ impl<'a> Leaf<'a> {
 	/// ```
 	pub fn flags(mut self, flags: Flags) -> Self {
 		self.flags = flags;
+		self
+	}
+	/// Setter for the `encrypt` field
+	///```
+	///use vach::prelude::Leaf;
+	/// let config = Leaf::default().encrypt(true);
+	///```
+	pub fn encrypt(mut self, encrypt: bool) -> Self {
+		self.encrypt = encrypt;
 		self
 	}
 }

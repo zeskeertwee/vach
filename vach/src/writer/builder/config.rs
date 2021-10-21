@@ -12,8 +12,6 @@ pub struct BuilderConfig {
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
-	/// Use encryption when writing into the target.
-	pub encrypt: bool,
 }
 
 impl BuilderConfig {
@@ -42,15 +40,6 @@ impl BuilderConfig {
 		self.magic = magic;
 		self
 	}
-	/// Setter for the `encrypt` field
-	///```
-	///use vach::prelude::BuilderConfig;
-	/// let config = BuilderConfig::default().encrypt(true);
-	///```
-	pub fn encrypt(mut self, encrypt: bool) -> BuilderConfig {
-		self.encrypt = encrypt;
-		self
-	}
 
 	// Keypair helpers
 	/// Parses and stores a keypair from a source.
@@ -66,7 +55,6 @@ impl Default for BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
 			magic: *crate::DEFAULT_MAGIC,
-			encrypt: false,
 		}
 	}
 }
