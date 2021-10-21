@@ -2,11 +2,8 @@
 
 #![cfg(test)]
 // Boring, average every day contemporary imports
-use std::{
-	fs::{File},
-	io::{Cursor, Seek, SeekFrom},
-	str,
-};
+use std::{fs::{File}, io::{Cursor, Seek, SeekFrom, Write}, str};
+
 
 use crate::prelude::*;
 
@@ -236,6 +233,32 @@ fn gen_keypair() -> anyhow::Result<()> {
 		std::fs::write(KEYPAIR, &keypair.to_bytes())?;
 	};
 
+	Ok(())
+}
+
+#[test]
+fn keypair_encryption() -> anyhow::Result<()> {
+	use crate::utils::{gen_keypair, transform_iv, transform_key};
+	use chacha20stream::Sink;
+
+	let plaintext = &[12, 24, 35, 36];
+	let mut encrypted = vec![];
+
+	let iv = transform_iv(crate::DEFAULT_MAGIC)?;
+	let key = transform_key(&gen_keypair().public)?;
+
+	let mut wtr = Sink::encrypt(&mut encrypted, key.clone(), iv.clone())?;
+	wtr.write(plaintext)?;
+	wtr.flush()?;
+
+	assert_ne!(encrypted, plaintext);
+
+	let mut decrypted = vec![];
+	let mut rdr = Sink::decrypt(&mut decrypted, key, iv)?;
+	rdr.flush()?;
+
+	rdr.write(encrypted.as_slice())?;
+	assert_eq!(decrypted, plaintext);
 	Ok(())
 }
 
