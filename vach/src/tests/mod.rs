@@ -301,7 +301,7 @@ fn builder_with_encryption() -> anyhow::Result<()> {
 
 	builder.add_dir(
 		"test_data",
-		&Leaf::default().encrypt(true).compress(CompressMode::Always),
+		&Leaf::default().encrypt(true).compress(CompressMode::Never),
 	)?;
 
 	let mut target = File::create(ENCRYPTED_TARGET)?;
