@@ -2,7 +2,11 @@
 
 #![cfg(test)]
 // Boring, average every day contemporary imports
-use std::{ fs::File, io::{Seek, SeekFrom, Write}, str };
+use std::{
+	fs::File,
+	io::{Seek, SeekFrom, Write},
+	str,
+};
 
 use crate::prelude::*;
 
@@ -191,7 +195,10 @@ fn builder_with_signature() -> anyhow::Result<()> {
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
-	builder.add_dir("test_data", Some(&Leaf::default().compress(CompressMode::Detect)))?;
+	builder.add_dir(
+		"test_data",
+		Some(&Leaf::default().compress(CompressMode::Detect)),
+	)?;
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
@@ -294,15 +301,13 @@ fn keypair_encryption() -> anyhow::Result<()> {
 
 #[test]
 fn builder_with_encryption() -> anyhow::Result<()> {
-	let mut builder = Builder::default();
+	let mut builder =
+		Builder::default().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
-	builder.add_dir(
-		"test_data",
-		Some(&Leaf::default().encrypt(true).compress(CompressMode::Never)),
-	)?;
+	builder.add_dir("test_data", None)?;
 
 	let mut target = File::create(ENCRYPTED_TARGET)?;
 	println!(
@@ -340,6 +345,8 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 	}
 
 	assert!(resource.secured);
+	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
+	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
 
 	Ok(())
 }
