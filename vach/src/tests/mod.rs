@@ -318,9 +318,9 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 
 	// Load keypair
 	let mut config = HeaderConfig::default();
-	let mut keypair = File::open(KEYPAIR)?;
-	keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
-	config.load_public_key(keypair)?;
+	let mut public_key = File::open(KEYPAIR)?;
+	public_key.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
+	config.load_public_key(public_key)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
