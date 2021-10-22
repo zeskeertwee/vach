@@ -17,6 +17,7 @@ use hashbrown::HashSet;
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
 	pub(crate) set: HashSet<String>,
+	leaf_template: Leaf<'a>
 }
 
 impl<'a> Default for Builder<'a> {
@@ -25,6 +26,7 @@ impl<'a> Default for Builder<'a> {
 		Builder {
 			leafs: Vec::new(),
 			set: HashSet::new(),
+			leaf_template: Leaf::default()
 		}
 	}
 }
@@ -41,15 +43,15 @@ impl<'a> Builder<'a> {
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// Returns an Er(---) if a Leaf with the specified ID exists.
 	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> anyhow::Result<()> {
-		let leaf = Leaf::from_handle(data).id(id);
+		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
 		self.add_leaf(leaf)?;
 		Ok(())
 	}
 
 	/// Loads all files from a directory and appends them into the processing queue.
-	/// A `Leaf` is passed as a template from which the wrapping `Leaf`s shall be based on.
+	/// An optional `Leaf` is passed as a template from which the wrapping `Leaf`s shall be based on, pass `None` to use the `Builder` internal default template.
 	/// Appended `Leaf`s have an `ID` of: `<directory_name>/<file_name>`. For example: "sounds/footstep.wav", "sample/script.data"
-	pub fn add_dir(&mut self, path: &str, template: &Leaf) -> anyhow::Result<()> {
+	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> anyhow::Result<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -66,7 +68,7 @@ impl<'a> Builder<'a> {
 				// Therefore a file
 				let file = fs::File::open(uri)?;
 				let leaf = Leaf::from_handle(file)
-					.template(template)
+					.template(template.unwrap_or(&self.leaf_template))
 					.id(&format!("{}/{}", v[0], v[1]));
 
 				self.add_leaf(leaf)?;
@@ -76,9 +78,9 @@ impl<'a> Builder<'a> {
 		Ok(())
 	}
 
-	#[inline(always)]
 	/// Append a preconstructed `Leaf` into the processing queue.
 	/// Returns an Er(---) if a Leaf with the specified ID exists.
+	/// Use this to skip application of the Builder's internal template unto `Leaf`s.
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {
 		{
 			// Make sure no two leaves are written with the same ID
@@ -89,6 +91,21 @@ impl<'a> Builder<'a> {
 
 		self.leafs.push(leaf);
 		Ok(())
+	}
+
+	/// Avoid unnecessary boilerplate by auto-templating all `Leaf`s added with `Builder::add(--)` with the given template
+	/// ```
+	/// use vach::builder::{Builder, Leaf, CompressMode};
+	///
+	/// let template = Leaf::default().compress(CompressMode::Always).version(12);
+	/// let mut builder = Builder::new().template(template);
+	///
+	/// builder.add(b"JEB" as &[u8], "JEB").unwrap();
+	/// // `JEB` is compressed and has a version of 12
+	/// ```
+	pub fn template(mut self, template: Leaf<'a>) -> Builder {
+		self.leaf_template = template;
+		self
 	}
 
 	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.

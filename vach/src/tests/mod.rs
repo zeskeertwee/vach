@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 // Boring, average every day contemporary imports
-use std::{ fs::File, io::{Cursor, Seek, SeekFrom, Write}, str };
+use std::{ fs::File, io::{Seek, SeekFrom, Write}, str };
 
 use crate::prelude::*;
 
@@ -128,7 +128,7 @@ fn builder_no_signature() -> anyhow::Result<()> {
 	)?;
 
 	builder.add_leaf(
-		Leaf::from_handle(Cursor::new(b"Hello, Cassandra!"))
+		Leaf::from_handle(b"Hello, Cassandra!" as &[u8])
 			.compress(CompressMode::Never)
 			.id("greeting"),
 	)?;
@@ -191,7 +191,7 @@ fn builder_with_signature() -> anyhow::Result<()> {
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
-	builder.add_dir("test_data", &Leaf::default().compress(CompressMode::Detect))?;
+	builder.add_dir("test_data", Some(&Leaf::default().compress(CompressMode::Detect)))?;
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
@@ -301,7 +301,7 @@ fn builder_with_encryption() -> anyhow::Result<()> {
 
 	builder.add_dir(
 		"test_data",
-		&Leaf::default().encrypt(true).compress(CompressMode::Never),
+		Some(&Leaf::default().encrypt(true).compress(CompressMode::Never)),
 	)?;
 
 	let mut target = File::create(ENCRYPTED_TARGET)?;
@@ -347,6 +347,7 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 #[test]
 fn consolidated_example() -> anyhow::Result<()> {
 	use crate::utils::{gen_keypair, read_keypair};
+	use std::io::Cursor;
 
 	const MAGIC: &[u8; 5] = b"CSDTD";
 	let mut target = Cursor::new(Vec::<u8>::new());
