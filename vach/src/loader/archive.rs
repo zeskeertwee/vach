@@ -23,6 +23,7 @@ use hashbrown::HashMap;
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
 /// It can be customized with the `HeaderConfig` struct.
 /// Buffers all calls to the underlying handle with `BufReader`, so avoid passing in a buffered handle.
+/// A word of advice; Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the `stream_position` is at the right location to avoid hair-splitting bugs.
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
@@ -90,12 +91,12 @@ impl<T: Seek + Read> Archive<T> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
+
+			// BUG: MAJOR SLOW-DOWN HERE; `io::Seek` is a very expensive operation
 			handle.seek(SeekFrom::Start(entry.location))?;
 
-			let mut old_take = handle.take(entry.offset);
-
 			let mut raw = vec![];
-			let raw_size = old_take.read_to_end(&mut raw)?;
+			let raw_size = handle.take(entry.offset).read_to_end(&mut raw)?;
 
 			// Signature validation
 			// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
@@ -105,23 +106,23 @@ impl<T: Seek + Read> Archive<T> {
 				if let Some(signature) = entry.signature {
 					is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
 				}
-			}
 
-			// Dynamically dispatched reader
-			raw.truncate(raw_size);
+				raw.truncate(raw_size);
+			}
 
 			// Add read layers
 			// 1: Decryption layer
 			if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
 				if let Some(public_key) = self.key {
 					let mut buffer = vec![];
-					let mut sink = Sink::decrypt(
+					let mut wtr = Sink::decrypt(
 						&mut buffer,
 						transform_key(&public_key)?,
 						transform_iv(&self.header.magic)?,
 					)?;
-					sink.write_all(raw.as_slice())?;
-					sink.flush()?;
+
+					wtr.write_all(raw.as_slice())?;
+					wtr.flush()?;
 
 					raw = buffer
 				} else {
@@ -144,6 +145,7 @@ impl<T: Seek + Read> Archive<T> {
 			anyhow::bail!(format!("Resource not found: {}", id))
 		}
 	}
+
 	/// Fetch a `RegistryEntry` from this `Archive`.
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
 	/// If no data has the given `id`, then None is returned.
