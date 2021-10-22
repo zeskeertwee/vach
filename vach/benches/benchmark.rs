@@ -66,53 +66,29 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		});
 	});
 
-	c.bench_function("Archive:fetch(---)", |b| {
+	c.bench_function("Archive::fetch(---)", |b| {
 		// Builder definition
 		let keypair_bytes = gen_keypair().to_bytes();
 		let config = BuilderConfig::default()
 			.magic(*MAGIC)
 			.keypair(read_keypair(&keypair_bytes as &[u8]).unwrap());
-		let mut builder = Builder::new();
+		let mut builder = Builder::new().template(Leaf::default().compress(CompressMode::Always).encrypt(true));
 
-		// Add data
-		let template = Leaf::default().compress(CompressMode::Always).encrypt(true);
-
-		builder
-			.add_leaf(
-				Leaf::from_handle(b"Around The World, Fatter wetter stronker" as &[u8])
-					.template(&template)
-					.id("d1"),
-			)
-			.unwrap();
-
-		builder
-			.add_leaf(
-				Leaf::from_handle(b"Imagine if this made sense" as &[u8])
-					.template(&template)
-					.id("d2"),
-			)
-			.unwrap();
-
-		builder
-			.add_leaf(
-				Leaf::from_handle(b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8])
-					.template(&template)
-					.id("d3"),
-			)
-			.unwrap();
-		drop(template);
+		builder.add(b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8], "d1").unwrap();
+		builder.add(b"Around The World, Fatter wetter stronker" as &[u8], "d2").unwrap();
+		builder.add(b"Imagine if this made sense" as &[u8], "d3").unwrap();
 
 		// Dump
 		let mut target = io::Cursor::new(Vec::new());
 		builder.dump(&mut target, &config).unwrap();
 		let config = HeaderConfig::default().key(keypair.public);
 
-		b.iter(move || -> anyhow::Result<()> {
+		b.iter( || -> anyhow::Result<()> {
 			let mut archive = Archive::with_config(&mut target, &config)?;
 
-			archive.fetch("d1")?;
-			archive.fetch("d3")?;
-			archive.fetch("d2")?;
+			dbg!(&archive.fetch("d1")?.data[0..12]);
+			dbg!(&archive.fetch("d3")?.data[0..12]);
+			dbg!(&archive.fetch("d2")?.data[0..12]);
 
 			Ok(())
 		})
