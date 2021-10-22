@@ -1,7 +1,7 @@
 use std::{
 	convert::TryInto,
 	fmt,
-	io::{Read, Seek, SeekFrom},
+	io::Read,
 	str,
 };
 
@@ -111,7 +111,7 @@ impl Default for Header {
 }
 
 impl Header {
-	// BASE_SIZE => 11 + 64 = 75
+	// BASE_SIZE => 5 + 2 + 2 + 2 = 11
 	pub const BASE_SIZE: usize =
 		crate::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
 
@@ -140,8 +140,7 @@ impl Header {
 		Ok(())
 	}
 
-	pub fn from_handle<T: Read + Seek>(mut handle: T) -> anyhow::Result<Header> {
-		handle.seek(SeekFrom::Start(0))?;
+	pub fn from_handle<T: Read>(mut handle: T) -> anyhow::Result<Header> {
 		let mut buffer = [0x69; Header::BASE_SIZE];
 		handle.read_exact(&mut buffer)?;
 
@@ -150,13 +149,11 @@ impl Header {
 			// Read magic, [u8;5]
 			magic: buffer[0..crate::MAGIC_LENGTH].try_into()?,
 			// Read flags, u16 from [u8;2]
-			flags: Flags::from_bits(u16::from_le_bytes(
-				buffer[crate::MAGIC_LENGTH..7].try_into()?,
-			)),
+			flags: Flags::from_bits(u16::from_le_bytes([buffer[5], buffer[6]])),
 			// Read version, u16 from [u8;2]
-			arch_version: u16::from_le_bytes(buffer[7..9].try_into()?),
+			arch_version: u16::from_le_bytes([buffer[7], buffer[8]]),
 			// Read the capacity of the archive, u16 from [u8;2]
-			capacity: u16::from_le_bytes(buffer[9..Header::BASE_SIZE].try_into()?),
+			capacity: u16::from_le_bytes([buffer[9], buffer[10]]),
 		})
 	}
 }

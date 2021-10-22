@@ -44,20 +44,26 @@ impl RegistryEntry {
 
 		// Construct entry
 		let mut entry = RegistryEntry::empty();
-		entry.flags = Flags::from_bits(u16::from_le_bytes(buffer[0..2].try_into()?));
+		entry.flags = Flags::from_bits(u16::from_le_bytes([buffer[0], buffer[1]]));
 		entry.content_version = buffer[2];
 
-		entry.location = u64::from_le_bytes(buffer[3..11].try_into()?);
-		entry.offset = u64::from_le_bytes(buffer[11..19].try_into()?);
+		entry.location = u64::from_le_bytes([
+			buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[8], buffer[9], buffer[10],
+		]);
 
-		let id_length = u16::from_le_bytes(buffer[19..RegistryEntry::MIN_SIZE].try_into()?);
+		entry.offset = u64::from_le_bytes([
+			buffer[11], buffer[12], buffer[13], buffer[14], buffer[15], buffer[16], buffer[17],
+			buffer[18],
+		]);
+
+		let id_length = u16::from_le_bytes([buffer[19], buffer[20]]);
 
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
 		if read_sig {
-			let mut buffer = [0u8; crate::SIGNATURE_LENGTH];
-			handle.read_exact(&mut buffer)?;
-			entry.signature = Some(buffer.try_into()?);
+			let mut sig_bytes = [0u8; crate::SIGNATURE_LENGTH];
+			handle.read_exact(&mut sig_bytes)?;
+			entry.signature = Some(sig_bytes.try_into()?);
 		};
 
 		// Construct ID
