@@ -19,15 +19,6 @@ const SIGNED_TARGET: &str = "test_data/signed/target.vach";
 const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
 const ENCRYPTED_TARGET: &str = "test_data/encrypted/target.vach";
 
-#[test]
-fn log_constants() {
-	dbg!(crate::VERSION);
-	dbg!(crate::PUBLIC_KEY_LENGTH);
-	dbg!(crate::SIGNATURE_LENGTH);
-	dbg!(crate::SECRET_KEY_LENGTH);
-	dbg!(crate::MAX_ID_LENGTH);
-}
-
 // Custom bitflag tests
 const CUSTOM_FLAG_1: u16 = 0b_0000_1000_0000_0000;
 const CUSTOM_FLAG_2: u16 = 0b_0000_0100_0000_0000;
@@ -390,6 +381,7 @@ fn consolidated_example() -> anyhow::Result<()> {
 
 	// Dump data
 	builder.dump(&mut target, &config)?;
+	target.seek(SeekFrom::Start(0))?;
 
 	// Just because
 	drop(builder);
