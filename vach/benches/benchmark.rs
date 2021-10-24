@@ -14,8 +14,8 @@ impl io::Seek for Sink {
 }
 
 impl io::Write for Sink {
-	fn write(&mut self, _: &[u8]) -> io::Result<usize> {
-		Ok(0)
+	fn write(&mut self, sequence: &[u8]) -> io::Result<usize> {
+		Ok(sequence.len())
 	}
 
 	fn flush(&mut self) -> io::Result<()> {
