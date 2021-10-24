@@ -85,11 +85,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 		b.iter( || -> anyhow::Result<()> {
 			let mut archive = Archive::with_config(&mut target, &config)?;
+			let mut buffer = Vec::new();
 
-			dbg!(&archive.fetch("d1")?.data[0..12]);
-			dbg!(&archive.fetch("d3")?.data[0..12]);
-			dbg!(&archive.fetch("d2")?.data[0..12]);
+			archive.fetch_write("d1", Sink)?;
+			archive.fetch_write("d2", Sink)?;
+			archive.fetch_write("d3", buffer.as_mut_slice())?;
 
+			assert_eq!(buffer.as_slice(), b"Imagine if this made sense");
 			Ok(())
 		})
 	});
