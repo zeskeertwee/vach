@@ -10,9 +10,9 @@ use crate::{
 pub struct Resource {
 	/// The decompressed data, stored in a vector of bytes.
 	pub data: Vec<u8>,
-	/// The flags extracted from the archive source and parsed into a struct
+	/// The flags extracted from the archive entry and parsed into a struct
 	pub flags: Flags,
-	/// The content version extracted from the archive source
+	/// The content version of the extracted archive entry
 	pub content_version: u8,
 	/// If a `Resource` has been validated against tampering, corruption or obsolescence, then this value becomes false.
 	/// By default a `Resource` is invalid

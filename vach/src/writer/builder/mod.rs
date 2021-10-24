@@ -1,25 +1,33 @@
-mod config;
-use super::leaf::{Leaf, CompressMode};
-use crate::global::{
-	header::Header,
-	reg_entry::RegistryEntry,
-	types::Flags,
-};
-pub use config::BuilderConfig;
-
-use ed25519_dalek::Signer;
-use lz4_flex as lz4;
 use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
+
+mod config;
+use chacha20stream::Sink;
+pub use config::BuilderConfig;
+use super::leaf::{Leaf, CompressMode};
+use crate::{
+	global::{header::Header, reg_entry::RegistryEntry, types::Flags},
+	utils::{transform_iv, transform_key},
+};
+
+use lz4_flex as lz4;
+use ed25519_dalek::Signer;
+use hashbrown::HashSet;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
+	pub(crate) set: HashSet<String>,
+	leaf_template: Leaf<'a>
 }
 
 impl<'a> Default for Builder<'a> {
 	#[inline(always)]
 	fn default() -> Builder<'a> {
-		Builder { leafs: Vec::new() }
+		Builder {
+			leafs: Vec::new(),
+			set: HashSet::new(),
+			leaf_template: Leaf::default()
+		}
 	}
 }
 
@@ -29,18 +37,21 @@ impl<'a> Builder<'a> {
 	pub fn new() -> Builder<'a> {
 		Builder::default()
 	}
+
 	/// Appends a read handle wrapped in a `Leaf` into the processing queue.
 	/// The `data` is wrapped in the default `Leaf`.
 	/// The second argument is the `ID` with which the embedded data will be tagged
+	/// Returns an Er(---) if a Leaf with the specified ID exists.
 	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> anyhow::Result<()> {
-		let leaf = Leaf::from_handle(data).id(id);
-		self.add_leaf(leaf);
+		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
+		self.add_leaf(leaf)?;
 		Ok(())
 	}
+
 	/// Loads all files from a directory and appends them into the processing queue.
-	/// A `Leaf` is passed as a template from which the wrapping `Leaf`s shall be based on.
+	/// An optional `Leaf` is passed as a template from which the wrapping `Leaf`s shall be based on, pass `None` to use the `Builder` internal default template.
 	/// Appended `Leaf`s have an `ID` of: `<directory_name>/<file_name>`. For example: "sounds/footstep.wav", "sample/script.data"
-	pub fn add_dir(&mut self, path: &str, template: &Leaf) -> anyhow::Result<()> {
+	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> anyhow::Result<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -57,26 +68,52 @@ impl<'a> Builder<'a> {
 				// Therefore a file
 				let file = fs::File::open(uri)?;
 				let leaf = Leaf::from_handle(file)
-					.template(template)
+					.template(template.unwrap_or(&self.leaf_template))
 					.id(&format!("{}/{}", v[0], v[1]));
 
-				self.leafs.push(leaf);
+				self.add_leaf(leaf)?;
 			}
 		}
 
 		Ok(())
 	}
 
-	#[inline(always)]
 	/// Append a preconstructed `Leaf` into the processing queue.
-	pub fn add_leaf(&mut self, leaf: Leaf<'a>) {
+	/// Returns an Er(---) if a Leaf with the specified ID exists.
+	/// Use this to skip application of the Builder's internal template unto `Leaf`s.
+	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {
+		{
+			// Make sure no two leaves are written with the same ID
+			if !self.set.insert(leaf.id.clone()) {
+				anyhow::bail!(format!("A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", leaf.id));
+			};
+		}
+
 		self.leafs.push(leaf);
+		Ok(())
+	}
+
+	/// Avoid unnecessary boilerplate by auto-templating all `Leaf`s added with `Builder::add(--)` with the given template
+	/// ```
+	/// use vach::builder::{Builder, Leaf, CompressMode};
+	///
+	/// let template = Leaf::default().compress(CompressMode::Always).version(12);
+	/// let mut builder = Builder::new().template(template);
+	///
+	/// builder.add(b"JEB" as &[u8], "JEB").unwrap();
+	/// // `JEB` is compressed and has a version of 12
+	/// ```
+	pub fn template(mut self, template: Leaf<'a>) -> Builder {
+		self.leaf_template = template;
+		self
 	}
 
 	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.
 	/// Custom *`MAGIC`*, Header flags and a `Keypair` can be presented using the `BuilderConfig` struct.
-	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the archive source.
-	pub fn dump<W: Write + Seek>(&mut self, mut target: W, config: &BuilderConfig) -> anyhow::Result<usize> {
+	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the write target.
+	pub fn dump<W: Write + Seek>(
+		&mut self, mut target: W, config: &BuilderConfig,
+	) -> anyhow::Result<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		let mut size = 0usize;
 		let mut reg_offset = 0;
@@ -107,8 +144,14 @@ impl<'a> Builder<'a> {
 		// Calculate the size of the registry
 		for leaf in self.leafs.iter() {
 			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-			leaf_offset += leaf.id.len() + RegistryEntry::MIN_SIZE + (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 });
-		};
+			leaf_offset += leaf.id.len()
+				+ RegistryEntry::MIN_SIZE
+				+ (if config.keypair.is_some() {
+					crate::SIGNATURE_LENGTH
+				} else {
+					0
+				});
+		}
 		// Start counting the offset of the leafs from the end of the registry
 
 		// Populate the archive glob
@@ -116,7 +159,7 @@ impl<'a> Builder<'a> {
 			let mut entry = leaf.to_registry_entry();
 			let mut leaf_bytes = Vec::new();
 
-			// Create and compare compressed leaf data
+			// Compression comes first
 			match leaf.compress {
 				CompressMode::Never => {
 					leaf.handle.read_to_end(&mut leaf_bytes)?;
@@ -145,10 +188,28 @@ impl<'a> Builder<'a> {
 				}
 			}
 
-			let glob_length = leaf_bytes.len();
+			// Encryption comes after
+			if leaf.encrypt {
+				if let Some(keypair) = &config.keypair {
+					let mut encrypted_buffer = Vec::new();
+					let mut sink = Sink::encrypt(
+						&mut encrypted_buffer,
+						transform_key(&keypair.public)?,
+						transform_iv(&config.magic)?,
+					)?;
+
+					sink.write_all(leaf_bytes.as_slice())?;
+					sink.flush()?;
+
+					leaf_bytes = encrypted_buffer;
+
+					entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
+				}
+			}
 
 			// Buffer the contents of the leaf, to be written later
 			wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+			let glob_length = leaf_bytes.len();
 			wtr.write_all(&leaf_bytes)?;
 			size += glob_length;
 
@@ -162,6 +223,7 @@ impl<'a> Builder<'a> {
 				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
 				leaf_bytes.extend(leaf.id.as_bytes());
 				entry.signature = Some(keypair.sign(&leaf_bytes));
+				drop(leaf_bytes);
 			};
 
 			{

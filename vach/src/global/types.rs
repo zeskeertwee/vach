@@ -1,5 +1,5 @@
-use anyhow;
 use std::fmt;
+use anyhow;
 
 // Private utility function
 fn _contains(first: u16, other: u16) -> bool {
@@ -8,7 +8,7 @@ fn _contains(first: u16, other: u16) -> bool {
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
 	bits: u16,
 }
@@ -16,19 +16,22 @@ pub struct Flags {
 // based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
 // basically just a tiny, scoped version of bitflags
 impl Flags {
-	// Scoped constants
 	/// The flags used within the crate, to whom all access is denied.
 	/// Any interaction with set will cause an exception.
 	pub const RESERVED_MASK: u16 = 0b1111_0000_0000_0000;
 	/// The flag that represents compressed sources
 	pub const COMPRESSED_FLAG: u16 = 0b_1000_0000_0000_0000;
-	/// The flag that represents sources with signatures
+	/// The flag that denotes that the archive source has signatures
 	pub const SIGNED_FLAG: u16 = 0b_0100_0000_0000_0000;
+	/// The flag that marks registry entries as links rather than leaf pointers
+	pub const LINK_FLAG: u16 = 0b_0010_0000_0000_0000;
+	/// The flag that shows data in the leaf in encrypted
+	pub const ENCRYPTED_FLAG: u16 = 0b_0001_0000_0000_0000;
 
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u16` number
 	pub fn from_bits(bits: u16) -> Self {
-		Self { bits }
+		Flags { bits }
 	}
 	/// Returns a copy of the underlying number.
 	#[inline(always)]
@@ -43,7 +46,7 @@ impl Flags {
 	/// ```
 	#[inline(always)]
 	pub fn empty() -> Self {
-		Self { bits: 0 }
+		Flags { bits: 0 }
 	}
 
 	/// Returns a error if mask contains a reserved bit.
@@ -96,12 +99,22 @@ impl Flags {
 impl Default for Flags {
 	#[inline(always)]
 	fn default() -> Self {
-		Self { bits: 0 }
+		Flags { bits: 0 }
 	}
 }
 
-impl fmt::Display for Flags{
+impl fmt::Display for Flags {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let compress = if self.contains(Flags::COMPRESSED_FLAG) { "COMPRESSED" } else { "" };
+		let signed = if self.contains(Flags::SIGNED_FLAG) { "SIGNED" } else { "" };
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { "ENCRYPTED" } else { "" };
+
+		write!(f, "Flags<-{}-{}-{}->: {:#016b}", signed, encrypted, compress, self.bits)
+	}
+}
+
+impl fmt::Debug for Flags {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:#016b}", self.bits)
+        fmt::Display::fmt(&self, f)
     }
 }

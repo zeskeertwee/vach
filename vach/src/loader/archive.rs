@@ -1,15 +1,21 @@
-use anyhow;
-use super::resource::Resource;
-use crate::global::{
-	header::{Header, HeaderConfig},
-	reg_entry::{RegistryEntry},
-	types::{Flags},
-};
 use std::{
-	io::{self, BufReader, Cursor, Read, Seek, SeekFrom, Write},
+	io::{self, BufReader, Read, Seek, SeekFrom, Write},
 	str,
 };
-use ed25519_dalek::{self as esdalek};
+
+use super::resource::Resource;
+use crate::{
+	global::{
+		header::{Header, HeaderConfig},
+		reg_entry::RegistryEntry,
+		types::Flags,
+	},
+	utils::{transform_iv, transform_key},
+};
+
+use anyhow;
+use chacha20stream::Sink;
+use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
 use hashbrown::HashMap;
 
@@ -17,6 +23,7 @@ use hashbrown::HashMap;
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
 /// It can be customized with the `HeaderConfig` struct.
 /// Buffers all calls to the underlying handle with `BufReader`, so avoid passing in a buffered handle.
+/// A word of advice; Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the `stream_position` is at the right location to avoid hair-splitting bugs.
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
@@ -84,49 +91,61 @@ impl<T: Seek + Read> Archive<T> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
+
+			// BUG: MAJOR SLOW-DOWN HERE; `io::Seek` is a very expensive operation
 			handle.seek(SeekFrom::Start(entry.location))?;
 
-			let mut take = handle.take(entry.offset);
+			let mut raw = vec![];
+			let raw_size = handle.take(entry.offset).read_to_end(&mut raw)?;
 
+			// Signature validation
 			// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 			if let Some(pub_key) = &self.key {
-				// Read  all the data into a buffer, then validate the signature
-				let mut buffer = Vec::new();
-				take.read_to_end(&mut buffer)?;
-
-				// The ID is part of the signature, this prevents redirects d by mangling the registry entry
-				buffer.extend(id.as_bytes());
-
 				// If there is an error the data is flagged as invalid
+				raw.extend(id.as_bytes());
 				if let Some(signature) = entry.signature {
-					is_secure = pub_key.verify_strict(&buffer, &signature).is_ok();
+					is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
 				}
 
-				// Decompress
-				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					io::copy(
-						&mut lz4::frame::FrameDecoder::new(buffer.take(entry.offset)),
-						&mut target,
-					)?;
-				} else {
-					io::copy(&mut buffer.take(entry.offset), &mut target)?;
-				};
-
-				Ok((entry.flags, entry.content_version, is_secure))
-			} else {
-				// Decompress
-				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					io::copy(&mut lz4::frame::FrameDecoder::new(take), &mut target)?;
-				} else {
-					io::copy(&mut take, &mut target)?;
-				};
-
-				Ok((entry.flags, entry.content_version, is_secure))
+				raw.truncate(raw_size);
 			}
+
+			// Add read layers
+			// 1: Decryption layer
+			if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
+				if let Some(public_key) = self.key {
+					let mut buffer = vec![];
+					let mut wtr = Sink::decrypt(
+						&mut buffer,
+						transform_key(&public_key)?,
+						transform_iv(&self.header.magic)?,
+					)?;
+
+					wtr.write_all(raw.as_slice())?;
+					wtr.flush()?;
+
+					raw = buffer
+				} else {
+					anyhow::bail!(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id))
+				}
+			}
+			// 2: Decompression layer
+			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+				let mut rdr = lz4::frame::FrameDecoder::new(raw.as_slice());
+				let mut buffer = vec![];
+				rdr.read_to_end(&mut buffer)?;
+
+				raw = buffer;
+			};
+
+			io::copy(&mut raw.as_slice(), &mut target)?;
+
+			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
 			anyhow::bail!(format!("Resource not found: {}", id))
 		}
 	}
+
 	/// Fetch a `RegistryEntry` from this `Archive`.
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
 	/// If no data has the given `id`, then None is returned.
@@ -144,12 +163,12 @@ impl<T: Seek + Read> Archive<T> {
 	}
 }
 
-impl Default for Archive<Cursor<Vec<u8>>> {
+impl Default for Archive<&[u8]> {
 	#[inline(always)]
-	fn default() -> Archive<Cursor<Vec<u8>>> {
+	fn default() -> Archive<&'static [u8]> {
 		Archive {
 			header: Header::default(),
-			handle: Cursor::new(Vec::new()),
+			handle: &[],
 			key: None,
 			entries: HashMap::new(),
 		}
