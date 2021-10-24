@@ -52,8 +52,8 @@ let config = BuilderConfig::default();
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-// builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-// builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
+builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
+builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
 builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
@@ -93,8 +93,8 @@ let config: BuilderConfig = BuilderConfig::default().keypair(keypair);
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-// builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-// builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
+builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
+builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
 builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
@@ -120,12 +120,12 @@ let public : PublicKey = keypair.public;
 // Serialize
 let public_key_bytes : [u8; vach::PUBLIC_KEY_LENGTH] = public.to_bytes();
 let secret_key_bytes : [u8; vach::SECRET_KEY_LENGTH] = secret.to_bytes();
-// let keypair_bytes : [u8; vach::KEYPAIR_LENGTH]    = keypair.to_bytes();
+let keypair_bytes : [u8; vach::KEYPAIR_LENGTH]    = keypair.to_bytes();
 
 // Deserialize
 let public_key : PublicKey = PublicKey::from_bytes(&public_key_bytes).unwrap();
 let secret_key : SecretKey = SecretKey::from_bytes(&secret_key_bytes).unwrap();
-// let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
+let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 ```
 
 ##### > Load resources from a signed `.vach` source
