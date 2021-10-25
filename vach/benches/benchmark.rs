@@ -1,5 +1,5 @@
-use std::io;
-use criterion::{criterion_group, criterion_main, Criterion};
+use std::io::{self, Seek};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 use vach::prelude::*;
 use vach::utils::{gen_keypair, read_keypair};
@@ -39,61 +39,94 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 			.magic(*MAGIC)
 			.keypair(read_keypair(&keypair_bytes as &[u8]).unwrap());
 
-		b.iter(|| -> anyhow::Result<()> {
+		b.iter(|| {
 			let mut builder = Builder::new();
 
 			// Add data
-			builder.add_leaf(
-				Leaf::from_handle(data_1)
-					.id("d1")
-					.compress(CompressMode::Always),
-			)?;
-			builder.add_leaf(
-				Leaf::from_handle(data_2)
-					.id("d2")
-					.compress(CompressMode::Never),
-			)?;
-			builder.add_leaf(
-				Leaf::from_handle(data_3)
-					.id("d3")
-					.compress(CompressMode::Detect),
-			)?;
+			builder
+				.add_leaf(
+					Leaf::from_handle(data_1)
+						.id("d1")
+						.compress(CompressMode::Always),
+				)
+				.unwrap();
+			builder
+				.add_leaf(
+					Leaf::from_handle(data_2)
+						.id("d2")
+						.compress(CompressMode::Never),
+				)
+				.unwrap();
+			builder
+				.add_leaf(
+					Leaf::from_handle(data_3)
+						.id("d3")
+						.compress(CompressMode::Detect),
+				)
+				.unwrap();
 
 			// Dump data
-			builder.dump(Sink, &config)?;
-
-			Ok(())
+			builder.dump(black_box(Sink), &config).unwrap();
 		});
 	});
 
 	c.bench_function("Archive::fetch(---)", |b| {
+		const MAGIC: &[u8; 5] = b"CSDTD";
+		let mut target = io::Cursor::new(Vec::<u8>::new());
+
+		// Data to be written
+		let data_1 = b"Around The World, Fatter wetter stronker" as &[u8];
+		let data_2 = b"Imagine if this made sense" as &[u8];
+		let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
+
 		// Builder definition
 		let keypair_bytes = gen_keypair().to_bytes();
 		let config = BuilderConfig::default()
 			.magic(*MAGIC)
 			.keypair(read_keypair(&keypair_bytes as &[u8]).unwrap());
-		let mut builder = Builder::new().template(Leaf::default().compress(CompressMode::Always).encrypt(true));
+		let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
-		builder.add(b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8], "d1").unwrap();
-		builder.add(b"Around The World, Fatter wetter stronker" as &[u8], "d2").unwrap();
-		builder.add(b"Imagine if this made sense" as &[u8], "d3").unwrap();
+		// Add data
+		builder
+			.add_leaf(
+				Leaf::from_handle(data_1)
+					.id("d1")
+					.compress(CompressMode::Always),
+			)
+			.unwrap();
+		builder
+			.add_leaf(
+				Leaf::from_handle(data_2)
+					.id("d2")
+					.compress(CompressMode::Never),
+			)
+			.unwrap();
+		builder
+			.add_leaf(
+				Leaf::from_handle(data_3)
+					.id("d3")
+					.compress(CompressMode::Detect),
+			)
+			.unwrap();
 
-		// Dump
-		let mut target = io::Cursor::new(Vec::new());
+		// Dump data
 		builder.dump(&mut target, &config).unwrap();
-		let config = HeaderConfig::default().key(keypair.public);
 
-		b.iter( || -> anyhow::Result<()> {
-			let mut archive = Archive::with_config(&mut target, &config)?;
-			let mut buffer = Vec::new();
+		// Load data
+		target.seek(io::SeekFrom::Start(0)).unwrap();
+		let mut config = HeaderConfig::default().magic(*MAGIC);
+		config.load_public_key(&keypair_bytes[32..]).unwrap();
 
-			archive.fetch_write("d1", Sink)?;
-			archive.fetch_write("d2", Sink)?;
-			archive.fetch_write("d3", buffer.as_mut_slice())?;
+		let mut archive = Archive::with_config(&mut target, &config).unwrap();
+		let mut sink = black_box(Sink);
 
-			assert_eq!(buffer.as_slice(), b"Imagine if this made sense");
-			Ok(())
-		})
+		// Load data
+		b.iter(|| {
+			// Quick assertions
+			black_box(archive.fetch_write("d1", &mut sink).unwrap());
+			black_box(archive.fetch_write("d2", &mut sink).unwrap());
+			black_box(archive.fetch_write("d3", &mut sink).unwrap());
+		});
 	});
 }
 
