@@ -105,16 +105,32 @@ impl Default for Flags {
 
 impl fmt::Display for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let compress = if self.contains(Flags::COMPRESSED_FLAG) { "COMPRESSED" } else { "" };
-		let signed = if self.contains(Flags::SIGNED_FLAG) { "SIGNED" } else { "" };
-		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { "ENCRYPTED" } else { "" };
+		let compress = if self.contains(Flags::COMPRESSED_FLAG) {
+			"COMPRESSED"
+		} else {
+			""
+		};
+		let signed = if self.contains(Flags::SIGNED_FLAG) {
+			"SIGNED"
+		} else {
+			""
+		};
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) {
+			"ENCRYPTED"
+		} else {
+			""
+		};
 
-		write!(f, "Flags<-{}-{}-{}->: {:#016b}", signed, encrypted, compress, self.bits)
+		write!(
+			f,
+			"Flags<-{}-{}-{}->: {:#016b}",
+			signed, encrypted, compress, self.bits
+		)
 	}
 }
 
 impl fmt::Debug for Flags {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self, f)
-    }
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Display::fmt(&self, f)
+	}
 }
