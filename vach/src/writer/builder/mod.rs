@@ -17,7 +17,7 @@ use hashbrown::HashSet;
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
 	pub(crate) set: HashSet<String>,
-	leaf_template: Leaf<'a>
+	leaf_template: Leaf<'a>,
 }
 
 impl<'a> Default for Builder<'a> {
@@ -26,7 +26,7 @@ impl<'a> Default for Builder<'a> {
 		Builder {
 			leafs: Vec::new(),
 			set: HashSet::new(),
-			leaf_template: Leaf::default()
+			leaf_template: Leaf::default(),
 		}
 	}
 }

@@ -72,18 +72,28 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		let config = BuilderConfig::default()
 			.magic(*MAGIC)
 			.keypair(read_keypair(&keypair_bytes as &[u8]).unwrap());
-		let mut builder = Builder::new().template(Leaf::default().compress(CompressMode::Always).encrypt(true));
+		let mut builder =
+			Builder::new().template(Leaf::default().compress(CompressMode::Always).encrypt(true));
 
-		builder.add(b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8], "d1").unwrap();
-		builder.add(b"Around The World, Fatter wetter stronker" as &[u8], "d2").unwrap();
-		builder.add(b"Imagine if this made sense" as &[u8], "d3").unwrap();
+		builder
+			.add(
+				b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8],
+				"d1",
+			)
+			.unwrap();
+		builder
+			.add(b"Around The World, Fatter wetter stronker" as &[u8], "d2")
+			.unwrap();
+		builder
+			.add(b"Imagine if this made sense" as &[u8], "d3")
+			.unwrap();
 
 		// Dump
 		let mut target = io::Cursor::new(Vec::new());
 		builder.dump(&mut target, &config).unwrap();
 		let config = HeaderConfig::default().key(keypair.public);
 
-		b.iter( || -> anyhow::Result<()> {
+		b.iter(|| -> anyhow::Result<()> {
 			let mut archive = Archive::with_config(&mut target, &config)?;
 
 			dbg!(&archive.fetch("d1")?.data[0..12]);

@@ -1,9 +1,4 @@
-use std::{
-	convert::TryInto,
-	fmt,
-	io::Read,
-	str,
-};
+use std::{convert::TryInto, fmt, io::Read, str};
 
 use crate::global::types::Flags;
 
