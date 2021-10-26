@@ -16,9 +16,10 @@ pub struct RegistryEntry {
 	pub content_version: u8,
 	/// The signature of the extracted archive entry
 	pub signature: Option<esdalek::Signature>,
-
-	pub(crate) location: u64,
-	pub(crate) offset: u64,
+	/// The location of the file in the archive, as bytes from the beginning of the file
+	pub location: u64,
+	/// The size of the file
+	pub offset: u64,
 }
 
 impl RegistryEntry {
