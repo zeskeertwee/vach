@@ -17,7 +17,7 @@ use hashbrown::HashSet;
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
 	pub(crate) set: HashSet<String>,
-	leaf_template: Leaf<'a>
+	leaf_template: Leaf<'a>,
 }
 
 impl<'a> Default for Builder<'a> {
@@ -26,7 +26,7 @@ impl<'a> Default for Builder<'a> {
 		Builder {
 			leafs: Vec::new(),
 			set: HashSet::new(),
-			leaf_template: Leaf::default()
+			leaf_template: Leaf::default(),
 		}
 	}
 }
@@ -69,7 +69,11 @@ impl<'a> Builder<'a> {
 				let file = fs::File::open(uri)?;
 				let leaf = Leaf::from_handle(file)
 					.template(template.unwrap_or(&self.leaf_template))
-					.id(&format!("{}/{}", v[0], v[1]));
+					.id(&format!(
+						"{}/{}",
+						v.get(v.len() - 2).unwrap(),
+						v.last().unwrap()
+					));
 
 				self.add_leaf(leaf)?;
 			}
