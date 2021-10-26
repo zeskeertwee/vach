@@ -41,7 +41,7 @@ impl<'a> Default for Leaf<'a> {
 			id: String::new(),
 			content_version: 0,
 			compress: CompressMode::Never,
-			flags: Flags::default(),
+			flags: Flags::empty(),
 			encrypt: false,
 		}
 	}
