@@ -3,3 +3,6 @@
 shit.dump
 vach/vach*
 vach/bin/cat.rs
+CLI
+perf.data
+perf.data.old
