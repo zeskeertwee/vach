@@ -5,7 +5,7 @@ use std::{io::Read};
 
 /// Configures how `Leaf`s should be compressed.
 /// Default is `CompressMode::Never`.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum CompressMode {
 	/// The data will always be compressed
 	Always,
