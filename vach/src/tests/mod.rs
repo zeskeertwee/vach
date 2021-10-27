@@ -228,6 +228,7 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 	}
 
 	assert!(resource.secured);
+	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
 	Ok(())
 }
@@ -247,6 +248,7 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 
 	let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
 	assert!(metadata.2);
+	assert!(metadata.0.contains(Flags::SIGNED_FLAG));
 
 	// Assert identity of retrieved data
 	println!("{}", str::from_utf8(&song)?);
