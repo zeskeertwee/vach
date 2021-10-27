@@ -57,7 +57,7 @@ impl<T: Seek + Read> Archive<T> {
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
 			let (entry, id) =
-				RegistryEntry::from_handle(&mut handle, header.flags.contains(Flags::SIGNED_FLAG))?;
+				RegistryEntry::from_handle(&mut handle)?;
 			entries.insert(id, entry);
 		}
 

@@ -37,9 +37,7 @@ impl RegistryEntry {
 		}
 	}
 	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
-	pub(crate) fn from_handle<T: Read + Seek>(
-		mut handle: T, read_sig: bool,
-	) -> anyhow::Result<(Self, String)> {
+	pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> anyhow::Result<(Self, String)> {
 		let mut buffer = [0; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
@@ -61,7 +59,7 @@ impl RegistryEntry {
 
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
-		if read_sig {
+		if entry.flags.contains(Flags::SIGNED_FLAG) {
 			let mut sig_bytes = [0u8; crate::SIGNATURE_LENGTH];
 			handle.read_exact(&mut sig_bytes)?;
 			entry.signature = Some(sig_bytes.try_into()?);
