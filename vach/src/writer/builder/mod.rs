@@ -220,15 +220,17 @@ impl<'a> Builder<'a> {
 			leaf_offset += glob_length;
 			entry.offset = glob_length as u64;
 
-			if let Some(keypair) = &config.keypair {
-				// The reason we include the path in the signature is to prevent mangling in the registry,
-				// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
-				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
-				leaf_bytes.extend(leaf.id.as_bytes());
-				entry.signature = Some(keypair.sign(&leaf_bytes));
-				entry.flags.force_set(Flags::SIGNED_FLAG, true);
-				drop(leaf_bytes);
-			};
+			if leaf.sign {
+				if let Some(keypair) = &config.keypair {
+					// The reason we include the path in the signature is to prevent mangling in the registry,
+					// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
+					// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
+					leaf_bytes.extend(leaf.id.as_bytes());
+					entry.signature = Some(keypair.sign(&leaf_bytes));
+					entry.flags.force_set(Flags::SIGNED_FLAG, true);
+					drop(leaf_bytes);
+				};
+			}
 
 			{
 				// Make sure the ID is not too big or else it will break the archive
