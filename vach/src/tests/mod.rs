@@ -85,14 +85,15 @@ fn defaults() {
 
 #[test]
 fn header_config() -> anyhow::Result<()> {
-	// We need a private dependency, Header to test ot
+	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
 	use crate::global::header::Header;
+
 	let config = HeaderConfig::new(*b"VfACH", None);
 	let mut file = File::open("test_data/simple/target.vach")?;
-	format!("{}", &config);
+	println!("{}", &config);
 
 	let header = Header::from_handle(&mut file)?;
-	format!("{}", header);
+	println!("{}", header);
 
 	Header::validate(&header, &config)?;
 	Ok(())

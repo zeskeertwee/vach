@@ -157,9 +157,11 @@ impl fmt::Display for Header {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(
 			f,
-			"[Archive Header] Version: {}, Magic: {}",
+			"[Archive Header] Version: {}, Magic: {}, Capacity: {}, Flags: {}",
 			self.arch_version,
-			str::from_utf8(&self.magic).expect("Error constructing str from Header::Magic")
+			str::from_utf8(&self.magic).expect("Error constructing str from Header::Magic"),
+			self.capacity,
+			self.flags
 		)
 	}
 }
