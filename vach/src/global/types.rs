@@ -114,7 +114,7 @@ impl fmt::Display for Flags {
 }
 
 impl fmt::Debug for Flags {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self, f)
-    }
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Display::fmt(&self, f)
+	}
 }

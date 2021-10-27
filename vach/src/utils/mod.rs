@@ -1,7 +1,10 @@
 use chacha20stream as c20stream;
 use ed25519_dalek as esdalek;
 use rand::rngs::OsRng;
-use std::{io::{Read, Write}, convert::TryInto};
+use std::{
+	io::{Read, Write},
+	convert::TryInto,
+};
 use anyhow;
 
 /// Use this function to easily generate a [Keypair](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/struct.Keypair.html) using `OsRng`
