@@ -18,7 +18,7 @@ pub struct RegistryEntry {
 	pub signature: Option<esdalek::Signature>,
 	/// The location of the file in the archive, as bytes from the beginning of the file
 	pub location: u64,
-	/// The size of the file, in the archive. This does not always correspond to the actual size of the file when read from the archive!
+	/// The offset|size of the `Leaf`, in bytes. This does not always correspond to the actual size of the file when read from the archive! ie when compressed
 	pub offset: u64,
 }
 

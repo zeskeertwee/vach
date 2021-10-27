@@ -228,6 +228,7 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 	}
 
 	assert!(resource.secured);
+	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
 	Ok(())
 }
@@ -247,6 +248,7 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 
 	let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
 	assert!(metadata.2);
+	assert!(metadata.0.contains(Flags::SIGNED_FLAG));
 
 	// Assert identity of retrieved data
 	println!("{}", str::from_utf8(&song)?);
@@ -292,8 +294,7 @@ fn keypair_encryption() -> anyhow::Result<()> {
 
 #[test]
 fn builder_with_encryption() -> anyhow::Result<()> {
-	let mut builder =
-		Builder::default().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
+	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -345,7 +346,7 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 #[test]
 fn consolidated_example() -> anyhow::Result<()> {
 	use crate::utils::{gen_keypair, read_keypair};
-	use std::io::Cursor;
+	use std::{io::Cursor, time::Instant};
 
 	const MAGIC: &[u8; 5] = b"CSDTD";
 	let mut target = Cursor::new(Vec::<u8>::new());
@@ -360,7 +361,7 @@ fn consolidated_example() -> anyhow::Result<()> {
 	let config = BuilderConfig::default()
 		.magic(*MAGIC)
 		.keypair(read_keypair(&keypair_bytes as &[u8])?);
-	let mut builder = Builder::new();
+	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
 	builder.add_leaf(
@@ -380,23 +381,26 @@ fn consolidated_example() -> anyhow::Result<()> {
 	)?;
 
 	// Dump data
+	let then = Instant::now();
 	builder.dump(&mut target, &config)?;
-	target.seek(SeekFrom::Start(0))?;
 
 	// Just because
-	drop(builder);
-	drop(config);
+	println!("Building took: {}us", then.elapsed().as_micros());
 
 	// Load data
+	target.seek(SeekFrom::Start(0))?;
 	let mut config = HeaderConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let mut archive = Archive::with_config(target, &config)?;
 
 	// Quick assertions
+	let then = Instant::now();
 	assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
 	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
+
+	println!("Fetching took: {}us", then.elapsed().as_micros());
 
 	// All seems ok
 	Ok(())
