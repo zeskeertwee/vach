@@ -10,7 +10,7 @@ fn _contains(first: u16, other: u16) -> bool {
 /// A knock-off minimal bitflags of sorts.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
-	bits: u16,
+	pub(crate) bits: u16,
 }
 
 // based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
