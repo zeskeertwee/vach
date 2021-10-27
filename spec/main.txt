@@ -1,3 +1,5 @@
+[ VERSION: 0.2.0 ]
+
 // RESOURCE: https://www.cs.uic.edu/~jbell/CourseNotes/OperatingSystems/12_FileSystemImplementation.html
 
 CONST MAGIC_LENGTH => 5;
@@ -6,7 +8,7 @@ CONST SIGNATURE_LENGTH => ed25519_dalek::SIGNATURE_LENGTH = 64;
 >---- HEADER  ----<
 MAGIC: [u8; MAGIC_LENGTH] | str
 FLAGS: [u8;2] | u16
-    0-3 => RESERVED,
+    0-3 => RESERVED, [ IF FLAGS::SIGNED is SET THEN THE ARCHIVE HAS SIGNATURES ]
     4-15 => CUSTOM_DATA
 ARCHIVE_VERSION: [u8;2] | u16
 CAPACITY: [u8;2] | u16

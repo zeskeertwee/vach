@@ -1,6 +1,6 @@
 [package]
 name = "vach"
-version = "0.1.9"
+version = "0.2.0"
 edition = "2021"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
