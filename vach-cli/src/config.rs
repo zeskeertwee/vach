@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::Read;
 use lazy_static::lazy_static;
 use vach::builder::CompressMode;
-use log::{info, warn};
+use log::info;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");

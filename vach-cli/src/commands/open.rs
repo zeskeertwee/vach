@@ -6,7 +6,7 @@ use crate::config::Config;
 use vach::prelude::*;
 use tabled::{Style, Table, Tabled};
 use anyhow::Result;
-use log::{info, error, Level, Metadata, Record};
+use log::{info, error};
 use indicatif::{ProgressBar, ProgressStyle};
 
 pub fn handle_open_command(

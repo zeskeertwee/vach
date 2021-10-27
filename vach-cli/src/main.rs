@@ -2,7 +2,7 @@ mod commands;
 mod config;
 
 use config::Mode;
-use log::{error, Level};
+use log::error;
 use std::env;
 
 fn main() {

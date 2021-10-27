@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use anyhow::{Result, bail};
-use vach::crypto::{SecretKey, PublicKey, Keypair};
 use vach::utils::gen_keypair;
 use std::fs::File;
 use std::io::Write;
