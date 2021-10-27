@@ -161,6 +161,12 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
 	}
+
+	/// Global flags extracted from the `Header` section of the source
+	#[inline(always)]
+	pub fn flags(&self) -> &Flags {
+		&self.header.flags
+	}
 }
 
 impl Default for Archive<&[u8]> {
