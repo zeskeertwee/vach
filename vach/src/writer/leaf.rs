@@ -41,7 +41,7 @@ impl<'a> Default for Leaf<'a> {
 			id: String::new(),
 			content_version: 0,
 			compress: CompressMode::Never,
-			flags: Flags::default(),
+			flags: Flags::empty(),
 			encrypt: false,
 		}
 	}
@@ -106,8 +106,8 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::default().version(2);
 	/// ```
-	pub fn version(mut self, version: u8) -> Self {
-		self.content_version = version;
+	pub fn version(mut self, content_version: u8) -> Self {
+		self.content_version = content_version;
 		self
 	}
 	/// Setter used to set the `id` field of a `Leaf`

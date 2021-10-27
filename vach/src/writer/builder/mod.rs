@@ -69,7 +69,11 @@ impl<'a> Builder<'a> {
 				let file = fs::File::open(uri)?;
 				let leaf = Leaf::from_handle(file)
 					.template(template.unwrap_or(&self.leaf_template))
-					.id(&format!("{}/{}", v[0], v[1]));
+					.id(&format!(
+						"{}/{}",
+						v.get(v.len() - 2).unwrap(),
+						v.last().unwrap()
+					));
 
 				self.add_leaf(leaf)?;
 			}
@@ -152,7 +156,6 @@ impl<'a> Builder<'a> {
 					0
 				});
 		}
-		// Start counting the offset of the leafs from the end of the registry
 
 		// Populate the archive glob
 		for leaf in self.leafs.iter_mut() {
@@ -223,6 +226,7 @@ impl<'a> Builder<'a> {
 				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
 				leaf_bytes.extend(leaf.id.as_bytes());
 				entry.signature = Some(keypair.sign(&leaf_bytes));
+				entry.flags.force_set(Flags::SIGNED_FLAG, true);
 				drop(leaf_bytes);
 			};
 

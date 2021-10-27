@@ -1,13 +1,12 @@
 [package]
 name = "vach"
-version = "0.1.9"
+version = "0.2.0"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
 license = "GPL-2.0"
 repository = "https://github.com/zeskeertwee/virtfs-rs"
 categories = [
-	"parsing",
 	"games",
 	"compression"
 ]
@@ -40,3 +39,4 @@ criterion = "0.3.5"
 [[bench]]
 name = "benchmark"
 harness = false
+path = "benches/benchmark.rs"
