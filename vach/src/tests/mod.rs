@@ -191,6 +191,9 @@ fn builder_with_signature() -> anyhow::Result<()> {
 		Some(&Leaf::default().compress(CompressMode::Detect)),
 	)?;
 
+	// Tests conditional signing
+	builder.add_leaf(Leaf::default().id("not_signed").sign(false))?;
+
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
 		"Number of bytes written: {}, into signed archive.",
@@ -213,6 +216,11 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice())?;
+
+	// The adjacent resource was flagged to not be signed
+	let not_signed_resource = archive.fetch("not_signed")?;
+	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
+	assert!(!not_signed_resource.secured);
 
 	// Check identity of retrieved data
 	println!("{}", song);
