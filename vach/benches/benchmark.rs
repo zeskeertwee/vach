@@ -123,9 +123,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		// Load data
 		b.iter(|| {
 			// Quick assertions
+			let mut data = Vec::new();
 			black_box(archive.fetch_write("d1", &mut sink).unwrap());
 			black_box(archive.fetch_write("d2", &mut sink).unwrap());
-			black_box(archive.fetch_write("d3", &mut sink).unwrap());
+			black_box(archive.fetch_write("d3", &mut data).unwrap());
+			let string = String::from_utf8(data).unwrap();
+			assert_eq!(String::from_utf8(data_3.to_vec()).unwrap(), string);
 		});
 	});
 }
