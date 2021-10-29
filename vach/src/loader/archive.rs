@@ -27,7 +27,7 @@ use hashbrown::HashMap;
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
-	handle: T,
+	handle: BufReader<T>,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
 }
@@ -40,7 +40,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
 	/// ```
 	#[inline(always)]
-	pub fn from_handle(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
+	pub fn from_handle(handle: T) -> anyhow::Result<Archive<T>> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
@@ -49,7 +49,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// If parsing fails, an `Err()` is returned.
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
-	) -> anyhow::Result<Archive<impl Seek + Read>> {
+	) -> anyhow::Result<Archive<T>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
@@ -168,7 +168,7 @@ impl Default for Archive<&[u8]> {
 	fn default() -> Archive<&'static [u8]> {
 		Archive {
 			header: Header::default(),
-			handle: &[],
+			handle: BufReader::new(&[]),
 			key: None,
 			entries: HashMap::new(),
 		}
