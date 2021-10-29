@@ -1022,6 +1022,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "vach"
+version = "0.2.0"
+source = "git+https://github.com/zeskeertwee/vach?rev=7764766bd56a4183031c185b10e8275439075509#7764766bd56a4183031c185b10e8275439075509"
+dependencies = [
+ "anyhow",
+ "chacha20stream",
+ "ed25519-dalek",
+ "hashbrown",
+ "lz4_flex",
+ "rand",
+]
+
+[[package]]
 name = "vach-cli"
 version = "0.1.0"
 dependencies = [
@@ -1032,7 +1045,7 @@ dependencies = [
  "log",
  "pretty_env_logger",
  "tabled",
- "vach",
+ "vach 0.2.0 (git+https://github.com/zeskeertwee/vach?rev=7764766bd56a4183031c185b10e8275439075509)",
 ]
 
 [[package]]

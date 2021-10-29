@@ -3,6 +3,27 @@ name = "vach-cli"
 version = "0.1.0"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>"]
+description = "A command-line tool to work with .vach files"
+license = "GPL-2.0"
+repository = "https://github.com/zeskeertwee/virtfs-rs"
+categories = [
+	"command-line-utilities",
+	"encoding",
+	"game-development"
+]
+keywords = [
+	"archive",
+	"command-line",
+	"vach",
+	"assets",
+	"game"
+]
+readme = "../README.md"
+include = [
+	"src/*",
+	"Cargo.toml",
+	"../README.md"
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -16,6 +37,5 @@ log = "0.4.14"
 pretty_env_logger = "0.4.0"
 
 [dependencies.vach]
-path = "../vach"
-#git = "https://github.com/zeskeertwee/vach"
-#rev = ""
+git = "https://github.com/zeskeertwee/vach"
+rev = "7764766bd56a4183031c185b10e8275439075509"
