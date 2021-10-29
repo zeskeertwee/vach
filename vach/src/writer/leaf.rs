@@ -30,7 +30,7 @@ pub struct Leaf<'a> {
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
 	pub encrypt: bool,
-	/// To sign this `Leaf` or not
+	/// Whether to include a signature with this `Leaf`, defaults to true
 	pub sign: bool,
 }
 
@@ -143,7 +143,7 @@ impl<'a> Leaf<'a> {
 		self
 	}
 
-	/// Setter for the `sign` field, ir turn off signing this specific `Leaf`
+	/// Setter for the `sign` field
 	///```
 	///use vach::prelude::Leaf;
 	/// let config = Leaf::default().sign(true);
