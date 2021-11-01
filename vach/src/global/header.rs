@@ -119,7 +119,7 @@ impl Header {
 		// Validate magic
 		if header.magic != config.magic {
 			anyhow::bail!(format!(
-				"Invalid magic found in Header, possible incompatibility with given source: {}",
+				"Invalid magic found in Header, possible incompatibility with given source.\nMagic found {}",
 				str::from_utf8(&header.magic)?
 			));
 		};
