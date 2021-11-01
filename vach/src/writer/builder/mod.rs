@@ -1,13 +1,9 @@
 use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
 
 mod config;
-use chacha20stream::Sink;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, CompressMode};
-use crate::{
-	global::{header::Header, reg_entry::RegistryEntry, types::Flags},
-	utils::{transform_iv, transform_key},
-};
+use crate::{global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEntry, types::Flags}};
 
 use lz4_flex as lz4;
 use ed25519_dalek::Signer;
@@ -145,8 +141,19 @@ impl<'a> Builder<'a> {
 		size += Header::BASE_SIZE;
 		reg_offset += Header::BASE_SIZE;
 
-		// Calculate the size of the registry
+		// Configure encryption
+		let mut use_encryption = false;
+
+		// Calculate the size of the registry and check for `Leaf`s that request for encryption
 		for leaf in self.leafs.iter() {
+			if leaf.encrypt && !use_encryption {
+				if config.keypair.is_none() {
+					anyhow::bail!("Leaf encryption error! Leaf: {} requested for encryption, yet no keypair was provided(None)", &leaf.id)
+				};
+
+				use_encryption = true;
+			}
+
 			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
 			leaf_offset += leaf.id.len()
 				+ RegistryEntry::MIN_SIZE
@@ -156,6 +163,14 @@ impl<'a> Builder<'a> {
 					0
 				});
 		}
+
+		// Build encryptor
+		let encryptor = if use_encryption {
+			let keypair = &config.keypair;
+			Some(EDCryptor::new(&keypair.as_ref().unwrap().public, config.magic))
+		} else {
+			None
+		};
 
 		// Populate the archive glob
 		for leaf in self.leafs.iter_mut() {
@@ -193,18 +208,11 @@ impl<'a> Builder<'a> {
 
 			// Encryption comes after
 			if leaf.encrypt {
-				if let Some(keypair) = &config.keypair {
-					let mut encrypted_buffer = Vec::new();
-					let mut sink = Sink::encrypt(
-						&mut encrypted_buffer,
-						transform_key(&keypair.public)?,
-						transform_iv(&config.magic)?,
-					)?;
-
-					sink.write_all(leaf_bytes.as_slice())?;
-					sink.flush()?;
-
-					leaf_bytes = encrypted_buffer;
+				if let Some(ex) = &encryptor {
+					leaf_bytes = match ex.encrypt(&leaf_bytes) {
+						 Ok(bytes) => bytes,
+						 Err(err) => anyhow::bail!("Unable to encrypt leafs: {}. Reason: {}", &leaf.id, err),
+					};
 
 					entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
 				}

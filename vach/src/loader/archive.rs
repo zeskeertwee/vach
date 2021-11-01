@@ -47,18 +47,26 @@ impl<T: Seek + Read> Archive<T> {
 		Header::validate(&header, config)?;
 
 		// Generate and store Registry Entries
+		let mut use_decryption = false;
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
 			let (entry, id) =
 				RegistryEntry::from_handle(&mut handle)?;
+			if entry.flags.contains(Flags::ENCRYPTED_FLAG) && !use_decryption {
+				use_decryption = true;
+			};
 			entries.insert(id, entry);
 		};
 
 		// Build decryptor
 		let mut decryptor = None;
 
-		if let Some(pk) = config.public_key {
-			decryptor = Some(EDCryptor::new(&pk, config.magic))
+		if use_decryption {
+			if let Some(pk) = config.public_key {
+				decryptor = Some(EDCryptor::new(&pk, config.magic))
+			} else {
+				println!("WARNING! Some leafs require decryption, yet no public key was provided")
+			}
 		}
 
 		Ok(Archive {
