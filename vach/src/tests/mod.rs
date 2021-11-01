@@ -38,10 +38,11 @@ fn custom_bitflags() -> anyhow::Result<()> {
 }
 
 #[test]
-#[should_panic]
 fn flag_restricted_access() {
 	let mut flag = Flags::from_bits(0b1111_1000_0000_0000);
-	flag.set(Flags::COMPRESSED_FLAG, true).unwrap();
+
+	// This should return an error
+	assert!(flag.set(Flags::COMPRESSED_FLAG, true).is_err());
 }
 
 #[test]
@@ -276,7 +277,7 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn keypair_encryption() -> anyhow::Result<()> {
+fn edcryptor_test() -> anyhow::Result<()> {
 	use crate::utils::gen_keypair;
 	use crate::global::edcryptor::EDCryptor;
 
@@ -296,7 +297,8 @@ fn keypair_encryption() -> anyhow::Result<()> {
 
 #[test]
 fn builder_with_encryption() -> anyhow::Result<()> {
-	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
+	let mut builder =
+		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -346,6 +348,35 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 }
 
 #[test]
+fn cyclic_linked_leafs() {
+	use std::io::Cursor;
+
+	// init
+	let mut target = Cursor::new(Vec::<u8>::new());
+
+	// Builder stage
+	let mut builder = Builder::default();
+
+	builder.add_leaf(
+		Leaf::default()
+			.id("d2_link")
+			.link_mode(Some("d1_link".to_string())),
+	).unwrap();
+	builder.add_leaf(
+		Leaf::default()
+			.id("d1_link")
+			.link_mode(Some("d2_link".to_string())),
+	).unwrap();
+	builder.dump(&mut target, &BuilderConfig::default()).unwrap();
+
+	target.seek(SeekFrom::Start(0)).unwrap();
+	let mut archive = Archive::from_handle(target).unwrap();
+
+	// Assert that this causes an error, [Cyclic Linked Leafs]
+	assert!(archive.fetch("d1_link").is_err());
+}
+
+#[test]
 fn consolidated_example() -> anyhow::Result<()> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
@@ -381,6 +412,11 @@ fn consolidated_example() -> anyhow::Result<()> {
 			.id("d3")
 			.compress(CompressMode::Detect),
 	)?;
+	builder.add_leaf(
+		Leaf::default()
+			.id("d3_link")
+			.link_mode(Some("d3".to_string())),
+	)?;
 
 	// Dump data
 	let then = Instant::now();
@@ -389,8 +425,10 @@ fn consolidated_example() -> anyhow::Result<()> {
 	// Just because
 	println!("Building took: {}us", then.elapsed().as_micros());
 
-	// Load data
+	// Ensure your stream_position is where you want it to be, so here at the start of the Cursor (0)
 	target.seek(SeekFrom::Start(0))?;
+
+	// Load data
 	let mut config = HeaderConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
@@ -401,6 +439,7 @@ fn consolidated_example() -> anyhow::Result<()> {
 	assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
 	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
+	assert_eq!(archive.fetch("d3_link")?.data.as_slice(), data_3);
 
 	println!("Fetching took: {}us", then.elapsed().as_micros());
 

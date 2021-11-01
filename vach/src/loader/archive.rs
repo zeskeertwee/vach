@@ -4,7 +4,14 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::{global::{edcryptor::EDCryptor, header::{Header, HeaderConfig}, reg_entry::RegistryEntry, types::Flags}};
+use crate::{
+	global::{
+		edcryptor::EDCryptor,
+		header::{Header, HeaderConfig},
+		reg_entry::RegistryEntry,
+		types::Flags,
+	},
+};
 
 use anyhow;
 use ed25519_dalek as esdalek;
@@ -22,7 +29,7 @@ pub struct Archive<T> {
 	handle: T,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
-	decryptor: Option<EDCryptor>
+	decryptor: Option<EDCryptor>,
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
@@ -50,13 +57,12 @@ impl<T: Seek + Read> Archive<T> {
 		let mut use_decryption = false;
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
-			let (entry, id) =
-				RegistryEntry::from_handle(&mut handle)?;
+			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
 			if entry.flags.contains(Flags::ENCRYPTED_FLAG) && !use_decryption {
 				use_decryption = true;
 			};
 			entries.insert(id, entry);
-		};
+		}
 
 		// Build decryptor
 		let mut decryptor = None;
@@ -74,7 +80,7 @@ impl<T: Seek + Read> Archive<T> {
 			handle: BufReader::new(handle),
 			key: config.public_key,
 			entries,
-			decryptor
+			decryptor,
 		})
 	}
 
@@ -124,8 +130,10 @@ impl<T: Seek + Read> Archive<T> {
 			if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
 				if let Some(dx) = &self.decryptor {
 					raw = match dx.decrypt(&raw) {
-						 Ok(bytes) => bytes,
-						 Err(err) => anyhow::bail!("Unable to decrypt resource: {}. Reason: {}", id, err),
+						Ok(bytes) => bytes,
+						Err(err) => {
+							anyhow::bail!("Unable to decrypt resource: {}. Reason: {}", id, err)
+						}
 					};
 				} else {
 					anyhow::bail!(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id))
@@ -138,6 +146,25 @@ impl<T: Seek + Read> Archive<T> {
 				rdr.read_to_end(&mut buffer)?;
 
 				raw = buffer;
+			};
+			// 3: Deref layer, dereferences link leafs
+			// NOTE: This may break the upcoming cache functionality in `vf`. So `vf` must check for linked `Leaf`s
+			if entry.flags.contains(Flags::LINK_FLAG) {
+				let mut target_id = String::new();
+				raw.as_slice().read_to_string(&mut target_id)?;
+
+				// Prevent cyclic hell
+				match self.fetch_entry(target_id.as_str()) {
+					Some(alias) if alias.flags.contains(Flags::LINK_FLAG) => {
+						anyhow::bail!("[CYCLIC ERROR], link leafs can't point to other link leafs. Leaf: {} points to another link leaf: {}", id, target_id);
+					}
+					Some(_) => return self.fetch_write(&target_id, target),
+					None => anyhow::bail!(
+						"[UNDEFINED LEAF], Linked leaf: {}, aliases a non-existent leaf: {}",
+						id,
+						target_id
+					),
+				};
 			};
 
 			io::copy(&mut raw.as_slice(), &mut target)?;
@@ -179,7 +206,7 @@ impl Default for Archive<&[u8]> {
 			handle: &[],
 			key: None,
 			entries: HashMap::new(),
-			decryptor: None
+			decryptor: None,
 		}
 	}
 }

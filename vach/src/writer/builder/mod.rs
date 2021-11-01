@@ -12,7 +12,7 @@ use hashbrown::HashSet;
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
-	pub(crate) set: HashSet<String>,
+	pub(crate) id_set: HashSet<String>,
 	leaf_template: Leaf<'a>,
 }
 
@@ -21,7 +21,7 @@ impl<'a> Default for Builder<'a> {
 	fn default() -> Builder<'a> {
 		Builder {
 			leafs: Vec::new(),
-			set: HashSet::new(),
+			id_set: HashSet::new(),
 			leaf_template: Leaf::default(),
 		}
 	}
@@ -79,12 +79,12 @@ impl<'a> Builder<'a> {
 	}
 
 	/// Append a preconstructed `Leaf` into the processing queue.
-	/// Returns an Er(---) if a Leaf with the specified ID exists.
+	/// Returns an Err(---) if a Leaf with the specified ID exists.
 	/// Use this to skip application of the Builder's internal template unto `Leaf`s.
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {
 		{
 			// Make sure no two leaves are written with the same ID
-			if !self.set.insert(leaf.id.clone()) {
+			if !self.id_set.insert(leaf.id.clone()) {
 				anyhow::bail!(format!("A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", leaf.id));
 			};
 		}
@@ -177,6 +177,18 @@ impl<'a> Builder<'a> {
 			let mut entry = leaf.to_registry_entry();
 			let mut leaf_bytes = Vec::new();
 
+			// Check if this is a linked `Leaf`
+			if let Some(id) = &leaf.link_mode {
+				if self.id_set.contains(id) {
+					use std::io::Cursor;
+
+					leaf.handle = Box::new(Cursor::new(id.as_bytes().to_vec()));
+					entry.flags.force_set(Flags::LINK_FLAG, true);
+				} else {
+					 anyhow::bail!("Linked Leaf: {}, references a non-existent Leaf: {}", leaf.id, id);
+				}
+			}
+
 			// Compression comes first
 			match leaf.compress {
 				CompressMode::Never => {
@@ -240,26 +252,24 @@ impl<'a> Builder<'a> {
 				};
 			}
 
-			{
-				// Make sure the ID is not too big or else it will break the archive
-				if leaf.id.len() >= u16::MAX.into() {
-					let mut copy = leaf.id.clone();
-					copy.truncate(25);
-					anyhow::bail!(format!("The maximum size of any id is: {}. The leaf with ID: {}..., has an ID with length: {}", crate::MAX_ID_LENGTH, copy, leaf.id.len()))
-				};
-
-				// Fetch bytes
-				let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
-				entry_bytes.extend(leaf.id.as_bytes());
-
-				// Write to the registry
-				wtr.seek(SeekFrom::Start(reg_offset as u64))?;
-				wtr.write_all(&entry_bytes)?;
-
-				// Update offsets
-				reg_offset += entry_bytes.len();
-				size += entry_bytes.len();
+			// Make sure the ID is not too big or else it will break the archive
+			if leaf.id.len() >= u16::MAX.into() {
+				let mut copy = leaf.id.clone();
+				copy.truncate(25);
+				anyhow::bail!(format!("The maximum size of any id is: {}. The leaf with ID: {}..., has an ID with length: {}", crate::MAX_ID_LENGTH, copy, leaf.id.len()))
 			};
+
+			// Fetch bytes
+			let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
+			entry_bytes.extend(leaf.id.as_bytes());
+
+			// Write to the registry
+			wtr.seek(SeekFrom::Start(reg_offset as u64))?;
+			wtr.write_all(&entry_bytes)?;
+
+			// Update offsets
+			reg_offset += entry_bytes.len();
+			size += entry_bytes.len();
 		}
 
 		Ok(size)
