@@ -4,7 +4,7 @@
 // Boring, average every day contemporary imports
 use std::{
 	fs::File,
-	io::{Seek, SeekFrom, Write},
+	io::{Seek, SeekFrom},
 	str,
 };
 
@@ -277,27 +277,20 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 
 #[test]
 fn keypair_encryption() -> anyhow::Result<()> {
-	use crate::utils::{gen_keypair, transform_iv, transform_key};
-	use chacha20stream::Sink;
+	use crate::utils::gen_keypair;
+	use crate::global::edcryptor::EDCryptor;
 
-	let plaintext = &[12, 24, 35, 36];
-	let mut encrypted = vec![];
+	let pk = gen_keypair().public;
 
-	let iv = transform_iv(crate::DEFAULT_MAGIC)?;
-	let key = transform_key(&gen_keypair().public)?;
+	let crypt = EDCryptor::new(&pk, *crate::DEFAULT_MAGIC);
 
-	let mut wtr = Sink::encrypt(&mut encrypted, key.clone(), iv.clone())?;
-	wtr.write_all(plaintext)?;
-	wtr.flush()?;
+	let data = vec![12, 12, 12, 12];
 
-	assert_ne!(encrypted, plaintext);
+	let ciphertext = crypt.encrypt(&data).unwrap();
+	let plaintext = crypt.decrypt(&ciphertext).unwrap();
 
-	let mut decrypted = vec![];
-	let mut rdr = Sink::decrypt(&mut decrypted, key, iv)?;
-	rdr.flush()?;
-
-	rdr.write(encrypted.as_slice())?;
-	assert_eq!(decrypted, plaintext);
+	assert_ne!(&plaintext, &ciphertext);
+	assert_eq!(&plaintext, &data);
 	Ok(())
 }
 
