@@ -1,6 +1,7 @@
 use std::{
 	io::{self, BufReader, Read, Seek, SeekFrom, Write},
 	str,
+	collections::HashMap
 };
 
 use super::resource::Resource;
@@ -16,7 +17,6 @@ use crate::{
 use anyhow;
 use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
-use hashbrown::HashMap;
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.

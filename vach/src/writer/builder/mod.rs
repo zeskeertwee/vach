@@ -1,4 +1,5 @@
 use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
+use std::collections::HashSet;
 
 mod config;
 pub use config::BuilderConfig;
@@ -7,7 +8,6 @@ use crate::{global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEn
 
 use lz4_flex as lz4;
 use ed25519_dalek::Signer;
-use hashbrown::HashSet;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
