@@ -68,9 +68,7 @@ impl RegistryEntry {
 
 			let sig: esdalek::Signature = match sig_bytes.try_into() {
 				Ok(sig) => sig,
-				Err(err) => {
-					return Err(InternalError::ParseError(err.to_string()))
-				}
+				Err(err) => return Err(InternalError::ParseError(err.to_string())),
 			};
 
 			entry.signature = Some(sig);

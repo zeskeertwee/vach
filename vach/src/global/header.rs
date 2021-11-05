@@ -46,8 +46,8 @@ impl HeaderConfig {
 		handle.read_exact(&mut keypair_bytes)?;
 
 		let public_key = match esdalek::PublicKey::from_bytes(&keypair_bytes) {
-			 Ok(pk) => pk,
-			 Err(err) => return Err(InternalError::ValidationError(err.to_string()))
+			Ok(pk) => pk,
+			Err(err) => return Err(InternalError::ValidationError(err.to_string())),
 		};
 
 		self.public_key = Some(public_key);

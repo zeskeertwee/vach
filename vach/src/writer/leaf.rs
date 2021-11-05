@@ -35,7 +35,7 @@ pub struct Leaf<'a> {
 	/// If a `Leaf` has a link_mode of Some("dw"), then this leaf simply routes the data pointed by the adjacent Leaf with the ID "dw".
 	/// Use this if you want to have multiple pointers|registry entries aliasing to the same data.
 	/// The handle of a link leaf stores the ID of the aliased leaf.
-	pub link_mode: Option<String>
+	pub link_mode: Option<String>,
 }
 
 impl<'a> Default for Leaf<'a> {
@@ -50,7 +50,7 @@ impl<'a> Default for Leaf<'a> {
 			compress: CompressMode::Never,
 			encrypt: false,
 			sign: true,
-			link_mode: None
+			link_mode: None,
 		}
 	}
 }

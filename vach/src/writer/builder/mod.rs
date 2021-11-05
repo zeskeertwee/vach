@@ -5,7 +5,9 @@ mod config;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, CompressMode};
 use crate::global::error::InternalError;
-use crate::{global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEntry, flags::Flags}};
+use crate::{
+	global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
+};
 
 use lz4_flex as lz4;
 use ed25519_dalek::Signer;
@@ -177,7 +179,10 @@ impl<'a> Builder<'a> {
 		// Build encryptor
 		let encryptor = if use_encryption {
 			let keypair = &config.keypair;
-			Some(EDCryptor::new(&keypair.as_ref().unwrap().public, config.magic))
+			Some(EDCryptor::new(
+				&keypair.as_ref().unwrap().public,
+				config.magic,
+			))
 		} else {
 			None
 		};
@@ -195,7 +200,10 @@ impl<'a> Builder<'a> {
 					leaf.handle = Box::new(Cursor::new(id.as_bytes().to_vec()));
 					entry.flags.force_set(Flags::LINK_FLAG, true);
 				} else {
-					 return Err(InternalError::MissingResourceError(format!("Linked Leaf: {}, references a non-existent Leaf: {}", leaf.id, id)));
+					return Err(InternalError::MissingResourceError(format!(
+						"Linked Leaf: {}, references a non-existent Leaf: {}",
+						leaf.id, id
+					)));
 				}
 			}
 
@@ -232,8 +240,10 @@ impl<'a> Builder<'a> {
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
 					leaf_bytes = match ex.encrypt(&leaf_bytes) {
-						 Ok(bytes) => bytes,
-						 Err(err) => return Err(InternalError::EncryptionError(leaf.id.clone(), err)),
+						Ok(bytes) => bytes,
+						Err(err) => {
+							return Err(InternalError::EncryptionError(leaf.id.clone(), err))
+						}
 					};
 
 					entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);

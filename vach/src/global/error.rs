@@ -31,7 +31,7 @@ pub enum InternalError {
 	/// When a `Leaf` has an ID that is longer than `crate::MAX_ID_LENGTH`
 	IDSizeOverflowError(String),
 	/// Errors thrown during compression or decompression
-	LZ4Error(lz4::frame::Error)
+	LZ4Error(lz4::frame::Error),
 }
 
 impl fmt::Display for InternalError {
@@ -57,14 +57,14 @@ impl fmt::Display for InternalError {
 
 impl error::Error for InternalError {}
 
-impl From<io::Error> for  InternalError {
-    fn from(err: io::Error) -> Self {
-        InternalError::IOError(err)
-    }
+impl From<io::Error> for InternalError {
+	fn from(err: io::Error) -> Self {
+		InternalError::IOError(err)
+	}
 }
 
-impl From<lz4::frame::Error> for  InternalError {
+impl From<lz4::frame::Error> for InternalError {
 	fn from(err: lz4::frame::Error) -> Self {
-		 InternalError::LZ4Error(err)
+		InternalError::LZ4Error(err)
 	}
 }

@@ -357,17 +357,23 @@ fn cyclic_linked_leafs() {
 	// Builder stage
 	let mut builder = Builder::default();
 
-	builder.add_leaf(
-		Leaf::default()
-			.id("d2_link")
-			.link_mode(Some("d1_link".to_string())),
-	).unwrap();
-	builder.add_leaf(
-		Leaf::default()
-			.id("d1_link")
-			.link_mode(Some("d2_link".to_string())),
-	).unwrap();
-	builder.dump(&mut target, &BuilderConfig::default()).unwrap();
+	builder
+		.add_leaf(
+			Leaf::default()
+				.id("d2_link")
+				.link_mode(Some("d1_link".to_string())),
+		)
+		.unwrap();
+	builder
+		.add_leaf(
+			Leaf::default()
+				.id("d1_link")
+				.link_mode(Some("d2_link".to_string())),
+		)
+		.unwrap();
+	builder
+		.dump(&mut target, &BuilderConfig::default())
+		.unwrap();
 
 	target.seek(SeekFrom::Start(0)).unwrap();
 	let mut archive = Archive::from_handle(target).unwrap();

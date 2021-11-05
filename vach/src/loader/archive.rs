@@ -1,7 +1,7 @@
 use std::{
 	str,
 	io::{self, BufReader, Read, Seek, SeekFrom, Write},
-	collections::HashMap
+	collections::HashMap,
 };
 
 use super::resource::Resource;
@@ -11,7 +11,7 @@ use crate::{
 		header::{Header, HeaderConfig},
 		reg_entry::RegistryEntry,
 		flags::Flags,
-		error::InternalError
+		error::InternalError,
 	},
 };
 
@@ -154,10 +154,16 @@ impl<T: Seek + Read> Archive<T> {
 				// Prevent cyclic hell
 				match self.fetch_entry(target_id.as_str()) {
 					Some(alias) if alias.flags.contains(Flags::LINK_FLAG) => {
-						return Err(InternalError::CyclicLinkReferenceError(id.to_string(), target_id.to_string()));
+						return Err(InternalError::CyclicLinkReferenceError(
+							id.to_string(),
+							target_id.to_string(),
+						));
 					}
 					Some(_) => return self.fetch_write(&target_id, target),
-					None => return Err(InternalError::MissingResourceError(format!("The linking Leaf: {} exists, but the Leaf it links to: {}, does not exist", id, target_id))),
+					None => return Err(InternalError::MissingResourceError(format!(
+						"The linking Leaf: {} exists, but the Leaf it links to: {}, does not exist",
+						id, target_id
+					))),
 				};
 			};
 
@@ -165,7 +171,10 @@ impl<T: Seek + Read> Archive<T> {
 
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
-			return Err(InternalError::MissingResourceError(format!("Resource not found: {}", id)));
+			return Err(InternalError::MissingResourceError(format!(
+				"Resource not found: {}",
+				id
+			)));
 		}
 	}
 

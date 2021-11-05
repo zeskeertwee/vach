@@ -1,8 +1,6 @@
 use ed25519_dalek as esdalek;
 use rand::rngs::OsRng;
-use std::{
-	io::Read,
-};
+use std::{io::Read};
 
 use crate::global::error::InternalError;
 
@@ -17,7 +15,7 @@ pub fn read_keypair<R: Read>(mut handle: R) -> Result<esdalek::Keypair, Internal
 	let mut keypair_bytes = [0; crate::KEYPAIR_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;
 	Ok(match esdalek::Keypair::from_bytes(&keypair_bytes) {
-		 Ok(kep) => kep,
-		 Err(err) => return Err(InternalError::ParseError(err.to_string()))
+		Ok(kep) => kep,
+		Err(err) => return Err(InternalError::ParseError(err.to_string())),
 	})
 }
