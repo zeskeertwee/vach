@@ -158,7 +158,7 @@ impl<'a> Builder<'a> {
 		for leaf in self.leafs.iter() {
 			if leaf.encrypt && !use_encryption {
 				if config.keypair.is_none() {
-					return Err(InternalError::RequirementError(format!("Leaf encryption error! Leaf: {} requested for encryption, yet no keypair was provided(None)", &leaf.id)));
+					return Err(InternalError::NoKeypairError(format!("Leaf encryption error! Leaf: {} requested for encryption, yet no keypair was provided(None)", &leaf.id)));
 				};
 
 				use_encryption = true;
@@ -195,7 +195,7 @@ impl<'a> Builder<'a> {
 					leaf.handle = Box::new(Cursor::new(id.as_bytes().to_vec()));
 					entry.flags.force_set(Flags::LINK_FLAG, true);
 				} else {
-					 return Err(InternalError::NonExistentLeafError(format!("Linked Leaf: {}, references a non-existent Leaf: {}", leaf.id, id)));
+					 return Err(InternalError::MissingResourceError(format!("Linked Leaf: {}, references a non-existent Leaf: {}", leaf.id, id)));
 				}
 			}
 

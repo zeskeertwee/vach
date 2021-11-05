@@ -134,7 +134,7 @@ impl<T: Seek + Read> Archive<T> {
 						}
 					};
 				} else {
-					return Err(InternalError::RequirementError(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id)));
+					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id)));
 				}
 			}
 			// 2: Decompression layer
