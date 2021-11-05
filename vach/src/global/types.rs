@@ -1,5 +1,5 @@
 use std::fmt;
-use anyhow;
+use super::error::InternalError;
 
 // Private utility function
 fn _contains(first: u16, other: u16) -> bool {
@@ -64,9 +64,9 @@ impl Flags {
 	/// flag.set(0b0000_1000_0000_0001, false); // 0 flags remain zero
 	/// assert_eq!(flag.bits(), 0b0000_0000_1000_0000);
 	/// ```
-	pub fn set(&mut self, mask: u16, toggle: bool) -> anyhow::Result<u16> {
+	pub fn set(&mut self, mask: u16, toggle: bool) -> Result<u16, InternalError> {
 		if _contains(Flags::RESERVED_MASK, mask) {
-			anyhow::bail!("Tried to set reserved bit(s)!");
+			return  Err(InternalError::RestrictedFlagAccessError);
 		} else {
 			self.force_set(mask, toggle)
 		}
