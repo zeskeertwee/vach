@@ -1,6 +1,6 @@
 use std::{
-	io::{self, BufReader, Read, Seek, SeekFrom, Write},
 	str,
+	io::{self, BufReader, Read, Seek, SeekFrom, Write},
 	collections::HashMap
 };
 
@@ -10,11 +10,11 @@ use crate::{
 		edcryptor::EDCryptor,
 		header::{Header, HeaderConfig},
 		reg_entry::RegistryEntry,
-		types::Flags,
+		flags::Flags,
+		error::InternalError
 	},
 };
 
-use anyhow;
 use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
 
@@ -40,7 +40,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
 	/// ```
 	#[inline(always)]
-	pub fn from_handle(handle: T) -> anyhow::Result<Archive<impl Seek + Read>> {
+	pub fn from_handle(handle: T) -> Result<Archive<impl Seek + Read>, InternalError> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
@@ -49,11 +49,11 @@ impl<T: Seek + Read> Archive<T> {
 	/// If parsing fails, an `Err()` is returned.
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
-	) -> anyhow::Result<Archive<impl Seek + Read>> {
+	) -> Result<Archive<impl Seek + Read>, InternalError> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
-		// Generate and store Registry Entries
+		// Generate and store Registry EntriesF
 		let mut use_decryption = false;
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
@@ -86,7 +86,7 @@ impl<T: Seek + Read> Archive<T> {
 
 	/// Fetch a `Resource` with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
-	pub fn fetch(&mut self, id: &str) -> anyhow::Result<Resource> {
+	pub fn fetch(&mut self, id: &str) -> Result<Resource, InternalError> {
 		let mut buffer = Vec::new();
 		let (flags, content_version, validated) = self.fetch_write(id, &mut buffer)?;
 
@@ -102,7 +102,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Returns a tuple containing the `Flags`, `content_version` and `secure`, ie validity, of the data.
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
-	) -> anyhow::Result<(Flags, u8, bool)> {
+	) -> Result<(Flags, u8, bool), InternalError> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
@@ -132,11 +132,11 @@ impl<T: Seek + Read> Archive<T> {
 					raw = match dx.decrypt(&raw) {
 						Ok(bytes) => bytes,
 						Err(err) => {
-							anyhow::bail!("Unable to decrypt resource: {}. Reason: {}", id, err)
+							return Err(InternalError::DecryptionError(id.to_string(), err));
 						}
 					};
 				} else {
-					anyhow::bail!(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id))
+					return Err(InternalError::RequirementError(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id)));
 				}
 			}
 			// 2: Decompression layer
@@ -156,14 +156,10 @@ impl<T: Seek + Read> Archive<T> {
 				// Prevent cyclic hell
 				match self.fetch_entry(target_id.as_str()) {
 					Some(alias) if alias.flags.contains(Flags::LINK_FLAG) => {
-						anyhow::bail!("[CYCLIC ERROR], link leafs can't point to other link leafs. Leaf: {} points to another link leaf: {}", id, target_id);
+						return Err(InternalError::CyclicLinkReferenceError(id.to_string(), target_id.to_string()));
 					}
 					Some(_) => return self.fetch_write(&target_id, target),
-					None => anyhow::bail!(
-						"[UNDEFINED LEAF], Linked leaf: {}, aliases a non-existent leaf: {}",
-						id,
-						target_id
-					),
+					None => return Err(InternalError::MissingResourceError(format!("The linking Leaf: {} exists, but the Leaf it links to: {}, does not exist", id, target_id))),
 				};
 			};
 
@@ -171,7 +167,7 @@ impl<T: Seek + Read> Archive<T> {
 
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
-			anyhow::bail!(format!("Resource not found: {}", id))
+			return Err(InternalError::MissingResourceError(format!("Resource not found: {}", id)));
 		}
 	}
 

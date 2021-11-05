@@ -1,11 +1,6 @@
 use std::fmt;
 use super::error::InternalError;
 
-// Private utility function
-fn _contains(first: u16, other: u16) -> bool {
-	(first & other) != 0
-}
-
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -65,7 +60,7 @@ impl Flags {
 	/// assert_eq!(flag.bits(), 0b0000_0000_1000_0000);
 	/// ```
 	pub fn set(&mut self, mask: u16, toggle: bool) -> Result<u16, InternalError> {
-		if _contains(Flags::RESERVED_MASK, mask) {
+		if Flags::_contains(Flags::RESERVED_MASK, mask) {
 			return  Err(InternalError::RestrictedFlagAccessError);
 		} else {
 			self.force_set(mask, toggle)
@@ -92,7 +87,12 @@ impl Flags {
 	/// assert!(flag.contains(0b0000_1000_0000_0000));
 	/// ```
 	pub fn contains(&self, mask: u16) -> bool {
-		_contains(self.bits, mask)
+		Flags::_contains(self.bits, mask)
+	}
+
+	// Auxillary function
+	fn _contains(first: u16, other: u16) -> bool {
+		(first & other) != 0
 	}
 }
 

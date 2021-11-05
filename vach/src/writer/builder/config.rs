@@ -1,4 +1,4 @@
-use crate::global::types::Flags;
+use crate::global::{error::InternalError, flags::Flags};
 use std::io;
 use ed25519_dalek as esdalek;
 
@@ -43,7 +43,7 @@ impl BuilderConfig {
 
 	// Keypair helpers
 	/// Parses and stores a keypair from a source.
-	pub fn load_keypair<T: io::Read>(&mut self, handle: T) -> anyhow::Result<()> {
+	pub fn load_keypair<T: io::Read>(&mut self, handle: T) -> Result<(), InternalError> {
 		self.keypair = Some(crate::utils::read_keypair(handle)?);
 		Ok(())
 	}
