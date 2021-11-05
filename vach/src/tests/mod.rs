@@ -26,7 +26,7 @@ const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
 
 #[test]
-fn custom_bitflags() -> anyhow::Result<()> {
+fn custom_bitflags() -> Result<(), InternalError> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
@@ -85,7 +85,7 @@ fn defaults() {
 }
 
 #[test]
-fn header_config() -> anyhow::Result<()> {
+fn header_config() -> Result<(), InternalError> {
 	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
 	use crate::global::header::Header;
 
@@ -101,7 +101,7 @@ fn header_config() -> anyhow::Result<()> {
 }
 
 #[test]
-fn builder_no_signature() -> anyhow::Result<()> {
+fn builder_no_signature() -> Result<(), InternalError> {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
 
@@ -137,7 +137,7 @@ fn builder_no_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_no_signature() -> anyhow::Result<()> {
+fn fetch_no_signature() -> Result<(), InternalError> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::from_handle(target)?;
 	dbg!(archive.entries());
@@ -156,17 +156,17 @@ fn fetch_no_signature() -> anyhow::Result<()> {
 	assert!(!resource.secured);
 	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
 
-	println!("{}", String::from_utf8(resource.data)?);
+	println!("{}", String::from_utf8(resource.data).unwrap());
 
 	let hello = archive.fetch("greeting")?;
-	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data)?);
+	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
 	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
 	Ok(())
 }
 
 #[test]
-fn gen_keypair() -> anyhow::Result<()> {
+fn gen_keypair() -> Result<(), InternalError> {
 	use crate::utils::gen_keypair;
 
 	// NOTE: regenerating new keys will break some tests
@@ -182,7 +182,7 @@ fn gen_keypair() -> anyhow::Result<()> {
 }
 
 #[test]
-fn builder_with_signature() -> anyhow::Result<()> {
+fn builder_with_signature() -> Result<(), InternalError> {
 	let mut builder = Builder::default();
 
 	let mut build_config = BuilderConfig::default();
@@ -206,7 +206,7 @@ fn builder_with_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_with_signature() -> anyhow::Result<()> {
+fn fetch_with_signature() -> Result<(), InternalError> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -217,7 +217,7 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice())?;
+	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch("not_signed")?;
@@ -244,7 +244,7 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_write_with_signature() -> anyhow::Result<()> {
+fn fetch_write_with_signature() -> Result<(), InternalError> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -260,9 +260,6 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 	assert!(metadata.2);
 	assert!(metadata.0.contains(Flags::SIGNED_FLAG));
 
-	// Assert identity of retrieved data
-	println!("{}", str::from_utf8(&song)?);
-
 	// Windows bullshit
 	#[cfg(target_os = "windows")]
 	{
@@ -273,11 +270,14 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 		assert_eq!(song.len(), 345);
 	}
 
+	// Assert identity of retrieved data
+	println!("{}", String::from_utf8(song).unwrap());
+
 	Ok(())
 }
 
 #[test]
-fn edcryptor_test() -> anyhow::Result<()> {
+fn edcryptor_test() -> Result<(), InternalError> {
 	use crate::utils::gen_keypair;
 	use crate::global::edcryptor::EDCryptor;
 
@@ -296,7 +296,7 @@ fn edcryptor_test() -> anyhow::Result<()> {
 }
 
 #[test]
-fn builder_with_encryption() -> anyhow::Result<()> {
+fn builder_with_encryption() -> Result<(), InternalError> {
 	let mut builder =
 		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
 
@@ -314,7 +314,7 @@ fn builder_with_encryption() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_from_encrypted() -> anyhow::Result<()> {
+fn fetch_from_encrypted() -> Result<(), InternalError> {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
 	// Load keypair
@@ -325,7 +325,7 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice())?;
+	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
 	// Check identity of retrieved data
 	println!("{}", song);
@@ -377,7 +377,7 @@ fn cyclic_linked_leafs() {
 }
 
 #[test]
-fn consolidated_example() -> anyhow::Result<()> {
+fn consolidated_example() -> Result<(), InternalError> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
 
