@@ -174,7 +174,7 @@ pub const MAGIC_LENGTH: usize = 5;
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
-	pub use crate::global::{header::HeaderConfig, flags::*, reg_entry::RegistryEntry};
+	pub use crate::global::{header::HeaderConfig, flags::Flags, reg_entry::RegistryEntry, error::InternalError};
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
@@ -194,12 +194,13 @@ pub mod builder {
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
+	pub use crate::global::error::InternalError;
 }
 
 /// Loader-based logic and data-structures
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
-	pub use crate::global::{reg_entry::RegistryEntry, header::HeaderConfig};
+	pub use crate::global::{reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError};
 }
 
 /// Some utility functions to keep you happy
