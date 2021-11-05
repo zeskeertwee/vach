@@ -70,8 +70,6 @@ impl<T: Seek + Read> Archive<T> {
 		if use_decryption {
 			if let Some(pk) = config.public_key {
 				decryptor = Some(EDCryptor::new(&pk, config.magic))
-			} else {
-				println!("WARNING! Some leafs require decryption, yet no public key was provided")
 			}
 		}
 
