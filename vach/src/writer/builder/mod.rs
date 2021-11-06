@@ -93,7 +93,7 @@ impl<'a> Builder<'a> {
 		{
 			// Make sure no two leaves are written with the same ID
 			if !self.id_set.insert(leaf.id.clone()) {
-				return Err(InternalError::LeafAppendError(format!("A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", leaf.id)));
+				return Err(InternalError::LeafAppendError(leaf.id));
 			};
 		}
 
@@ -243,7 +243,7 @@ impl<'a> Builder<'a> {
 					leaf_bytes = match ex.encrypt(&leaf_bytes) {
 						Ok(bytes) => bytes,
 						Err(err) => {
-							return Err(InternalError::EncryptionError(leaf.id.clone(), err))
+							return Err(InternalError::CryptoError(format!("Unable to encrypt leaf: {}. Error: {}", leaf.id, err)))
 						}
 					};
 

@@ -122,7 +122,7 @@ impl<T: Seek + Read> Archive<T> {
 					raw = match dx.decrypt(&raw) {
 						Ok(bytes) => bytes,
 						Err(err) => {
-							return Err(InternalError::DecryptionError(id.to_string(), err));
+							return Err(InternalError::CryptoError(format!("Unable to decrypt resource: {}. Error: {}", id.to_string(), err)));
 						}
 					};
 				} else {
