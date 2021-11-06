@@ -3,7 +3,7 @@ use std::fmt;
 use ed25519_dalek::PublicKey;
 
 use aes_gcm_siv::aead::{Aead, NewAead};
-use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce}; // Or `Aes128GcmSiv`
+use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 
 // Encryption - Decryption, A convenience wrapper around aes encryption and decryption
 pub(crate) struct EDCryptor {

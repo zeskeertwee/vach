@@ -5,6 +5,7 @@ mod config;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, CompressMode};
 use crate::global::error::InternalError;
+use crate::global::result::InternalResult;
 use crate::{
 	global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
 };
@@ -41,7 +42,7 @@ impl<'a> Builder<'a> {
 	/// The `data` is wrapped in the default `Leaf`.
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// Returns an Er(---) if a Leaf with the specified ID exists.
-	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> Result<(), InternalError> {
+	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> InternalResult<()> {
 		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
 		self.add_leaf(leaf)?;
 		Ok(())
@@ -53,7 +54,7 @@ impl<'a> Builder<'a> {
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
-	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> Result<(), InternalError> {
+	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> InternalResult<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -88,7 +89,7 @@ impl<'a> Builder<'a> {
 	/// `Leaf`s added directly do not implement data from the `Builder`s internal template.
 	/// ### Errors
 	/// - Returns an error if a `Leaf` with the specified `ID` exists.
-	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> Result<(), InternalError> {
+	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult<()> {
 		{
 			// Make sure no two leaves are written with the same ID
 			if !self.id_set.insert(leaf.id.clone()) {
@@ -124,7 +125,7 @@ impl<'a> Builder<'a> {
 	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a `Leaf` is to be encrypted.
 	pub fn dump<W: Write + Seek>(
 		&mut self, mut target: W, config: &BuilderConfig,
-	) -> Result<usize, InternalError> {
+	) -> InternalResult<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		let mut size = 0usize;
 		let mut reg_offset = 0;

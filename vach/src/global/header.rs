@@ -4,7 +4,7 @@ use crate::global::flags::Flags;
 
 use ed25519_dalek as esdalek;
 
-use super::error::InternalError;
+use super::{error::InternalError, result::InternalResult};
 
 /// Used to configure and give extra information to the `Archive` loader.
 /// Used exclusively in archive source and integrity validation.
@@ -40,7 +40,7 @@ impl HeaderConfig {
 	/// config.load_public_key(&keypair_bytes[32..]).unwrap();
 	/// ```
 	#[inline]
-	pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> Result<(), InternalError> {
+	pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> InternalResult<()> {
 		let mut keypair_bytes = [4; crate::PUBLIC_KEY_LENGTH];
 
 		handle.read_exact(&mut keypair_bytes)?;
@@ -122,7 +122,7 @@ impl Header {
 	pub const VERSION_SIZE: usize = 2;
 	pub const CAPACITY_SIZE: usize = 2;
 
-	pub fn validate(header: &Header, config: &HeaderConfig) -> Result<(), InternalError> {
+	pub fn validate(header: &Header, config: &HeaderConfig) -> InternalResult<()> {
 		// Validate magic
 		if header.magic != config.magic {
 			return Err(InternalError::ValidationError(format!(
@@ -141,7 +141,7 @@ impl Header {
 		Ok(())
 	}
 
-	pub fn from_handle<T: Read>(mut handle: T) -> Result<Header, InternalError> {
+	pub fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
 		let mut buffer = [0x69; Header::BASE_SIZE];
 		handle.read_exact(&mut buffer)?;
 

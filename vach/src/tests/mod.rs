@@ -8,7 +8,7 @@ use std::{
 	str,
 };
 
-use crate::prelude::*;
+use crate::{global::result::InternalResult, prelude::*};
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -26,7 +26,7 @@ const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
 
 #[test]
-fn custom_bitflags() -> Result<(), InternalError> {
+fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
@@ -85,7 +85,7 @@ fn defaults() {
 }
 
 #[test]
-fn header_config() -> Result<(), InternalError> {
+fn header_config() -> InternalResult<()> {
 	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
 	use crate::global::header::Header;
 
@@ -101,7 +101,7 @@ fn header_config() -> Result<(), InternalError> {
 }
 
 #[test]
-fn builder_no_signature() -> Result<(), InternalError> {
+fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
 
@@ -137,7 +137,7 @@ fn builder_no_signature() -> Result<(), InternalError> {
 }
 
 #[test]
-fn fetch_no_signature() -> Result<(), InternalError> {
+fn fetch_no_signature() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::from_handle(target)?;
 	dbg!(archive.entries());
@@ -166,7 +166,7 @@ fn fetch_no_signature() -> Result<(), InternalError> {
 }
 
 #[test]
-fn gen_keypair() -> Result<(), InternalError> {
+fn gen_keypair() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
 
 	// NOTE: regenerating new keys will break some tests
@@ -182,7 +182,7 @@ fn gen_keypair() -> Result<(), InternalError> {
 }
 
 #[test]
-fn builder_with_signature() -> Result<(), InternalError> {
+fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
 	let mut build_config = BuilderConfig::default();
@@ -206,7 +206,7 @@ fn builder_with_signature() -> Result<(), InternalError> {
 }
 
 #[test]
-fn fetch_with_signature() -> Result<(), InternalError> {
+fn fetch_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -249,7 +249,7 @@ fn fetch_with_signature() -> Result<(), InternalError> {
 }
 
 #[test]
-fn fetch_write_with_signature() -> Result<(), InternalError> {
+fn fetch_write_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -282,7 +282,7 @@ fn fetch_write_with_signature() -> Result<(), InternalError> {
 }
 
 #[test]
-fn edcryptor_test() -> Result<(), InternalError> {
+fn edcryptor_test() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
 	use crate::global::edcryptor::EDCryptor;
 
@@ -301,7 +301,7 @@ fn edcryptor_test() -> Result<(), InternalError> {
 }
 
 #[test]
-fn builder_with_encryption() -> Result<(), InternalError> {
+fn builder_with_encryption() -> InternalResult<()> {
 	let mut builder =
 		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
 
@@ -319,7 +319,7 @@ fn builder_with_encryption() -> Result<(), InternalError> {
 }
 
 #[test]
-fn fetch_from_encrypted() -> Result<(), InternalError> {
+fn fetch_from_encrypted() -> InternalResult<()> {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
 	// Load keypair
@@ -388,7 +388,7 @@ fn cyclic_linked_leafs() {
 }
 
 #[test]
-fn consolidated_example() -> Result<(), InternalError> {
+fn consolidated_example() -> InternalResult<()> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
 

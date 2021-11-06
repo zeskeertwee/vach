@@ -1,5 +1,5 @@
 use std::fmt;
-use super::error::InternalError;
+use super::{error::InternalError, result::InternalResult};
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
@@ -59,7 +59,7 @@ impl Flags {
 	/// flag.set(0b0000_1000_0000_0001, false); // 0 flags remain zero
 	/// assert_eq!(flag.bits(), 0b0000_0000_1000_0000);
 	/// ```
-	pub fn set(&mut self, mask: u16, toggle: bool) -> Result<u16, InternalError> {
+	pub fn set(&mut self, mask: u16, toggle: bool) -> InternalResult<u16> {
 		if Flags::_contains(Flags::RESERVED_MASK, mask) {
 			return Err(InternalError::RestrictedFlagAccessError);
 		} else {

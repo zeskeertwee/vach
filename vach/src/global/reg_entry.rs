@@ -6,7 +6,7 @@ use std::{
 	fmt,
 };
 use ed25519_dalek as esdalek;
-use super::error::InternalError;
+use super::{error::InternalError, result::InternalResult};
 
 /// Stand-alone meta-data from an archive entry(Leaf). This can be parsed without reading data about the leaf.
 #[derive(Debug, Clone)]
@@ -40,7 +40,7 @@ impl RegistryEntry {
 	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
 	pub(crate) fn from_handle<T: Read + Seek>(
 		mut handle: T,
-	) -> Result<(Self, String), InternalError> {
+	) -> InternalResult<(Self, String)> {
 		let mut buffer = [0; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 

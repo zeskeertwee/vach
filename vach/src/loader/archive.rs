@@ -5,15 +5,7 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::{
-	global::{
-		edcryptor::EDCryptor,
-		header::{Header, HeaderConfig},
-		reg_entry::RegistryEntry,
-		flags::Flags,
-		error::InternalError,
-	},
-};
+use crate::{global::{edcryptor::EDCryptor, error::InternalError, flags::Flags, header::{Header, HeaderConfig}, reg_entry::RegistryEntry, result::InternalResult}};
 
 use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
@@ -40,7 +32,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
 	/// ```
 	#[inline(always)]
-	pub fn from_handle(handle: T) -> Result<Archive<impl Seek + Read>, InternalError> {
+	pub fn from_handle(handle: T) -> InternalResult<Archive<impl Seek + Read>> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
@@ -49,7 +41,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// If parsing fails, an `Err()` is returned.
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
-	) -> Result<Archive<impl Seek + Read>, InternalError> {
+	) -> InternalResult<Archive<impl Seek + Read>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
@@ -84,7 +76,7 @@ impl<T: Seek + Read> Archive<T> {
 
 	/// Fetch a `Resource` with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
-	pub fn fetch(&mut self, id: &str) -> Result<Resource, InternalError> {
+	pub fn fetch(&mut self, id: &str) -> InternalResult<Resource> {
 		let mut buffer = Vec::new();
 		let (flags, content_version, validated) = self.fetch_write(id, &mut buffer)?;
 
@@ -100,7 +92,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Returns a tuple containing the `Flags`, `content_version` and `secure`, ie validity, of the data.
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
-	) -> Result<(Flags, u8, bool), InternalError> {
+	) -> InternalResult<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
