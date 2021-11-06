@@ -5,7 +5,16 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::{global::{edcryptor::EDCryptor, error::InternalError, flags::Flags, header::{Header, HeaderConfig}, reg_entry::RegistryEntry, result::InternalResult}};
+use crate::{
+	global::{
+		edcryptor::EDCryptor,
+		error::InternalError,
+		flags::Flags,
+		header::{Header, HeaderConfig},
+		reg_entry::RegistryEntry,
+		result::InternalResult,
+	},
+};
 
 use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
@@ -48,13 +57,14 @@ impl<T: Seek + Read> Archive<T> {
 		// Generate and store Registry EntriesF
 		let mut use_decryption = false;
 		let mut entries = HashMap::new();
+
 		for _ in 0..header.capacity {
 			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
 			if entry.flags.contains(Flags::ENCRYPTED_FLAG) && !use_decryption {
 				use_decryption = true;
 			};
 			entries.insert(id, entry);
-		};
+		}
 
 		// Build decryptor
 		let mut decryptor = None;
@@ -122,7 +132,11 @@ impl<T: Seek + Read> Archive<T> {
 					raw = match dx.decrypt(&raw) {
 						Ok(bytes) => bytes,
 						Err(err) => {
-							return Err(InternalError::CryptoError(format!("Unable to decrypt resource: {}. Error: {}", id.to_string(), err)));
+							return Err(InternalError::CryptoError(format!(
+								"Unable to decrypt resource: {}. Error: {}",
+								id.to_string(),
+								err
+							)));
 						}
 					};
 				} else {
@@ -152,10 +166,12 @@ impl<T: Seek + Read> Archive<T> {
 						));
 					}
 					Some(_) => return self.fetch_write(&target_id, target),
-					None => return Err(InternalError::MissingResourceError(format!(
+					None => {
+						return Err(InternalError::MissingResourceError(format!(
 						"The linking Leaf: {} exists, but the Leaf it links to: {}, does not exist",
 						id, target_id
-					))),
+					)))
+					}
 				};
 			};
 

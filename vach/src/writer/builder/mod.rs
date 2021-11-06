@@ -243,7 +243,10 @@ impl<'a> Builder<'a> {
 					leaf_bytes = match ex.encrypt(&leaf_bytes) {
 						Ok(bytes) => bytes,
 						Err(err) => {
-							return Err(InternalError::CryptoError(format!("Unable to encrypt leaf: {}. Error: {}", leaf.id, err)))
+							return Err(InternalError::CryptoError(format!(
+								"Unable to encrypt leaf: {}. Error: {}",
+								leaf.id, err
+							)))
 						}
 					};
 

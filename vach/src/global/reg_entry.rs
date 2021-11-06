@@ -38,9 +38,7 @@ impl RegistryEntry {
 		}
 	}
 	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
-	pub(crate) fn from_handle<T: Read + Seek>(
-		mut handle: T,
-	) -> InternalResult<(Self, String)> {
+	pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> InternalResult<(Self, String)> {
 		let mut buffer = [0; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
