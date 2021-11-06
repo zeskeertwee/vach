@@ -224,6 +224,11 @@ fn fetch_with_signature() -> Result<(), InternalError> {
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.secured);
 
+	// The adjacent resource was flagged to not be signed
+	let not_signed_resource = archive.fetch("not_signed")?;
+	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
+	assert!(!not_signed_resource.secured);
+
 	// Check identity of retrieved data
 	println!("{}", song);
 

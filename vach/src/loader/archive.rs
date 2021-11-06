@@ -62,7 +62,7 @@ impl<T: Seek + Read> Archive<T> {
 				use_decryption = true;
 			};
 			entries.insert(id, entry);
-		}
+		};
 
 		// Build decryptor
 		let mut decryptor = None;

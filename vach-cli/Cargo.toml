@@ -2,7 +2,20 @@
 name = "vach-cli"
 version = "0.1.0"
 edition = "2018"
+authors = ["Jasper Fortuin <zeskeertwee@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+indicatif = "0.16.2"
+clap = "2.33.3"
+anyhow = "1.0.44"
+lazy_static = "1.4.0"
+tabled = "0.3.0"
+log = "0.4.14"
+pretty_env_logger = "0.4.0"
+
+[dependencies.vach]
+path = "../vach"
+#git = "https://github.com/zeskeertwee/vach"
+#rev = ""
