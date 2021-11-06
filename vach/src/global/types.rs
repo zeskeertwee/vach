@@ -10,7 +10,7 @@ fn _contains(first: u16, other: u16) -> bool {
 /// A knock-off minimal bitflags of sorts.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
-	bits: u16,
+	pub(crate) bits: u16,
 }
 
 // based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
@@ -109,12 +109,16 @@ impl fmt::Display for Flags {
 		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
 		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
 
-		write!(f, "Flags[{}{}{}]: {:#016b}", compressed, encrypted, signed, self.bits)
+		write!(f, "Flags[{}{}{}]", compressed, encrypted, signed)
 	}
 }
 
 impl fmt::Debug for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		fmt::Display::fmt(&self, f)
+		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
+		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
+
+		write!(f, "Flags[{}{}{}]: {:#016b}", compressed, encrypted, signed, self.bits)
 	}
 }

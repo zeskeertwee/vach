@@ -4,17 +4,9 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::{
-	global::{
-		header::{Header, HeaderConfig},
-		reg_entry::RegistryEntry,
-		types::Flags,
-	},
-	utils::{transform_iv, transform_key},
-};
+use crate::{global::{edcryptor::EDCryptor, header::{Header, HeaderConfig}, reg_entry::RegistryEntry, types::Flags}};
 
 use anyhow;
-use chacha20stream::Sink;
 use ed25519_dalek as esdalek;
 use lz4_flex as lz4;
 use hashbrown::HashMap;
@@ -30,6 +22,7 @@ pub struct Archive<T> {
 	handle: T,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
+	decryptor: Option<EDCryptor>
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
@@ -54,11 +47,26 @@ impl<T: Seek + Read> Archive<T> {
 		Header::validate(&header, config)?;
 
 		// Generate and store Registry Entries
+		let mut use_decryption = false;
 		let mut entries = HashMap::new();
 		for _ in 0..header.capacity {
 			let (entry, id) =
-				RegistryEntry::from_handle(&mut handle, header.flags.contains(Flags::SIGNED_FLAG))?;
+				RegistryEntry::from_handle(&mut handle)?;
+			if entry.flags.contains(Flags::ENCRYPTED_FLAG) && !use_decryption {
+				use_decryption = true;
+			};
 			entries.insert(id, entry);
+		};
+
+		// Build decryptor
+		let mut decryptor = None;
+
+		if use_decryption {
+			if let Some(pk) = config.public_key {
+				decryptor = Some(EDCryptor::new(&pk, config.magic))
+			} else {
+				println!("WARNING! Some leafs require decryption, yet no public key was provided")
+			}
 		}
 
 		Ok(Archive {
@@ -66,6 +74,7 @@ impl<T: Seek + Read> Archive<T> {
 			handle: BufReader::new(handle),
 			key: config.public_key,
 			entries,
+			decryptor
 		})
 	}
 
@@ -113,18 +122,11 @@ impl<T: Seek + Read> Archive<T> {
 			// Add read layers
 			// 1: Decryption layer
 			if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
-				if let Some(public_key) = self.key {
-					let mut buffer = vec![];
-					let mut wtr = Sink::decrypt(
-						&mut buffer,
-						transform_key(&public_key)?,
-						transform_iv(&self.header.magic)?,
-					)?;
-
-					wtr.write_all(raw.as_slice())?;
-					wtr.flush()?;
-
-					raw = buffer
+				if let Some(dx) = &self.decryptor {
+					raw = match dx.decrypt(&raw) {
+						 Ok(bytes) => bytes,
+						 Err(err) => anyhow::bail!("Unable to decrypt resource: {}. Reason: {}", id, err),
+					};
 				} else {
 					anyhow::bail!(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id))
 				}
@@ -161,6 +163,12 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
 	}
+
+	/// Global flags extracted from the `Header` section of the source
+	#[inline(always)]
+	pub fn flags(&self) -> &Flags {
+		&self.header.flags
+	}
 }
 
 impl Default for Archive<&[u8]> {
@@ -171,6 +179,7 @@ impl Default for Archive<&[u8]> {
 			handle: &[],
 			key: None,
 			entries: HashMap::new(),
+			decryptor: None
 		}
 	}
 }

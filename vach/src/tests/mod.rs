@@ -4,7 +4,7 @@
 // Boring, average every day contemporary imports
 use std::{
 	fs::File,
-	io::{Seek, SeekFrom, Write},
+	io::{Seek, SeekFrom},
 	str,
 };
 
@@ -85,14 +85,15 @@ fn defaults() {
 
 #[test]
 fn header_config() -> anyhow::Result<()> {
-	// We need a private dependency, Header to test ot
+	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
 	use crate::global::header::Header;
+
 	let config = HeaderConfig::new(*b"VfACH", None);
 	let mut file = File::open("test_data/simple/target.vach")?;
-	format!("{}", &config);
+	println!("{}", &config);
 
 	let header = Header::from_handle(&mut file)?;
-	format!("{}", header);
+	println!("{}", header);
 
 	Header::validate(&header, &config)?;
 	Ok(())
@@ -191,6 +192,9 @@ fn builder_with_signature() -> anyhow::Result<()> {
 		Some(&Leaf::default().compress(CompressMode::Detect)),
 	)?;
 
+	// Tests conditional signing
+	builder.add_leaf(Leaf::default().id("not_signed").sign(false))?;
+
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
 		"Number of bytes written: {}, into signed archive.",
@@ -213,6 +217,11 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice())?;
+
+	// The adjacent resource was flagged to not be signed
+	let not_signed_resource = archive.fetch("not_signed")?;
+	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
+	assert!(!not_signed_resource.secured);
 
 	// Check identity of retrieved data
 	println!("{}", song);
@@ -268,27 +277,20 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 
 #[test]
 fn keypair_encryption() -> anyhow::Result<()> {
-	use crate::utils::{gen_keypair, transform_iv, transform_key};
-	use chacha20stream::Sink;
+	use crate::utils::gen_keypair;
+	use crate::global::edcryptor::EDCryptor;
 
-	let plaintext = &[12, 24, 35, 36];
-	let mut encrypted = vec![];
+	let pk = gen_keypair().public;
 
-	let iv = transform_iv(crate::DEFAULT_MAGIC)?;
-	let key = transform_key(&gen_keypair().public)?;
+	let crypt = EDCryptor::new(&pk, *crate::DEFAULT_MAGIC);
 
-	let mut wtr = Sink::encrypt(&mut encrypted, key.clone(), iv.clone())?;
-	wtr.write_all(plaintext)?;
-	wtr.flush()?;
+	let data = vec![12, 12, 12, 12];
 
-	assert_ne!(encrypted, plaintext);
+	let ciphertext = crypt.encrypt(&data).unwrap();
+	let plaintext = crypt.decrypt(&ciphertext).unwrap();
 
-	let mut decrypted = vec![];
-	let mut rdr = Sink::decrypt(&mut decrypted, key, iv)?;
-	rdr.flush()?;
-
-	rdr.write(encrypted.as_slice())?;
-	assert_eq!(decrypted, plaintext);
+	assert_ne!(&plaintext, &ciphertext);
+	assert_eq!(&plaintext, &data);
 	Ok(())
 }
 

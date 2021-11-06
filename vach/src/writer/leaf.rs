@@ -30,6 +30,8 @@ pub struct Leaf<'a> {
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
 	pub encrypt: bool,
+	/// Whether to include a signature with this `Leaf`, defaults to true
+	pub sign: bool,
 }
 
 impl<'a> Default for Leaf<'a> {
@@ -37,12 +39,13 @@ impl<'a> Default for Leaf<'a> {
 	#[inline(always)]
 	fn default() -> Leaf<'a> {
 		Leaf {
-			handle: Box::<&[u8]>::new(&[]),
 			id: String::new(),
+			handle: Box::<&[u8]>::new(&[]),
+			flags: Flags::empty(),
 			content_version: 0,
 			compress: CompressMode::Never,
-			flags: Flags::empty(),
 			encrypt: false,
+			sign: true,
 		}
 	}
 }
@@ -137,6 +140,16 @@ impl<'a> Leaf<'a> {
 	///```
 	pub fn encrypt(mut self, encrypt: bool) -> Self {
 		self.encrypt = encrypt;
+		self
+	}
+
+	/// Setter for the `sign` field
+	///```
+	///use vach::prelude::Leaf;
+	/// let config = Leaf::default().sign(true);
+	///```
+	pub fn sign(mut self, sign: bool) -> Self {
+		self.sign = sign;
 		self
 	}
 }
