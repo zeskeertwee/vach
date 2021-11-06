@@ -20,10 +20,8 @@ pub enum InternalError {
 	LeafAppendError(String),
 	/// Thrown when no keypair is provided and an encrypted leaf is encountered
 	NoKeypairError(String),
-	/// Thrown when decryption fails
-	DecryptionError(String, String),
-	/// Thrown when encryption fails
-	EncryptionError(String, String),
+	/// Thrown when decryption or decryption fails
+	CryptoError(String),
 	/// Thrown when a link leaf aliases another link leaf, potentially causing a cyclic link error
 	CyclicLinkReferenceError(String, String),
 	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a `Flag` instance
@@ -41,8 +39,7 @@ impl fmt::Display for InternalError {
 			Self::ParseError(err) => write!(f, "[VachError::ParseError] {}", err),
 			Self::IOError(err) => write!(f, "[VachError::IOError] {}", err.to_string()),
 			Self::ValidationError(err) => write!(f, "[VachError::ValidationError] {}", err),
-			Self::DecryptionError(id, err) => write!(f, "[VachError::DecryptionError]	Unable to decrypt resource: {}. Reason: {}", id, err),
-			Self::EncryptionError(id, err) => write!(f, "[VachError::EncryptionError]	Unable to encrypt resource: {}. Reason: {}", id, err),
+			Self::CryptoError(err) => write!(f, "[VachError::CryptoError]	{}", err),
 			Self::NoKeypairError(err) => write!(f, "{}", err),
 			Self::IDSizeOverflowError(id_part) => write!(f, "[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID", crate::MAX_ID_LENGTH, id_part),
 			Self::CyclicLinkReferenceError(link, target) => {
@@ -50,7 +47,9 @@ impl fmt::Display for InternalError {
 				write!(f, "{}", message)
 			},
 			Self::RestrictedFlagAccessError => write!(f, "[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!"),
-			_ => todo!("Unimplemented match branches!"),
+			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
+			Self::LeafAppendError(id) => write!(f, "[VachError::LeafAppendError] A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", id),
+			Self::LZ4Error(err) => write!(f, "[VachError::LZ4Error] Encountered an error during compression or decompression: {}", err),
 		}
 	}
 }
