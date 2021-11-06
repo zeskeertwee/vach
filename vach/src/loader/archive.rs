@@ -35,11 +35,13 @@ pub struct Archive<T> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
-	/// Load an `Archive` with the default settings from a `source.
+	/// Load an `Archive` with the default settings from a source.
 	/// The same as doing:
 	/// ```ignore
 	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
 	/// ```
+	/// ### Errors
+	/// If parsing fails, an `Err(-)` is returned.
 	#[inline(always)]
 	pub fn from_handle(handle: T) -> InternalResult<Archive<impl Seek + Read>> {
 		Archive::with_config(handle, &HeaderConfig::default())
@@ -47,7 +49,8 @@ impl<T: Seek + Read> Archive<T> {
 
 	/// Given a read handle, this will read and parse the data into an `Archive` struct.
 	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
-	/// If parsing fails, an `Err()` is returned.
+	/// ### Errors
+	/// If parsing fails, an `Err(-)` is returned.
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
 	) -> InternalResult<Archive<impl Seek + Read>> {

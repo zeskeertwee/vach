@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fmt, io::Read, str};
+use std::{fmt, io::Read, str};
 
 use crate::global::flags::Flags;
 
@@ -39,9 +39,13 @@ impl HeaderConfig {
 	/// let keypair_bytes = gen_keypair().to_bytes();
 	/// config.load_public_key(&keypair_bytes[32..]).unwrap();
 	/// ```
+	///
+	/// ### Errors
+	///  - If parsing of the public key fails
+	///  - `io` errors
 	#[inline]
 	pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> InternalResult<()> {
-		let mut keypair_bytes = [4; crate::PUBLIC_KEY_LENGTH];
+		let mut keypair_bytes = [0; crate::PUBLIC_KEY_LENGTH];
 
 		handle.read_exact(&mut keypair_bytes)?;
 
@@ -122,6 +126,9 @@ impl Header {
 	pub const VERSION_SIZE: usize = 2;
 	pub const CAPACITY_SIZE: usize = 2;
 
+	/// Validates a `Header` with a template `HeaderConfig`
+	/// #Errors
+	///  - Validation of magic and archive version
 	pub fn validate(header: &Header, config: &HeaderConfig) -> InternalResult<()> {
 		// Validate magic
 		if header.magic != config.magic {
@@ -141,6 +148,8 @@ impl Header {
 		Ok(())
 	}
 
+	/// ### Errors
+	///  - `io` errors
 	pub fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
 		let mut buffer = [0x69; Header::BASE_SIZE];
 		handle.read_exact(&mut buffer)?;
@@ -148,15 +157,13 @@ impl Header {
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: match buffer[0..crate::MAGIC_LENGTH].try_into() {
-				Ok(buffer) => buffer,
-				Err(err) => {
-					return Err(InternalError::OtherError(format!(
-						"[VachError::TryFromSliceError] {}",
-						err.to_string()
-					)))
-				}
-			},
+			magic: [
+				buffer[0],
+				buffer[1],
+				buffer[2],
+				buffer[3],
+				buffer[4],
+			],
 			// Read flags, u16 from [u8;2]
 			flags: Flags::from_bits(u16::from_le_bytes([buffer[5], buffer[6]])),
 			// Read version, u16 from [u8;2]

@@ -37,7 +37,10 @@ impl RegistryEntry {
 			offset: 0,
 		}
 	}
+
 	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
+	/// ### Errors
+	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
 	pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> InternalResult<(Self, String)> {
 		let mut buffer = [0; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;

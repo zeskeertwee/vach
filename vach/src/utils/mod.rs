@@ -11,6 +11,8 @@ pub fn gen_keypair() -> esdalek::Keypair {
 }
 
 /// Use this to read and parse a `Keypair` from a `io::Read` handle
+/// ### Errors
+/// If the data can't be parsed into a keypair
 pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<esdalek::Keypair> {
 	let mut keypair_bytes = [0; crate::KEYPAIR_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;

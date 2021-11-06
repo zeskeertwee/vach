@@ -41,7 +41,8 @@ impl<'a> Builder<'a> {
 	/// Appends a read handle wrapped in a `Leaf` into the processing queue.
 	/// The `data` is wrapped in the default `Leaf`.
 	/// The second argument is the `ID` with which the embedded data will be tagged
-	/// Returns an Er(---) if a Leaf with the specified ID exists.
+	/// ### Errors
+	/// Returns an `Err(())` if a Leaf with the specified ID exists.
 	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> InternalResult<()> {
 		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
 		self.add_leaf(leaf)?;

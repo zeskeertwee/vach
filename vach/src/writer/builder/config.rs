@@ -43,6 +43,8 @@ impl BuilderConfig {
 
 	// Keypair helpers
 	/// Parses and stores a keypair from a source.
+	/// ### Errors
+	/// If the call to `::utils::read_keypair()` fails to parse the data from the handle
 	pub fn load_keypair<T: io::Read>(&mut self, handle: T) -> InternalResult<()> {
 		self.keypair = Some(crate::utils::read_keypair(handle)?);
 		Ok(())
