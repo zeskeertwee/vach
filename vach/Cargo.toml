@@ -1,7 +1,7 @@
 [package]
 name = "vach"
-version = "0.2.0"
-edition = "2018"
+version = "0.2.0" # Make sure spec.txt and vach::VERSION constants are all synced up
+edition = "2021"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
 license = "GPL-2.0"
@@ -26,11 +26,9 @@ include = [
 ]
 
 [dependencies]
-anyhow = "1.0.44"
 ed25519-dalek = "1.0.1"
 lz4_flex = "0.9.0"
 rand = "0.7.0"
-hashbrown = "0.11.2"
 aes-gcm-siv = "0.10.3"
 
 [dev-dependencies]

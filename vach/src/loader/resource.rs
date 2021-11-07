@@ -1,6 +1,6 @@
 use std::fmt;
 use crate::{
-	global::{types::Flags},
+	global::{flags::Flags},
 };
 
 /// Basically decompressed data obtained from an archive.

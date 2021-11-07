@@ -190,7 +190,7 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 ### 🛠 Yet to be implemented
 
 - [ ] An official **CLI**.
-- [ ] Data encryption.
-- [ ] Benchmarks.
+- [x] Data encryption.
+- [x] Benchmarks.
 - [ ] Skynet, (coming very soon).
 - [ ] `Some(examples)` directory instead of `None`
