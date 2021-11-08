@@ -44,7 +44,7 @@ impl fmt::Display for InternalError {
 			Self::IDSizeOverflowError(id_part) => write!(f, "[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID", crate::MAX_ID_LENGTH, id_part),
 			Self::CyclicLinkReferenceError(link, target) => {
 				let message = format!("[VachError::CyclicLinkReferenceError], link leafs can't point to other link leafs. Leaf: {} points to another link leaf: {}", link, target);
-				write!(f, "{}", message)
+				f.write_str(message.as_str())
 			},
 			Self::RestrictedFlagAccessError => write!(f, "[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!"),
 			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
@@ -52,6 +52,23 @@ impl fmt::Display for InternalError {
 			Self::LZ4Error(err) => write!(f, "[VachError::LZ4Error] Encountered an error during compression or decompression: {}", err),
 		}
 	}
+}
+
+impl PartialEq for InternalError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::OtherError(l0), Self::OtherError(r0)) => l0 == r0,
+            (Self::ParseError(l0), Self::ParseError(r0)) => l0 == r0,
+            (Self::ValidationError(l0), Self::ValidationError(r0)) => l0 == r0,
+            (Self::MissingResourceError(l0), Self::MissingResourceError(r0)) => l0 == r0,
+            (Self::LeafAppendError(l0), Self::LeafAppendError(r0)) => l0 == r0,
+            (Self::NoKeypairError(l0), Self::NoKeypairError(r0)) => l0 == r0,
+            (Self::CryptoError(l0), Self::CryptoError(r0)) => l0 == r0,
+            (Self::CyclicLinkReferenceError(l0, l1), Self::CyclicLinkReferenceError(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::IDSizeOverflowError(l0), Self::IDSizeOverflowError(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
 }
 
 impl error::Error for InternalError {}
