@@ -2,7 +2,8 @@
 members = [
     "vach",
     "vf",
-    "vach-cli"
+    "vach-cli",
+    "vach-benchmarks"
 ]
 
 [profile.release]

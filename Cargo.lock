@@ -383,9 +383,9 @@ dependencies = [
 
 [[package]]
 name = "half"
-version = "1.8.1"
+version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bd566f08830dd1fa75b2a5f1d8def8336de7f08b2692a9a71efbe7188aea36f"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
 
 [[package]]
 name = "hermit-abi"
@@ -772,9 +772,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.68"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f690853975602e1bfe1ccbf50504d67174e3bcf340f23b5ea9992e0587a52d8"
+checksum = "e466864e431129c7e0d3476b92f20458e5879919a0596c6472738d9fa2d342f8"
 dependencies = [
  "itoa",
  "ryu",
@@ -940,13 +940,20 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "aes-gcm-siv",
- "criterion",
  "ed25519-dalek",
  "lz4_flex",
  "rand",
+]
+
+[[package]]
+name = "vach-benchmarks"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "vach",
 ]
 
 [[package]]
