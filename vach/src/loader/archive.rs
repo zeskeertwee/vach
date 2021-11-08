@@ -23,7 +23,7 @@ use lz4_flex as lz4;
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
 /// It can be customized with the `HeaderConfig` struct.
 /// Buffers all calls to the underlying handle with `BufReader`, so avoid passing in a buffered handle.
-/// A word of advice; Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the `stream_position` is at the right location to avoid hair-splitting bugs.
+/// > **A word of advice:** Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the `stream_position` is at the right location to avoid hair-splitting bugs.
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
@@ -41,7 +41,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
 	/// ```
 	/// ### Errors
-	/// If parsing fails, an `Err(-)` is returned.
+	/// - If the internal call to `Archive::with_config(-)` returns an error
 	#[inline(always)]
 	pub fn from_handle(handle: T) -> InternalResult<Archive<impl Seek + Read>> {
 		Archive::with_config(handle, &HeaderConfig::default())
@@ -50,7 +50,10 @@ impl<T: Seek + Read> Archive<T> {
 	/// Given a read handle, this will read and parse the data into an `Archive` struct.
 	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
 	/// ### Errors
-	/// If parsing fails, an `Err(-)` is returned.
+	///  - If parsing fails, an `Err(-)` is returned.
+	///  - The archive fails to validate
+	///  - `io` errors
+	///  - If any `ID`s are not valid UTF-8
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
 	) -> InternalResult<Archive<impl Seek + Read>> {
@@ -89,6 +92,8 @@ impl<T: Seek + Read> Archive<T> {
 
 	/// Fetch a `Resource` with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
+	/// ### Errors:
+	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
 	pub fn fetch(&mut self, id: &str) -> InternalResult<Resource> {
 		let mut buffer = Vec::new();
 		let (flags, content_version, validated) = self.fetch_write(id, &mut buffer)?;
@@ -103,6 +108,11 @@ impl<T: Seek + Read> Archive<T> {
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
 	/// Returns a tuple containing the `Flags`, `content_version` and `secure`, ie validity, of the data.
+	/// ### Errors
+	///  - If no leaf with the specified `ID` exists
+	///  - Any `io::Seek(-)` errors
+	///  - Other `io` related errors
+	///  - Cyclic linked leaf errors
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
 	) -> InternalResult<(Flags, u8, bool)> {
@@ -111,9 +121,7 @@ impl<T: Seek + Read> Archive<T> {
 			let mut is_secure = false;
 
 			// BUG: MAJOR SLOW-DOWN HERE; `io::Seek` is a very expensive operation, potentially avoids an expensive Seek operation
-			if handle.stream_position()? != entry.location {
-				handle.seek(SeekFrom::Start(entry.location))?;
-			};
+			handle.seek(SeekFrom::Start(entry.location))?;
 
 			let mut raw = vec![];
 			let raw_size = handle.take(entry.offset).read_to_end(&mut raw)?;
@@ -173,7 +181,7 @@ impl<T: Seek + Read> Archive<T> {
 					Some(_) => return self.fetch_write(&target_id, target),
 					None => {
 						return Err(InternalError::MissingResourceError(format!(
-						"The linking Leaf: {} exists, but the Leaf it links to: {}, does not exist",
+						"The linking Leaf: {} exists. However the Leaf it links to: {}, does not exist",
 						id, target_id
 					)))
 					}
@@ -193,7 +201,8 @@ impl<T: Seek + Read> Archive<T> {
 
 	/// Fetch a `RegistryEntry` from this `Archive`.
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
-	/// If no data has the given `id`, then None is returned.
+	/// ### `None` case:
+	/// If no entry with the given ID exists then None is returned.
 	pub fn fetch_entry(&mut self, id: &str) -> Option<RegistryEntry> {
 		match self.entries.get(id) {
 			Some(entry) => Some(entry.clone()),
