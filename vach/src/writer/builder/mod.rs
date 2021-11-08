@@ -117,7 +117,6 @@ impl<'a> Builder<'a> {
 
 	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the bytes out into a the target.
 	/// Configure the custom *`MAGIC`*, Header flags and a `Keypair` using the `BuilderConfig` struct.
-	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data can be signed and some signatures will be embedded into the write target.
 	/// ### Errors
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
@@ -128,7 +127,23 @@ impl<'a> Builder<'a> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		let mut size = 0usize;
 		let mut reg_buffer = Vec::new();
-		let mut leaf_offset = Header::BASE_SIZE;
+
+		// Calculate the size of the registry and check for `Leaf`s that request for encryption
+		let mut leaf_offset = self
+			.leafs
+			.iter()
+			.map(|leaf| {
+				// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
+				leaf.id.len()
+					+ RegistryEntry::MIN_SIZE
+					+ (if config.keypair.is_some() {
+						crate::SIGNATURE_LENGTH
+					} else {
+						0
+					})
+			})
+			.reduce(|l1, l2| l1 + l2)
+			.unwrap_or(0) + Header::BASE_SIZE;
 
 		// Start at the very start of the file
 		target.seek(SeekFrom::Start(0))?;
@@ -153,31 +168,16 @@ impl<'a> Builder<'a> {
 		size += Header::BASE_SIZE;
 
 		// Configure encryption
-		let mut use_encryption = false;
+		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
 
-		// Calculate the size of the registry and check for `Leaf`s that request for encryption
-		for leaf in self.leafs.iter() {
-			if leaf.encrypt && !use_encryption {
-				if config.keypair.is_none() {
-					return Err(InternalError::NoKeypairError(format!("Leaf encryption error! Leaf: {} requested for encryption, yet no keypair was provided(None)", &leaf.id)));
-				};
-
-				use_encryption = true;
-			}
-
-			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-			leaf_offset += leaf.id.len()
-				+ RegistryEntry::MIN_SIZE
-				+ (if config.keypair.is_some() {
-					crate::SIGNATURE_LENGTH
-				} else {
-					0
-				});
-		}
+		if use_encryption && config.keypair.is_none() {
+			return Err(InternalError::NoKeypairError("Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string()));
+		};
 
 		// Build encryptor
 		let encryptor = if use_encryption {
 			let keypair = &config.keypair;
+
 			Some(EDCryptor::new(
 				&keypair.as_ref().unwrap().public,
 				config.magic,
