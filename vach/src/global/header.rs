@@ -127,8 +127,8 @@ impl Header {
 	pub const CAPACITY_SIZE: usize = 2;
 
 	/// Validates a `Header` with a template `HeaderConfig`
-	/// #Errors
-	///  - Validation of magic and archive version
+	/// ### Errors
+	///  - (in)validation of magic and archive version
 	pub fn validate(header: &Header, config: &HeaderConfig) -> InternalResult<()> {
 		// Validate magic
 		if header.magic != config.magic {
