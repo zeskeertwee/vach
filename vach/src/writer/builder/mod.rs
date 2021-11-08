@@ -129,7 +129,7 @@ impl<'a> Builder<'a> {
 	) -> InternalResult<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		let mut size = 0usize;
-		let mut reg_offset = 0;
+		let mut reg_buffer = Vec::new();
 		let mut leaf_offset = Header::BASE_SIZE;
 
 		// Start at the very start of the file
@@ -153,7 +153,6 @@ impl<'a> Builder<'a> {
 
 		// Update how many bytes have been written
 		size += Header::BASE_SIZE;
-		reg_offset += Header::BASE_SIZE;
 
 		// Configure encryption
 		let mut use_encryption = false;
@@ -290,13 +289,14 @@ impl<'a> Builder<'a> {
 			entry_bytes.extend(leaf.id.as_bytes());
 
 			// Write to the registry
-			wtr.seek(SeekFrom::Start(reg_offset as u64))?;
-			wtr.write_all(&entry_bytes)?;
+			reg_buffer.write_all(&entry_bytes)?;
 
 			// Update offsets
-			reg_offset += entry_bytes.len();
 			size += entry_bytes.len();
-		}
+		};
+
+		wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
+		wtr.write_all(reg_buffer.as_slice())?;
 
 		Ok(size)
 	}
