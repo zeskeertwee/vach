@@ -91,12 +91,10 @@ impl<'a> Builder<'a> {
 	/// ### Errors
 	/// - Returns an error if a `Leaf` with the specified `ID` exists.
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult<()> {
-		{
-			// Make sure no two leaves are written with the same ID
-			if !self.id_set.insert(leaf.id.clone()) {
-				return Err(InternalError::LeafAppendError(leaf.id));
-			};
-		}
+		// Make sure no two leaves are written with the same ID
+		if !self.id_set.insert(leaf.id.clone()) {
+			return Err(InternalError::LeafAppendError(leaf.id));
+		};
 
 		self.leafs.push(leaf);
 		Ok(())
@@ -293,7 +291,7 @@ impl<'a> Builder<'a> {
 
 			// Update offsets
 			size += entry_bytes.len();
-		};
+		}
 
 		wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
 		wtr.write_all(reg_buffer.as_slice())?;
