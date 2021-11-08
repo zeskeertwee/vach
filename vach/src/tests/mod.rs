@@ -194,7 +194,7 @@ fn builder_with_signature() -> InternalResult<()> {
 
 	builder.add_dir(
 		"test_data",
-		Some(&Leaf::default().compress(CompressMode::Detect)),
+		Some(&Leaf::default().compress(CompressMode::Detect).sign(true)),
 	)?;
 
 	// Tests conditional signing
@@ -307,7 +307,7 @@ fn edcryptor_test() -> InternalResult<()> {
 #[test]
 fn builder_with_encryption() -> InternalResult<()> {
 	let mut builder =
-		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
+		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
