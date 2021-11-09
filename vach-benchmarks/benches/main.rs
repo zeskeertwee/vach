@@ -2,7 +2,7 @@ use std::io::{self, Seek};
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 
 use vach::prelude::*;
-use vach::utils::{gen_keypair};
+use vach::utils::gen_keypair;
 
 // Remove io overhead by Sinking data into the void
 struct Sink;
