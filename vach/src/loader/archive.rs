@@ -1,6 +1,6 @@
 use std::{
 	str,
-	io::{self, BufReader, Read, Seek, SeekFrom, Write},
+	io::{self, Read, Seek, SeekFrom, Write},
 	collections::HashMap,
 };
 
@@ -22,7 +22,7 @@ use lz4_flex as lz4;
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
 /// It can be customized with the `HeaderConfig` struct.
-/// Buffers all calls to the underlying handle with `BufReader`, so avoid passing in a buffered handle.
+/// Does not buffer any sys-calls to the underlying handle, so consider wrapping handle in a `BufReader`
 /// > **A word of advice:** Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the `stream_position` is at the right location to avoid hair-splitting bugs.
 #[derive(Debug)]
 pub struct Archive<T> {
@@ -43,7 +43,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// ### Errors
 	/// - If the internal call to `Archive::with_config(-)` returns an error
 	#[inline(always)]
-	pub fn from_handle(handle: T) -> InternalResult<Archive<impl Seek + Read>> {
+	pub fn from_handle(handle: T) -> InternalResult<Archive<T>> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
@@ -56,7 +56,7 @@ impl<T: Seek + Read> Archive<T> {
 	///  - If any `ID`s are not valid UTF-8
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
-	) -> InternalResult<Archive<impl Seek + Read>> {
+	) -> InternalResult<Archive<T>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
@@ -83,7 +83,7 @@ impl<T: Seek + Read> Archive<T> {
 
 		Ok(Archive {
 			header,
-			handle: BufReader::new(handle),
+			handle,
 			key: config.public_key,
 			entries,
 			decryptor,

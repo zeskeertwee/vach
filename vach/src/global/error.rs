@@ -74,13 +74,13 @@ impl PartialEq for InternalError {
 impl error::Error for InternalError {}
 
 impl From<io::Error> for InternalError {
-	fn from(err: io::Error) -> Self {
+	fn from(err: io::Error) -> InternalError {
 		InternalError::IOError(err)
 	}
 }
 
 impl From<lz4::frame::Error> for InternalError {
-	fn from(err: lz4::frame::Error) -> Self {
+	fn from(err: lz4::frame::Error) -> InternalError {
 		InternalError::LZ4Error(err)
 	}
 }
