@@ -35,7 +35,4 @@ lazy_static = "1.4.0"
 tabled = "0.3.0"
 log = "0.4.14"
 pretty_env_logger = "0.4.0"
-
-[dependencies.vach]
-git = "https://github.com/zeskeertwee/vach"
-rev = "7764766bd56a4183031c185b10e8275439075509"
+vach = "0.2.0"
