@@ -6,3 +6,4 @@ vach/bin/cat.rs
 CLI
 perf.data
 perf.data.old
+workspace.code-workspace

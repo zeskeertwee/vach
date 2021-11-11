@@ -1,9 +1,10 @@
-use std::{convert::TryInto, fmt, io::Read, str};
+use std::{fmt, io::Read, str};
 
-use crate::global::types::Flags;
+use crate::global::flags::Flags;
 
-use anyhow;
 use ed25519_dalek as esdalek;
+
+use super::{error::InternalError, result::InternalResult};
 
 /// Used to configure and give extra information to the `Archive` loader.
 /// Used exclusively in archive source and integrity validation.
@@ -38,11 +39,21 @@ impl HeaderConfig {
 	/// let keypair_bytes = gen_keypair().to_bytes();
 	/// config.load_public_key(&keypair_bytes[32..]).unwrap();
 	/// ```
+	///
+	/// ### Errors
+	///  - If parsing of the public key fails
+	///  - `io` errors
 	#[inline]
-	pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> anyhow::Result<()> {
-		let mut keypair_bytes = [4; crate::PUBLIC_KEY_LENGTH];
+	pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> InternalResult<()> {
+		let mut keypair_bytes = [0; crate::PUBLIC_KEY_LENGTH];
+
 		handle.read_exact(&mut keypair_bytes)?;
-		let public_key = esdalek::PublicKey::from_bytes(&keypair_bytes)?;
+
+		let public_key = match esdalek::PublicKey::from_bytes(&keypair_bytes) {
+			Ok(pk) => pk,
+			Err(err) => return Err(InternalError::ValidationError(err.to_string())),
+		};
+
 		self.public_key = Some(public_key);
 		Ok(())
 	}
@@ -115,34 +126,44 @@ impl Header {
 	pub const VERSION_SIZE: usize = 2;
 	pub const CAPACITY_SIZE: usize = 2;
 
-	pub fn validate(header: &Header, config: &HeaderConfig) -> anyhow::Result<()> {
+	/// Validates a `Header` with a template `HeaderConfig`
+	/// #Errors
+	///  - Validation of magic and archive version
+	pub fn validate(header: &Header, config: &HeaderConfig) -> InternalResult<()> {
 		// Validate magic
 		if header.magic != config.magic {
-			anyhow::bail!(format!(
-				"Invalid magic found in Header, possible incompatibility with given source: {}",
-				str::from_utf8(&header.magic)?
-			));
+			return Err(InternalError::ValidationError(format!(
+				"Invalid magic found in Header, possible incompatibility with given source.\nMagic found {:?}", header.magic
+			)));
 		};
 
 		// Validate version
 		if crate::VERSION > header.arch_version {
-			anyhow::bail!(format!(
+			return Err(InternalError::ValidationError(format!(
                 "The provided archive source has version: {}. While the loader has a version: {}. The current loader is likely out of date!",
                 header.arch_version, crate::VERSION
-            ))
+            )));
 		};
 
 		Ok(())
 	}
 
-	pub fn from_handle<T: Read>(mut handle: T) -> anyhow::Result<Header> {
+	/// ### Errors
+	///  - `io` errors
+	pub fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
 		let mut buffer = [0x69; Header::BASE_SIZE];
 		handle.read_exact(&mut buffer)?;
 
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: buffer[0..crate::MAGIC_LENGTH].try_into()?,
+			magic: [
+				buffer[0],
+				buffer[1],
+				buffer[2],
+				buffer[3],
+				buffer[4],
+			],
 			// Read flags, u16 from [u8;2]
 			flags: Flags::from_bits(u16::from_le_bytes([buffer[5], buffer[6]])),
 			// Read version, u16 from [u8;2]
@@ -157,9 +178,11 @@ impl fmt::Display for Header {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(
 			f,
-			"[Archive Header] Version: {}, Magic: {}",
+			"[Archive Header] Version: {}, Magic: {}, Capacity: {}, Flags: {}",
 			self.arch_version,
-			str::from_utf8(&self.magic).expect("Error constructing str from Header::Magic")
+			str::from_utf8(&self.magic).expect("Error constructing str from Header::Magic"),
+			self.capacity,
+			self.flags
 		)
 	}
 }

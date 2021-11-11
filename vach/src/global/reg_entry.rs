@@ -1,4 +1,4 @@
-use crate::global::types::Flags;
+use crate::global::flags::Flags;
 
 use std::{
 	convert::TryInto,
@@ -6,6 +6,7 @@ use std::{
 	fmt,
 };
 use ed25519_dalek as esdalek;
+use super::{error::InternalError, result::InternalResult};
 
 /// Stand-alone meta-data from an archive entry(Leaf). This can be parsed without reading data about the leaf.
 #[derive(Debug, Clone)]
@@ -36,10 +37,11 @@ impl RegistryEntry {
 			offset: 0,
 		}
 	}
+
 	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
-	pub(crate) fn from_handle<T: Read + Seek>(
-		mut handle: T, read_sig: bool,
-	) -> anyhow::Result<(Self, String)> {
+	/// ### Errors
+	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
+	pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> InternalResult<(Self, String)> {
 		let mut buffer = [0; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
@@ -61,10 +63,16 @@ impl RegistryEntry {
 
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
-		if read_sig {
+		if entry.flags.contains(Flags::SIGNED_FLAG) {
 			let mut sig_bytes = [0u8; crate::SIGNATURE_LENGTH];
 			handle.read_exact(&mut sig_bytes)?;
-			entry.signature = Some(sig_bytes.try_into()?);
+
+			let sig: esdalek::Signature = match sig_bytes.try_into() {
+				Ok(sig) => sig,
+				Err(err) => return Err(InternalError::ParseError(err.to_string())),
+			};
+
+			entry.signature = Some(sig);
 		};
 
 		// Construct ID

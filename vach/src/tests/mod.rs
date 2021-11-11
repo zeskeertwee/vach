@@ -4,11 +4,11 @@
 // Boring, average every day contemporary imports
 use std::{
 	fs::File,
-	io::{Seek, SeekFrom, Write},
+	io::{Seek, SeekFrom},
 	str,
 };
 
-use crate::prelude::*;
+use crate::{global::result::InternalResult, prelude::*};
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -26,7 +26,7 @@ const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
 
 #[test]
-fn custom_bitflags() -> anyhow::Result<()> {
+fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
@@ -38,10 +38,11 @@ fn custom_bitflags() -> anyhow::Result<()> {
 }
 
 #[test]
-#[should_panic]
 fn flag_restricted_access() {
 	let mut flag = Flags::from_bits(0b1111_1000_0000_0000);
-	flag.set(Flags::COMPRESSED_FLAG, true).unwrap();
+
+	// This should return an error
+	assert!(flag.set(Flags::COMPRESSED_FLAG, true).is_err());
 }
 
 #[test]
@@ -84,22 +85,23 @@ fn defaults() {
 }
 
 #[test]
-fn header_config() -> anyhow::Result<()> {
-	// We need a private dependency, Header to test ot
+fn header_config() -> InternalResult<()> {
+	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
 	use crate::global::header::Header;
+
 	let config = HeaderConfig::new(*b"VfACH", None);
 	let mut file = File::open("test_data/simple/target.vach")?;
-	format!("{}", &config);
+	println!("{}", &config);
 
 	let header = Header::from_handle(&mut file)?;
-	format!("{}", header);
+	println!("{}", header);
 
 	Header::validate(&header, &config)?;
 	Ok(())
 }
 
 #[test]
-fn builder_no_signature() -> anyhow::Result<()> {
+fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
 
@@ -135,7 +137,7 @@ fn builder_no_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_no_signature() -> anyhow::Result<()> {
+fn fetch_no_signature() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::from_handle(target)?;
 	dbg!(archive.entries());
@@ -154,17 +156,17 @@ fn fetch_no_signature() -> anyhow::Result<()> {
 	assert!(!resource.secured);
 	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
 
-	println!("{}", String::from_utf8(resource.data)?);
+	println!("{}", String::from_utf8(resource.data).unwrap());
 
 	let hello = archive.fetch("greeting")?;
-	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data)?);
+	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
 	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
 	Ok(())
 }
 
 #[test]
-fn gen_keypair() -> anyhow::Result<()> {
+fn gen_keypair() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
 
 	// NOTE: regenerating new keys will break some tests
@@ -180,7 +182,7 @@ fn gen_keypair() -> anyhow::Result<()> {
 }
 
 #[test]
-fn builder_with_signature() -> anyhow::Result<()> {
+fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
 	let mut build_config = BuilderConfig::default();
@@ -190,6 +192,9 @@ fn builder_with_signature() -> anyhow::Result<()> {
 		"test_data",
 		Some(&Leaf::default().compress(CompressMode::Detect)),
 	)?;
+
+	// Tests conditional signing
+	builder.add_leaf(Leaf::default().id("not_signed").sign(false))?;
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
@@ -201,7 +206,7 @@ fn builder_with_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_with_signature() -> anyhow::Result<()> {
+fn fetch_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -212,7 +217,17 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice())?;
+	let song = str::from_utf8(resource.data.as_slice()).unwrap();
+
+	// The adjacent resource was flagged to not be signed
+	let not_signed_resource = archive.fetch("not_signed")?;
+	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
+	assert!(!not_signed_resource.secured);
+
+	// The adjacent resource was flagged to not be signed
+	let not_signed_resource = archive.fetch("not_signed")?;
+	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
+	assert!(!not_signed_resource.secured);
 
 	// Check identity of retrieved data
 	println!("{}", song);
@@ -234,7 +249,7 @@ fn fetch_with_signature() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_write_with_signature() -> anyhow::Result<()> {
+fn fetch_write_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -250,9 +265,6 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 	assert!(metadata.2);
 	assert!(metadata.0.contains(Flags::SIGNED_FLAG));
 
-	// Assert identity of retrieved data
-	println!("{}", str::from_utf8(&song)?);
-
 	// Windows bullshit
 	#[cfg(target_os = "windows")]
 	{
@@ -263,38 +275,35 @@ fn fetch_write_with_signature() -> anyhow::Result<()> {
 		assert_eq!(song.len(), 345);
 	}
 
+	// Assert identity of retrieved data
+	println!("{}", String::from_utf8(song).unwrap());
+
 	Ok(())
 }
 
 #[test]
-fn keypair_encryption() -> anyhow::Result<()> {
-	use crate::utils::{gen_keypair, transform_iv, transform_key};
-	use chacha20stream::Sink;
+fn edcryptor_test() -> InternalResult<()> {
+	use crate::utils::gen_keypair;
+	use crate::global::edcryptor::EDCryptor;
 
-	let plaintext = &[12, 24, 35, 36];
-	let mut encrypted = vec![];
+	let pk = gen_keypair().public;
 
-	let iv = transform_iv(crate::DEFAULT_MAGIC)?;
-	let key = transform_key(&gen_keypair().public)?;
+	let crypt = EDCryptor::new(&pk, *crate::DEFAULT_MAGIC);
 
-	let mut wtr = Sink::encrypt(&mut encrypted, key.clone(), iv.clone())?;
-	wtr.write_all(plaintext)?;
-	wtr.flush()?;
+	let data = vec![12, 12, 12, 12];
 
-	assert_ne!(encrypted, plaintext);
+	let ciphertext = crypt.encrypt(&data).unwrap();
+	let plaintext = crypt.decrypt(&ciphertext).unwrap();
 
-	let mut decrypted = vec![];
-	let mut rdr = Sink::decrypt(&mut decrypted, key, iv)?;
-	rdr.flush()?;
-
-	rdr.write(encrypted.as_slice())?;
-	assert_eq!(decrypted, plaintext);
+	assert_ne!(&plaintext, &ciphertext);
+	assert_eq!(&plaintext, &data);
 	Ok(())
 }
 
 #[test]
-fn builder_with_encryption() -> anyhow::Result<()> {
-	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
+fn builder_with_encryption() -> InternalResult<()> {
+	let mut builder =
+		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -310,7 +319,7 @@ fn builder_with_encryption() -> anyhow::Result<()> {
 }
 
 #[test]
-fn fetch_from_encrypted() -> anyhow::Result<()> {
+fn fetch_from_encrypted() -> InternalResult<()> {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
 	// Load keypair
@@ -321,7 +330,7 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice())?;
+	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
 	// Check identity of retrieved data
 	println!("{}", song);
@@ -344,7 +353,42 @@ fn fetch_from_encrypted() -> anyhow::Result<()> {
 }
 
 #[test]
-fn consolidated_example() -> anyhow::Result<()> {
+fn cyclic_linked_leafs() {
+	use std::io::Cursor;
+
+	// init
+	let mut target = Cursor::new(Vec::<u8>::new());
+
+	// Builder stage
+	let mut builder = Builder::default();
+
+	builder
+		.add_leaf(
+			Leaf::default()
+				.id("d2_link")
+				.link_mode(Some("d1_link".to_string())),
+		)
+		.unwrap();
+	builder
+		.add_leaf(
+			Leaf::default()
+				.id("d1_link")
+				.link_mode(Some("d2_link".to_string())),
+		)
+		.unwrap();
+	builder
+		.dump(&mut target, &BuilderConfig::default())
+		.unwrap();
+
+	target.seek(SeekFrom::Start(0)).unwrap();
+	let mut archive = Archive::from_handle(target).unwrap();
+
+	// Assert that this causes an error, [Cyclic Linked Leafs]
+	assert!(archive.fetch("d1_link").is_err());
+}
+
+#[test]
+fn consolidated_example() -> InternalResult<()> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
 
@@ -379,6 +423,11 @@ fn consolidated_example() -> anyhow::Result<()> {
 			.id("d3")
 			.compress(CompressMode::Detect),
 	)?;
+	builder.add_leaf(
+		Leaf::default()
+			.id("d3_link")
+			.link_mode(Some("d3".to_string())),
+	)?;
 
 	// Dump data
 	let then = Instant::now();
@@ -387,8 +436,10 @@ fn consolidated_example() -> anyhow::Result<()> {
 	// Just because
 	println!("Building took: {}us", then.elapsed().as_micros());
 
-	// Load data
+	// Ensure your stream_position is where you want it to be, so here at the start of the Cursor (0)
 	target.seek(SeekFrom::Start(0))?;
+
+	// Load data
 	let mut config = HeaderConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
@@ -399,6 +450,7 @@ fn consolidated_example() -> anyhow::Result<()> {
 	assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
 	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
+	assert_eq!(archive.fetch("d3_link")?.data.as_slice(), data_3);
 
 	println!("Fetching took: {}us", then.elapsed().as_micros());
 

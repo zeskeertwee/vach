@@ -1,5 +1,5 @@
 use crate::{
-	global::{reg_entry::RegistryEntry, types::Flags},
+	global::{reg_entry::RegistryEntry, flags::Flags},
 };
 use std::{io::Read};
 
@@ -30,6 +30,12 @@ pub struct Leaf<'a> {
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
 	pub encrypt: bool,
+	/// Whether to include a signature with this `Leaf`, defaults to true
+	pub sign: bool,
+	/// If a `Leaf` has a link_mode of Some("dw"), then this leaf simply routes the data pointed by the adjacent Leaf with the ID "dw".
+	/// Use this if you want to have multiple pointers|registry entries aliasing to the same data.
+	/// The handle of a link leaf stores the ID of the aliased leaf.
+	pub link_mode: Option<String>,
 }
 
 impl<'a> Default for Leaf<'a> {
@@ -37,12 +43,14 @@ impl<'a> Default for Leaf<'a> {
 	#[inline(always)]
 	fn default() -> Leaf<'a> {
 		Leaf {
-			handle: Box::<&[u8]>::new(&[]),
 			id: String::new(),
+			handle: Box::<&[u8]>::new(&[]),
+			flags: Flags::empty(),
 			content_version: 0,
 			compress: CompressMode::Never,
-			flags: Flags::empty(),
 			encrypt: false,
+			sign: true,
+			link_mode: None,
 		}
 	}
 }
@@ -137,6 +145,26 @@ impl<'a> Leaf<'a> {
 	///```
 	pub fn encrypt(mut self, encrypt: bool) -> Self {
 		self.encrypt = encrypt;
+		self
+	}
+
+	/// Setter for the `sign` field
+	///```
+	///use vach::prelude::Leaf;
+	/// let config = Leaf::default().sign(true);
+	///```
+	pub fn sign(mut self, sign: bool) -> Self {
+		self.sign = sign;
+		self
+	}
+
+	/// Setter for the `link_mode` field
+	///```
+	///use vach::prelude::Leaf;
+	/// let config = Leaf::default().link_mode(Some("default.tx".to_string()));
+	///```
+	pub fn link_mode(mut self, link_mode: Option<String>) -> Self {
+		self.link_mode = link_mode;
 		self
 	}
 }

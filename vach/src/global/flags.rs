@@ -1,16 +1,11 @@
 use std::fmt;
-use anyhow;
-
-// Private utility function
-fn _contains(first: u16, other: u16) -> bool {
-	(first & other) != 0
-}
+use super::{error::InternalError, result::InternalResult};
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
-	bits: u16,
+	pub(crate) bits: u16,
 }
 
 // based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
@@ -64,9 +59,12 @@ impl Flags {
 	/// flag.set(0b0000_1000_0000_0001, false); // 0 flags remain zero
 	/// assert_eq!(flag.bits(), 0b0000_0000_1000_0000);
 	/// ```
-	pub fn set(&mut self, mask: u16, toggle: bool) -> anyhow::Result<u16> {
-		if _contains(Flags::RESERVED_MASK, mask) {
-			anyhow::bail!("Tried to set reserved bit(s)!");
+	///
+	/// ### Errors
+	///  - Trying to set a bit in the forbidden section of the flags
+	pub fn set(&mut self, mask: u16, toggle: bool) -> InternalResult<u16> {
+		if Flags::_contains(Flags::RESERVED_MASK, mask) {
+			return Err(InternalError::RestrictedFlagAccessError);
 		} else {
 			self.force_set(mask, toggle)
 		}
@@ -92,7 +90,12 @@ impl Flags {
 	/// assert!(flag.contains(0b0000_1000_0000_0000));
 	/// ```
 	pub fn contains(&self, mask: u16) -> bool {
-		_contains(self.bits, mask)
+		Flags::_contains(self.bits, mask)
+	}
+
+	// Auxillary function
+	fn _contains(first: u16, other: u16) -> bool {
+		(first & other) != 0
 	}
 }
 
@@ -105,16 +108,32 @@ impl Default for Flags {
 
 impl fmt::Display for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
-		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
-		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
+		let compressed = if self.contains(Flags::COMPRESSED_FLAG) {
+			'C'
+		} else {
+			'-'
+		};
+		let signed = if self.contains(Flags::SIGNED_FLAG) {
+			'S'
+		} else {
+			'-'
+		};
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) {
+			'E'
+		} else {
+			'-'
+		};
 
-		write!(f, "Flags[{}{}{}]: {:#016b}", compressed, encrypted, signed, self.bits)
+		write!(f, "Flags[{}{}{}]", compressed, encrypted, signed)
 	}
 }
 
 impl fmt::Debug for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		fmt::Display::fmt(&self, f)
+		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
+		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
+
+		write!(f, "Flags[{}{}{}]: {:#016b}", compressed, encrypted, signed, self.bits)
 	}
 }

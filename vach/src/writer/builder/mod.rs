@@ -1,22 +1,22 @@
 use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
+use std::collections::HashSet;
 
 mod config;
-use chacha20stream::Sink;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, CompressMode};
+use crate::global::error::InternalError;
+use crate::global::result::InternalResult;
 use crate::{
-	global::{header::Header, reg_entry::RegistryEntry, types::Flags},
-	utils::{transform_iv, transform_key},
+	global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
 };
 
 use lz4_flex as lz4;
 use ed25519_dalek::Signer;
-use hashbrown::HashSet;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
 	leafs: Vec<Leaf<'a>>,
-	pub(crate) set: HashSet<String>,
+	pub(crate) id_set: HashSet<String>,
 	leaf_template: Leaf<'a>,
 }
 
@@ -25,7 +25,7 @@ impl<'a> Default for Builder<'a> {
 	fn default() -> Builder<'a> {
 		Builder {
 			leafs: Vec::new(),
-			set: HashSet::new(),
+			id_set: HashSet::new(),
 			leaf_template: Leaf::default(),
 		}
 	}
@@ -41,17 +41,21 @@ impl<'a> Builder<'a> {
 	/// Appends a read handle wrapped in a `Leaf` into the processing queue.
 	/// The `data` is wrapped in the default `Leaf`.
 	/// The second argument is the `ID` with which the embedded data will be tagged
-	/// Returns an Er(---) if a Leaf with the specified ID exists.
-	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> anyhow::Result<()> {
+	/// ### Errors
+	/// Returns an `Err(())` if a Leaf with the specified ID exists.
+	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> InternalResult<()> {
 		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
 		self.add_leaf(leaf)?;
 		Ok(())
 	}
 
-	/// Loads all files from a directory and appends them into the processing queue.
-	/// An optional `Leaf` is passed as a template from which the wrapping `Leaf`s shall be based on, pass `None` to use the `Builder` internal default template.
-	/// Appended `Leaf`s have an `ID` of: `<directory_name>/<file_name>`. For example: "sounds/footstep.wav", "sample/script.data"
-	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> anyhow::Result<()> {
+	/// Loads all files from a directory, parses them into `Leaf`s and appends them into the processing queue.
+	/// An optional `Leaf` is passed as a template from which the new `Leaf`s shall implement, pass `None` to use the `Builder` internal default template.
+	/// Appended `Leaf`s have an `ID` in the form of of: `directory_name/file_name`. For example: "sounds/footstep.wav", "sample/script.data"
+	/// ## Errors
+	/// - Any of the underlying calls to the filesystem fail.
+	/// - The internal call to `Builder::add_leaf()` returns an error.
+	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> InternalResult<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -83,13 +87,14 @@ impl<'a> Builder<'a> {
 	}
 
 	/// Append a preconstructed `Leaf` into the processing queue.
-	/// Returns an Er(---) if a Leaf with the specified ID exists.
-	/// Use this to skip application of the Builder's internal template unto `Leaf`s.
-	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> anyhow::Result<()> {
+	/// `Leaf`s added directly do not implement data from the `Builder`s internal template.
+	/// ### Errors
+	/// - Returns an error if a `Leaf` with the specified `ID` exists.
+	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult<()> {
 		{
 			// Make sure no two leaves are written with the same ID
-			if !self.set.insert(leaf.id.clone()) {
-				anyhow::bail!(format!("A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", leaf.id));
+			if !self.id_set.insert(leaf.id.clone()) {
+				return Err(InternalError::LeafAppendError(leaf.id));
 			};
 		}
 
@@ -112,12 +117,16 @@ impl<'a> Builder<'a> {
 		self
 	}
 
-	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the data out into a `impl Write` target.
-	/// Custom *`MAGIC`*, Header flags and a `Keypair` can be presented using the `BuilderConfig` struct.
-	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data will be signed and signatures will be embedded into the write target.
+	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the bytes out into a the target.
+	/// Configure the custom *`MAGIC`*, Header flags and a `Keypair` using the `BuilderConfig` struct.
+	/// If a valid `Keypair` is provided, as `Some(keypair)`, then the data can be signed and some signatures will be embedded into the write target.
+	/// ### Errors
+	/// - Underlying `io` errors
+	/// - If the optional compression or compression stages fails
+	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a `Leaf` is to be encrypted.
 	pub fn dump<W: Write + Seek>(
 		&mut self, mut target: W, config: &BuilderConfig,
-	) -> anyhow::Result<usize> {
+	) -> InternalResult<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		let mut size = 0usize;
 		let mut reg_offset = 0;
@@ -135,6 +144,7 @@ impl<'a> Builder<'a> {
 		if config.keypair.is_some() {
 			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
+
 		wtr.write_all(&temp.bits().to_le_bytes())?;
 
 		// Write the version of the Archive Format|Builder|Loader
@@ -145,8 +155,19 @@ impl<'a> Builder<'a> {
 		size += Header::BASE_SIZE;
 		reg_offset += Header::BASE_SIZE;
 
-		// Calculate the size of the registry
+		// Configure encryption
+		let mut use_encryption = false;
+
+		// Calculate the size of the registry and check for `Leaf`s that request for encryption
 		for leaf in self.leafs.iter() {
+			if leaf.encrypt && !use_encryption {
+				if config.keypair.is_none() {
+					return Err(InternalError::NoKeypairError(format!("Leaf encryption error! Leaf: {} requested for encryption, yet no keypair was provided(None)", &leaf.id)));
+				};
+
+				use_encryption = true;
+			}
+
 			// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
 			leaf_offset += leaf.id.len()
 				+ RegistryEntry::MIN_SIZE
@@ -157,10 +178,36 @@ impl<'a> Builder<'a> {
 				});
 		}
 
+		// Build encryptor
+		let encryptor = if use_encryption {
+			let keypair = &config.keypair;
+			Some(EDCryptor::new(
+				&keypair.as_ref().unwrap().public,
+				config.magic,
+			))
+		} else {
+			None
+		};
+
 		// Populate the archive glob
 		for leaf in self.leafs.iter_mut() {
 			let mut entry = leaf.to_registry_entry();
 			let mut leaf_bytes = Vec::new();
+
+			// Check if this is a linked `Leaf`
+			if let Some(id) = &leaf.link_mode {
+				if self.id_set.contains(id) {
+					use std::io::Cursor;
+
+					leaf.handle = Box::new(Cursor::new(id.as_bytes().to_vec()));
+					entry.flags.force_set(Flags::LINK_FLAG, true);
+				} else {
+					return Err(InternalError::MissingResourceError(format!(
+						"Linked Leaf: {}, references a non-existent Leaf: {}",
+						leaf.id, id
+					)));
+				}
+			}
 
 			// Compression comes first
 			match leaf.compress {
@@ -193,18 +240,16 @@ impl<'a> Builder<'a> {
 
 			// Encryption comes after
 			if leaf.encrypt {
-				if let Some(keypair) = &config.keypair {
-					let mut encrypted_buffer = Vec::new();
-					let mut sink = Sink::encrypt(
-						&mut encrypted_buffer,
-						transform_key(&keypair.public)?,
-						transform_iv(&config.magic)?,
-					)?;
-
-					sink.write_all(leaf_bytes.as_slice())?;
-					sink.flush()?;
-
-					leaf_bytes = encrypted_buffer;
+				if let Some(ex) = &encryptor {
+					leaf_bytes = match ex.encrypt(&leaf_bytes) {
+						Ok(bytes) => bytes,
+						Err(err) => {
+							return Err(InternalError::CryptoError(format!(
+								"Unable to encrypt leaf: {}. Error: {}",
+								leaf.id, err
+							)))
+						}
+					};
 
 					entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
 				}
@@ -220,36 +265,37 @@ impl<'a> Builder<'a> {
 			leaf_offset += glob_length;
 			entry.offset = glob_length as u64;
 
-			if let Some(keypair) = &config.keypair {
-				// The reason we include the path in the signature is to prevent mangling in the registry,
-				// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
-				// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
-				leaf_bytes.extend(leaf.id.as_bytes());
-				entry.signature = Some(keypair.sign(&leaf_bytes));
-				entry.flags.force_set(Flags::SIGNED_FLAG, true);
-				drop(leaf_bytes);
-			};
-
-			{
-				// Make sure the ID is not too big or else it will break the archive
-				if leaf.id.len() >= u16::MAX.into() {
-					let mut copy = leaf.id.clone();
-					copy.truncate(25);
-					anyhow::bail!(format!("The maximum size of any id is: {}. The leaf with ID: {}..., has an ID with length: {}", crate::MAX_ID_LENGTH, copy, leaf.id.len()))
+			if leaf.sign {
+				if let Some(keypair) = &config.keypair {
+					// The reason we include the path in the signature is to prevent mangling in the registry,
+					// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
+					// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
+					leaf_bytes.extend(leaf.id.as_bytes());
+					entry.signature = Some(keypair.sign(&leaf_bytes));
+					entry.flags.force_set(Flags::SIGNED_FLAG, true);
+					drop(leaf_bytes);
 				};
+			}
 
-				// Fetch bytes
-				let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
-				entry_bytes.extend(leaf.id.as_bytes());
+			// Make sure the ID is not too big or else it will break the archive
+			if leaf.id.len() >= u16::MAX.into() {
+				let mut copy = leaf.id.clone();
+				copy.truncate(25);
 
-				// Write to the registry
-				wtr.seek(SeekFrom::Start(reg_offset as u64))?;
-				wtr.write_all(&entry_bytes)?;
-
-				// Update offsets
-				reg_offset += entry_bytes.len();
-				size += entry_bytes.len();
+				return Err(InternalError::IDSizeOverflowError(copy));
 			};
+
+			// Fetch bytes
+			let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
+			entry_bytes.extend(leaf.id.as_bytes());
+
+			// Write to the registry
+			wtr.seek(SeekFrom::Start(reg_offset as u64))?;
+			wtr.write_all(&entry_bytes)?;
+
+			// Update offsets
+			reg_offset += entry_bytes.len();
+			size += entry_bytes.len();
 		}
 
 		Ok(size)
