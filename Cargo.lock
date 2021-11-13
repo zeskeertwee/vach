@@ -940,20 +940,13 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.2.1"
+version = "0.2.0"
 dependencies = [
  "aes-gcm-siv",
+ "criterion",
  "ed25519-dalek",
  "lz4_flex",
  "rand",
-]
-
-[[package]]
-name = "vach-benchmarks"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "vach",
 ]
 
 [[package]]
