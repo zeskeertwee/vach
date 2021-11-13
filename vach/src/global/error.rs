@@ -6,21 +6,21 @@ use lz4_flex as lz4;
 #[repr(u8)]
 #[derive(Debug)]
 pub enum InternalError {
-	/// A one of error that collects all other errors and stores a `String` containing info about the error
+	/// Variant that wraps over all other errors, unknown and undocumented
 	OtherError(String),
-	/// An error that is returned when either a Keypair, Signatures or associated keys fail to deserialize.
+	/// An error that is returned when either a [Keypair](vach::crypto::Keypair), Signature, [PublicKey](vach::crypto::PublicKey) or [SecretKey](vach::crypto::SecretKey) fail to deserialize.
 	ParseError(String),
-	/// A thin wrapper over `io::Error`s, meant to capture all io errors
+	/// A thin wrapper over [io::Error](std::io::Error), captures all IO errors
 	IOError(io::Error),
-	/// Thrown when an archive fails to validate it's header and therefore fails to get parsed
+	/// Thrown when the loader fails to validate an archive source
 	ValidationError(String),
 	/// Thrown by `Archive::fetch(---)` when a given resource is not found
 	MissingResourceError(String),
 	/// Thrown when a leaf with an identical ID to a queued leaf is add with the `Builder::add(---)` functions
 	LeafAppendError(String),
-	/// Thrown when no keypair is provided and an encrypted leaf is encountered
+	/// Thrown when no `Keypair` is provided and an encrypted [Leaf](vach::builder::Leaf) is encountered
 	NoKeypairError(String),
-	/// Thrown when decryption or decryption fails
+	/// Thrown when decryption or encryption fails
 	CryptoError(String),
 	/// Thrown when a link leaf aliases another link leaf, potentially causing a cyclic link error
 	CyclicLinkReferenceError(String, String),

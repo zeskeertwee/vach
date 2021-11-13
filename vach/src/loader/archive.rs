@@ -120,7 +120,6 @@ impl<T: Seek + Read> Archive<T> {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
 
-			// BUG: MAJOR SLOW-DOWN HERE; `io::Seek` is a very expensive operation, potentially avoids an expensive Seek operation
 			handle.seek(SeekFrom::Start(entry.location))?;
 
 			let mut raw = vec![];
