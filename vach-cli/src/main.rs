@@ -10,6 +10,8 @@ fn main() {
 		// log level not explicitly set by the user
 		env::set_var("RUST_LOG", "info");
 	}
+
+	// Initialization
 	pretty_env_logger::init();
 
 	let mut config = match config::Config::from_args() {
@@ -19,6 +21,7 @@ fn main() {
 			return;
 		}
 	};
+
 	let config_mode = config.mode.clone();
 
 	let res = match config_mode {

@@ -10,9 +10,9 @@ pub fn gen_keypair() -> esdalek::Keypair {
 	esdalek::Keypair::generate(&mut OsRng)
 }
 
-/// Use this to read and parse a `Keypair` from a `io::Read` handle
+/// Use this to read and parse a `Keypair` from a read stream
 /// ### Errors
-/// If the data can't be parsed into a keypair
+///  - If the data can't be parsed into a keypair
 pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<esdalek::Keypair> {
 	let mut keypair_bytes = [0; crate::KEYPAIR_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;
@@ -20,4 +20,20 @@ pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<esdalek::Keypair> 
 		Ok(kep) => kep,
 		Err(err) => return Err(InternalError::ParseError(err.to_string())),
 	})
+}
+
+/// Read and parse a public key from a read stream
+///
+/// ### Errors
+///  - If parsing of the public key fails
+///  - `io` errors
+pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<esdalek::PublicKey> {
+	let mut keypair_bytes = [0; crate::PUBLIC_KEY_LENGTH];
+
+	handle.read_exact(&mut keypair_bytes)?;
+
+	match esdalek::PublicKey::from_bytes(&keypair_bytes) {
+		Ok(pk) => Ok(pk),
+		Err(err) => return Err(InternalError::ValidationError(err.to_string())),
+	}
 }

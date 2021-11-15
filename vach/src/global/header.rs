@@ -1,6 +1,6 @@
 use std::{fmt, io::Read, str};
 
-use crate::global::flags::Flags;
+use crate::{global::flags::Flags, utils::read_public_key};
 
 use ed25519_dalek as esdalek;
 
@@ -44,17 +44,8 @@ impl HeaderConfig {
 	///  - If parsing of the public key fails
 	///  - `io` errors
 	#[inline]
-	pub fn load_public_key<T: Read>(&mut self, mut handle: T) -> InternalResult<()> {
-		let mut keypair_bytes = [0; crate::PUBLIC_KEY_LENGTH];
-
-		handle.read_exact(&mut keypair_bytes)?;
-
-		let public_key = match esdalek::PublicKey::from_bytes(&keypair_bytes) {
-			Ok(pk) => pk,
-			Err(err) => return Err(InternalError::ValidationError(err.to_string())),
-		};
-
-		self.public_key = Some(public_key);
+	pub fn load_public_key<T: Read>(&mut self, handle: T) -> InternalResult<()> {
+		self.public_key = Some(read_public_key(handle)?);
 		Ok(())
 	}
 
