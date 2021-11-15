@@ -27,7 +27,7 @@ use lz4_flex as lz4;
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
-	handle: T,
+	handle: BufReader<T>,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
 	decryptor: Option<EDCryptor>,
@@ -43,7 +43,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// ### Errors
 	/// If parsing fails, an `Err(-)` is returned.
 	#[inline(always)]
-	pub fn from_handle(handle: T) -> InternalResult<Archive<impl Seek + Read>> {
+	pub fn from_handle(handle: T) -> InternalResult<Archive<T>> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
@@ -53,7 +53,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// If parsing fails, an `Err(-)` is returned.
 	pub fn with_config(
 		mut handle: T, config: &HeaderConfig,
-	) -> InternalResult<Archive<impl Seek + Read>> {
+	) -> InternalResult<Archive<T>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
@@ -217,7 +217,7 @@ impl Default for Archive<&[u8]> {
 	fn default() -> Archive<&'static [u8]> {
 		Archive {
 			header: Header::default(),
-			handle: &[],
+			handle: BufReader::new(&[]),
 			key: None,
 			entries: HashMap::new(),
 			decryptor: None,
