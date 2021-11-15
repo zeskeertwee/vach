@@ -27,7 +27,7 @@ use lz4_flex as lz4;
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
-	handle: BufReader<T>,
+	handle: T,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
 	decryptor: Option<EDCryptor>,
@@ -227,7 +227,7 @@ impl Default for Archive<&[u8]> {
 	fn default() -> Archive<&'static [u8]> {
 		Archive {
 			header: Header::default(),
-			handle: BufReader::new(&[]),
+			handle: &[],
 			key: None,
 			entries: HashMap::new(),
 			decryptor: None,
