@@ -33,14 +33,13 @@ lazy_static! {
 	];
 }
 
-#[derive(Debug)]
 pub struct Config {
 	pub public_key: Option<PublicKey>,
 	pub secret_key: Option<SecretKey>,
 	pub mode: Mode,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Mode {
 	Package {
 		files: Vec<PathBuf>,
