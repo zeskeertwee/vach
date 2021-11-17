@@ -6,21 +6,21 @@ use lz4_flex as lz4;
 #[repr(u8)]
 #[derive(Debug)]
 pub enum InternalError {
-	/// A one of error that collects all other errors and stores a `String` containing info about the error
+	/// Variant that wraps over all other errors, unknown and undocumented
 	OtherError(String),
-	/// An error that is returned when either a Keypair, Signatures or associated keys fail to deserialize.
+	/// An error that is returned when either a [Keypair](vach::crypto::Keypair), Signature, [PublicKey](vach::crypto::PublicKey) or [SecretKey](vach::crypto::SecretKey) fail to deserialize.
 	ParseError(String),
-	/// A thin wrapper over `io::Error`s, meant to capture all io errors
+	/// A thin wrapper over [io::Error](std::io::Error), captures all IO errors
 	IOError(io::Error),
-	/// Thrown when an archive fails to validate it's header and therefore fails to get parsed
+	/// Thrown when the loader fails to validate an archive source
 	ValidationError(String),
 	/// Thrown by `Archive::fetch(---)` when a given resource is not found
 	MissingResourceError(String),
 	/// Thrown when a leaf with an identical ID to a queued leaf is add with the `Builder::add(---)` functions
 	LeafAppendError(String),
-	/// Thrown when no keypair is provided and an encrypted leaf is encountered
+	/// Thrown when no `Keypair` is provided and an encrypted [Leaf](vach::builder::Leaf) is encountered
 	NoKeypairError(String),
-	/// Thrown when decryption or decryption fails
+	/// Thrown when decryption or encryption fails
 	CryptoError(String),
 	/// Thrown when a link leaf aliases another link leaf, potentially causing a cyclic link error
 	CyclicLinkReferenceError(String, String),
@@ -44,7 +44,7 @@ impl fmt::Display for InternalError {
 			Self::IDSizeOverflowError(id_part) => write!(f, "[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID", crate::MAX_ID_LENGTH, id_part),
 			Self::CyclicLinkReferenceError(link, target) => {
 				let message = format!("[VachError::CyclicLinkReferenceError], link leafs can't point to other link leafs. Leaf: {} points to another link leaf: {}", link, target);
-				write!(f, "{}", message)
+				f.write_str(message.as_str())
 			},
 			Self::RestrictedFlagAccessError => write!(f, "[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!"),
 			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
@@ -54,16 +54,33 @@ impl fmt::Display for InternalError {
 	}
 }
 
+impl PartialEq for InternalError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::OtherError(l0), Self::OtherError(r0)) => l0 == r0,
+            (Self::ParseError(l0), Self::ParseError(r0)) => l0 == r0,
+            (Self::ValidationError(l0), Self::ValidationError(r0)) => l0 == r0,
+            (Self::MissingResourceError(l0), Self::MissingResourceError(r0)) => l0 == r0,
+            (Self::LeafAppendError(l0), Self::LeafAppendError(r0)) => l0 == r0,
+            (Self::NoKeypairError(l0), Self::NoKeypairError(r0)) => l0 == r0,
+            (Self::CryptoError(l0), Self::CryptoError(r0)) => l0 == r0,
+            (Self::CyclicLinkReferenceError(l0, l1), Self::CyclicLinkReferenceError(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::IDSizeOverflowError(l0), Self::IDSizeOverflowError(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
+        }
+    }
+}
+
 impl error::Error for InternalError {}
 
 impl From<io::Error> for InternalError {
-	fn from(err: io::Error) -> Self {
+	fn from(err: io::Error) -> InternalError {
 		InternalError::IOError(err)
 	}
 }
 
 impl From<lz4::frame::Error> for InternalError {
-	fn from(err: lz4::frame::Error) -> Self {
+	fn from(err: lz4::frame::Error) -> InternalError {
 		InternalError::LZ4Error(err)
 	}
 }

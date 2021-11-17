@@ -1,10 +1,10 @@
 use crate::global::flags::Flags;
 
 use std::{
-	convert::TryInto,
-	io::{Read, Seek},
+	io::Read,
 	fmt,
 };
+use std::convert::TryInto;
 use ed25519_dalek as esdalek;
 use super::{error::InternalError, result::InternalResult};
 
@@ -41,7 +41,7 @@ impl RegistryEntry {
 	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
 	/// ### Errors
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
-	pub(crate) fn from_handle<T: Read + Seek>(mut handle: T) -> InternalResult<(Self, String)> {
+	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(Self, String)> {
 		let mut buffer = [0; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 

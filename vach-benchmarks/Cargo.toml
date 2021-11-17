@@ -1,0 +1,13 @@
+[package]
+name = "vach-benchmarks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+criterion = "0.3.5"
+vach = { path = "../vach" }
+
+[[bench]]
+name = "benchmark"
+harness = false
+path = "benches/main.rs"

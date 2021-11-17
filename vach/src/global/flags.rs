@@ -62,11 +62,11 @@ impl Flags {
 	///
 	/// ### Errors
 	///  - Trying to set a bit in the forbidden section of the flags
-	pub fn set(&mut self, mask: u16, toggle: bool) -> InternalResult<u16> {
-		if Flags::_contains(Flags::RESERVED_MASK, mask) {
+	pub fn set(&mut self, bit: u16, toggle: bool) -> InternalResult<u16> {
+		if Flags::_contains(Flags::RESERVED_MASK, bit) {
 			return Err(InternalError::RestrictedFlagAccessError);
 		} else {
-			self.force_set(mask, toggle)
+			self.force_set(bit, toggle)
 		}
 
 		Ok(self.bits)
@@ -89,8 +89,8 @@ impl Flags {
 	/// flag.set(0b0000_1000_0000_0000, true);
 	/// assert!(flag.contains(0b0000_1000_0000_0000));
 	/// ```
-	pub fn contains(&self, mask: u16) -> bool {
-		Flags::_contains(self.bits, mask)
+	pub fn contains(&self, bit: u16) -> bool {
+		Flags::_contains(self.bits, bit)
 	}
 
 	// Auxillary function

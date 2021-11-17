@@ -1,7 +1,7 @@
 use crate::{
 	global::{reg_entry::RegistryEntry, flags::Flags},
 };
-use std::{io::Read};
+use std::{io::Read, fmt};
 
 /// Configures how `Leaf`s should be compressed.
 /// Default is `CompressMode::Never`.
@@ -30,12 +30,28 @@ pub struct Leaf<'a> {
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
 	pub encrypt: bool,
-	/// Whether to include a signature with this `Leaf`, defaults to true
+	/// Whether to include a signature with this `Leaf`, defaults to false
+	/// If set to true then a hash generated and validated when loaded
 	pub sign: bool,
 	/// If a `Leaf` has a link_mode of Some("dw"), then this leaf simply routes the data pointed by the adjacent Leaf with the ID "dw".
 	/// Use this if you want to have multiple pointers|registry entries aliasing to the same data.
 	/// The handle of a link leaf stores the ID of the aliased leaf.
 	pub link_mode: Option<String>,
+}
+
+impl<'a> fmt::Debug for Leaf<'a> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.debug_struct("Leaf")
+			.field("handle", &"Dynamically dispatched handle")
+			.field("id", &self.id)
+			.field("content_version", &self.content_version)
+			.field("compress", &self.compress)
+			.field("flags", &self.flags)
+			.field("encrypt", &self.encrypt)
+			.field("sign", &self.sign)
+			.field("link_mode", &self.link_mode)
+			.finish()
+	}
 }
 
 impl<'a> Default for Leaf<'a> {
@@ -49,7 +65,7 @@ impl<'a> Default for Leaf<'a> {
 			content_version: 0,
 			compress: CompressMode::Never,
 			encrypt: false,
-			sign: true,
+			sign: false,
 			link_mode: None,
 		}
 	}
@@ -78,7 +94,7 @@ impl<'a> Leaf<'a> {
 		entry
 	}
 
-	/// Copy the `compress`, `content_version` and `flags` fields from another `Leaf`.
+	/// Copy all fields from another `Leaf`, except for `handle`, `link_mode` and `id`
 	/// Meant to be used like a setter:
 	/// ```rust
 	/// use std::io::Cursor;
@@ -94,6 +110,7 @@ impl<'a> Leaf<'a> {
 		self.content_version = other.content_version;
 		self.flags = other.flags;
 		self.encrypt = other.encrypt;
+		self.sign = other.sign;
 		self
 	}
 

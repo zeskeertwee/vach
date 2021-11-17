@@ -42,7 +42,11 @@ fn flag_restricted_access() {
 	let mut flag = Flags::from_bits(0b1111_1000_0000_0000);
 
 	// This should return an error
-	assert!(flag.set(Flags::COMPRESSED_FLAG, true).is_err());
+	if let Err(error) = flag.set(Flags::COMPRESSED_FLAG, true) {
+		assert_eq!(error, InternalError::RestrictedFlagAccessError);
+	} else {
+		panic!("Access to restricted flags has been allowed, this should not be feasible")
+	};
 }
 
 #[test]
@@ -190,7 +194,7 @@ fn builder_with_signature() -> InternalResult<()> {
 
 	builder.add_dir(
 		"test_data",
-		Some(&Leaf::default().compress(CompressMode::Detect)),
+		Some(&Leaf::default().compress(CompressMode::Detect).sign(true)),
 	)?;
 
 	// Tests conditional signing
@@ -303,7 +307,7 @@ fn edcryptor_test() -> InternalResult<()> {
 #[test]
 fn builder_with_encryption() -> InternalResult<()> {
 	let mut builder =
-		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never));
+		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -384,7 +388,12 @@ fn cyclic_linked_leafs() {
 	let mut archive = Archive::from_handle(target).unwrap();
 
 	// Assert that this causes an error, [Cyclic Linked Leafs]
-	assert!(archive.fetch("d1_link").is_err());
+	if let Err(err) = archive.fetch("d1_link") {
+		match err {
+			 InternalError::CyclicLinkReferenceError(_, _) => (),
+			 _ => panic!("Unrecognized error. Expected cyclic linked leaf error"),
+		}
+	};
 }
 
 #[test]

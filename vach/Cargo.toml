@@ -30,11 +30,3 @@ ed25519-dalek = "1.0.1"
 lz4_flex = "0.9.0"
 rand = "0.7.0"
 aes-gcm-siv = "0.10.3"
-
-[dev-dependencies]
-criterion = "0.3.5"
-
-[[bench]]
-name = "benchmark"
-harness = false
-path = "benches/benchmark.rs"

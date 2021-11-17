@@ -23,7 +23,7 @@ impl BuilderConfig {
 	}
 	/// Setter for the `flags` field
 	///```
-	///use vach::prelude::{Flags, BuilderConfig};
+	/// use vach::prelude::{Flags, BuilderConfig};
 	///
 	/// let config = BuilderConfig::default().flags(Flags::empty());
 	///```
@@ -33,7 +33,7 @@ impl BuilderConfig {
 	}
 	/// Setter for the `magic` field
 	///```
-	///use vach::prelude::BuilderConfig;
+	/// use vach::prelude::BuilderConfig;
 	/// let config = BuilderConfig::default().magic(*b"DbAfh");
 	///```
 	pub fn magic(mut self, magic: [u8; 5]) -> BuilderConfig {

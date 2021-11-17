@@ -148,7 +148,7 @@ pub(crate) mod writer;
 pub use rand;
 
 /// Current file spec version, both `Loader` and `Builder`
-pub const VERSION: u16 = 20;
+pub const VERSION: u16 = 21;
 
 /// Size of a keypair: (secret + public)
 pub const KEYPAIR_LENGTH: usize = 64;
