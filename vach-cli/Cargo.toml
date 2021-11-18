@@ -1,6 +1,6 @@
 [package]
 name = "vach-cli"
-version = "0.1.0"
+version = "0.2.2"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>"]
 description = "A command-line tool to work with .vach files"
@@ -27,6 +27,10 @@ include = [
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "vach"
+path = "src/main.rs"
+
 [dependencies]
 indicatif = "0.16.2"
 clap = "2.33.3"
@@ -35,4 +39,4 @@ lazy_static = "1.4.0"
 tabled = "0.3.0"
 log = "0.4.14"
 pretty_env_logger = "0.4.0"
-vach = "0.2.0"
+vach = "0.2.2"
