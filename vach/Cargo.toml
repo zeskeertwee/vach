@@ -1,6 +1,6 @@
 [package]
 name = "vach"
-version = "0.2.1" # Make sure spec.txt and vach::VERSION constants are all synced up
+version = "0.2.2" # Make sure spec.txt and vach::VERSION constants are all synced up
 edition = "2021"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
