@@ -1,0 +1,71 @@
+BASIC TEMPLATE -> vach [instruction] [-flag inputs inputs]
+
+## ALL INSTRUCTIONS && SHORT FORMS
+vach pack == vach p
+vach verify == vach v
+vach list == vach l
+vach unpack == vach u
+vach repack == vach r
+vach keypair == vach k
+vach split == vach s
+
+# Pack the given files, outputs to textures.vach, use magic TXTRS, compress-mode detect, and truncates(deletes) the original files after being archived
+vach pack -o textures.vach -i face.webm brick.png logo.png -m TXTRS -c detect -t
+
+# Verify that the archive textures.vach has magic TXTRS and the archive version is greater than 12 ( the CLI may be backwards compatible )
+vach verify -i textures.vach -m TXTRS -v ^12
+
+# List the entries in textures.vach
+vach list -i textures.vach
+
+# Unpack textures.vach
+vach unpack -i textures.vach
+
+# Add directories to the write queue, also add some extra files
+vach pack -o levels.vach -d ./levels ./dlc-levels -i easteregg.lvl
+
+# Add directories recursively
+vach pack -o sounds.vach -dr ./sounds
+
+# Add specific files from a directory, but exclude some files
+vach pack -o keys.vach -d ./keys -x github.key
+
+# Repack from the given source to the given target, and also add some extra files
+vach repack -s sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15 -m SUNDS
+
+# Pack using encryption, and sign the data to check for integrity
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -s
+#    scripts.vach
+#    keypair.kp
+
+# Unpack from encrypted source
+vach unpack -i scripts.vach -kp keypair.kp
+
+# Generate a random keypair
+vach keypair -o generated.kp
+#    generated.kp
+
+# Generate a random keypair, split it into its public and secret keys
+vach keypair -o generated2.kp -s
+#    generated2.pk
+#    generated2.sk
+
+# Split an existing keypair into it's key
+vach split -i generated.pk
+#    generated.pk
+#    generated.sk
+
+# Pack and sign the data to check for integrity, using an existing keypair
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -s -kp generated.kp
+
+# Pack and sign the data to check for integrity, using an existing secret key
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -s -sk generated.sk
+
+# Or if you only have the public key
+vach unpack -i scripts.vach -pk generated.pk
+
+# Overridden properties for leafs
+vach pack -o textures.vach -i normals.png [logo.png -c never -v 00] diffuse.png -c always
+
+# HTTP requests as leafs
+vach pack -o textures.vach -i normals.png [https://example.com/house.webp -id house.png] diffuse.png -c always
