@@ -1,6 +1,6 @@
 [package]
 name = "vach-cli"
-version = "0.1.0"
+version = "0.2.2"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A command-line tool to work with .vach files"
@@ -24,6 +24,9 @@ include = [
 	"Cargo.toml",
 	"../README.md"
 ]
+[[bin]]
+name = "vach"
+path = "src/main.rs"
 
 [dependencies]
 indicatif = "0.16.2"
@@ -36,7 +39,3 @@ pretty_env_logger = "0.4.0"
 vach = {	path = "../vach"	}
 walkdir = "2.3.2"
 bytesize = "1.1.0"
-
-[[bin]]
-name = "vachcli"
-path = "src/main.rs"
