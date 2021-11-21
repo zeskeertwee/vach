@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, io::Write};
 use std::path::PathBuf;
 use std::convert::TryInto;
 use std::collections::HashSet;
@@ -35,21 +35,6 @@ impl CommandTrait for Evaluator {
 			None => Flags::default(),
 		};
 
-		// Attempting to extract a secret key
-		let secret_key = match args.value_of(key_names::KEYPAIR) {
-			Some(path) => {
-				let file = File::open(path)?;
-				Some(vach::utils::read_keypair(file)?.secret)
-			}
-			None => match args.value_of(key_names::SECRET_KEY) {
-				Some(path) => {
-					let file = File::open(path)?;
-					Some(vach::utils::read_secret_key(file)?)
-				}
-				None => None,
-			},
-		};
-
 		// Extract the compress mode
 		let mut compress_mode = CompressMode::default();
 		if let Some(value) = args.value_of(key_names::COMPRESS_MODE) {
@@ -65,7 +50,7 @@ impl CommandTrait for Evaluator {
 		let excludes = match args.values_of(key_names::EXCLUDE) {
 			Some(val) => val
 				.map(PathBuf::from)
-				.filter(|v| {dbg!(&v); v.is_file()})
+				.filter(|v| v.is_file())
 				.collect::<HashSet<PathBuf>>(),
 			None => HashSet::new(),
 		};
@@ -86,7 +71,7 @@ impl CommandTrait for Evaluator {
 					.max_depth(1)
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
-					.filter(|f| excludes.contains(f) || f.is_file())
+					.filter(|f| !excludes.contains(f) && f.is_file())
 					.for_each(|p| inputs.push(p))
 			});
 		};
@@ -96,7 +81,7 @@ impl CommandTrait for Evaluator {
 			val.map(|dir| walkdir::WalkDir::new(dir).into_iter())
 				.flatten()
 				.map(|v| v.unwrap().into_path())
-				.filter(|f| excludes.contains(f))
+				.filter(|f| !excludes.contains(f) && f.is_file())
 				.for_each(|p| inputs.push(p));
 		}
 
@@ -110,8 +95,23 @@ impl CommandTrait for Evaluator {
 			None => 0,
 		};
 
+		// Attempting to extract a secret key
+		let secret_key = match args.value_of(key_names::KEYPAIR) {
+			Some(path) => {
+				let file = File::open(path)?;
+				Some(vach::utils::read_keypair(file)?.secret)
+			}
+			None => match args.value_of(key_names::SECRET_KEY) {
+				Some(path) => {
+					let file = File::open(path)?;
+					Some(vach::utils::read_secret_key(file)?)
+				}
+				None => None,
+			},
+		};
+
 		// Generate a keypair from the secret key
-		let kp = match secret_key {
+		let mut kp = match secret_key {
 			Some(sk) => {
 				let pk = PublicKey::from(&sk);
 				Some(Keypair {
@@ -121,6 +121,17 @@ impl CommandTrait for Evaluator {
 			}
 			None => None,
 		};
+
+		// If encrypt is true, and no keypair was found: Generate and write a new keypair to a file
+		if (encrypt || hash) && kp.is_none() {
+			let generated = vach::utils::gen_keypair();
+
+			let mut file = File::create("keypair.kp")?;
+			file.write_all(&generated.to_bytes())?;
+			println!("Generated a new keypair @ keypair.kp");
+
+			kp = Some(generated);
+		}
 
 		let pbar = ProgressBar::new(inputs.len() as u64 + 5);
 		pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
@@ -180,16 +191,14 @@ impl CommandTrait for Evaluator {
 		}
 
 		// Inform of success in input queue
-		pbar.println("Input queue success");
 		pbar.inc(2);
 
 		// Dumping processed data
-		pbar.println(format!("Writing to {}", output_path));
+		pbar.println(format!("Generated a new archive & {}", output_path));
 		builder.dump(output_file, &builder_config)?;
 		pbar.inc(3);
 
 		// SUCCESS
-		pbar.println("SUCCESS");
 		pbar.finish_and_clear();
 
 		Ok(())
