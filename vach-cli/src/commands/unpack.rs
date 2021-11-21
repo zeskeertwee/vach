@@ -25,7 +25,7 @@ impl CommandTrait for Evaluator {
 
 		let output_path = match args.value_of(key_names::OUTPUT) {
 			Some(path) => PathBuf::from_str(path)?,
-			None => PathBuf::from_str("./")?,
+			None => PathBuf::from_str("")?,
 		};
 
 		if output_path.is_file() {
@@ -55,7 +55,11 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
-		let input_file = File::open(input_path)?;
+		let input_file = match File::open(input_path) {
+			Ok(it) => it,
+			Err(err) => bail!("IOError: {} @ {}", err, input_path),
+		};
+
 		let header_config = HeaderConfig::new(magic, public_key);
 
 		let mut archive = match Archive::with_config(input_file, &header_config) {

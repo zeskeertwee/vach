@@ -5,11 +5,13 @@ use lazy_static::lazy_static;
 // A common progress bar style for all commands
 const PROGRESS_BAR_STYLE: &str = "{wide_bar} {pos:>7}/{len:7} ETA {eta_precise}";
 
+// Trait that must be implemented by all subcommands
 pub trait CommandTrait: Sync {
 	 fn evaluate(&self, args: &ArgMatches) -> Result<()>;
 	 fn version(&self) -> &'static str;
 }
 
+// All sub-commands are defined in the below modules
 pub mod keypair;
 pub mod unpack;
 pub mod pack;
