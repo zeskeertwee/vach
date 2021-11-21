@@ -289,6 +289,11 @@ impl<'a> Builder<'a> {
 			// Write to the registry
 			reg_buffer.write_all(&entry_bytes)?;
 
+			// Call the progress callback bound within the `BuilderConfig`
+			if let Some(callback) = &config.progress_callback {
+				callback(&leaf.id, glob_length, &entry);
+			}
+
 			// Update offsets
 			size += entry_bytes.len();
 		}

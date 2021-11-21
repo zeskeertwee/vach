@@ -1,10 +1,12 @@
-use crate::global::{flags::Flags, result::InternalResult};
+use crate::global::{flags::Flags, result::InternalResult, reg_entry::RegistryEntry};
 use std::io;
 use ed25519_dalek as esdalek;
+use std::fmt::Debug;
+
+type OptionalCallback = Option<Box<dyn Fn(&String, usize, &RegistryEntry)>>;
 
 /// Allows for the customization of valid `vach` archives during their construction.
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
-#[derive(Debug)]
 pub struct BuilderConfig {
 	/// Used to write a unique magic sequence into the write target.
 	pub magic: [u8; crate::MAGIC_LENGTH],
@@ -12,6 +14,35 @@ pub struct BuilderConfig {
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
+	/// An optional callback that is called every time a `Leaf` finishes processing
+	/// The type signature is:
+	/// ```ignore
+	/// type OptionalCallback = Option<Box<dyn Fn(&String, usize, &RegistryEntry)>>;
+	/// ```
+	///
+	/// Usage:
+	/// ```ignore
+	/// let builder_config = BuilderConfig::new()
+	/// ```
+	pub progress_callback: OptionalCallback,
+}
+
+impl Debug for BuilderConfig {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("BuilderConfig")
+			.field("magic", &self.magic)
+			.field("flags", &self.flags)
+			.field("keypair", &self.keypair)
+			.field(
+				"progress_callback",
+				if self.progress_callback.is_some() {
+					&"[Dynamically dispatched callback]"
+				} else {
+					&"None"
+				},
+			)
+			.finish()
+	}
 }
 
 impl BuilderConfig {
@@ -41,6 +72,16 @@ impl BuilderConfig {
 		self
 	}
 
+	/// Setter for the `progress_callback` field
+	///```
+	/// use vach::prelude::BuilderConfig;
+	/// let config = BuilderConfig::default().callback(Some(Box::new(|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) })));
+	///```
+	pub fn callback(mut self, callback: OptionalCallback) -> BuilderConfig {
+		self.progress_callback = callback;
+		self
+	}
+
 	// Keypair helpers
 	/// Parses and stores a keypair from a source.
 	/// ### Errors
@@ -57,6 +98,7 @@ impl Default for BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
 			magic: *crate::DEFAULT_MAGIC,
+			progress_callback: None,
 		}
 	}
 }

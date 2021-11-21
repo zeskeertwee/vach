@@ -141,6 +141,7 @@ impl CommandTrait for Evaluator {
 			flags,
 			magic,
 			keypair: kp,
+			..Default::default()
 		};
 
 		// Construct the builder
