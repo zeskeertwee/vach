@@ -25,7 +25,7 @@ impl CommandTrait for Evaluator {
 
 		let output_path = match args.value_of(key_names::OUTPUT) {
 			Some(path) => PathBuf::from_str(path)?,
-			None => PathBuf::from_str("")?,
+			None => PathBuf::from_str("./")?,
 		};
 
 		if output_path.is_file() {
@@ -39,15 +39,19 @@ impl CommandTrait for Evaluator {
 
 		let public_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
-				let file = File::open(path)?;
+				let file = match File::open(path) {
+					Ok(it) => it,
+					Err(err) => bail!("IOError: {} @ {}", err, path),
+				};
+
 				Some(vach::utils::read_keypair(file)?.public)
 			}
 			None => match args.value_of(key_names::PUBLIC_KEY) {
-				 Some(path) => {
+				Some(path) => {
 					let file = File::open(path)?;
 					Some(vach::utils::read_public_key(file)?)
-				 },
-				 None => None,
+				}
+				None => None,
 			},
 		};
 
@@ -84,9 +88,7 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 
 	let pbar = ProgressBar::new(total_size);
 	// NOTE: More styling is to come
-	pbar.set_style(
-		ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE),
-	);
+	pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
 
 	// Some unsafe code to keep living dangerous
 	let archive_pointer = archive as *mut Archive<T>;
