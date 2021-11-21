@@ -2,16 +2,15 @@ use std::path::PathBuf;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use vach::crypto::{Keypair, PublicKey, SecretKey};
 use anyhow::{Result, bail};
-use std::fs::File;
-use std::io::Read;
 use lazy_static::lazy_static;
 use vach::builder::CompressMode;
 use log::info;
+use crate::utils::read_file_from_value_name;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
-mod values {
+mod key_names {
 	// Paths to keypairs, public keys and secret keys to be used
     pub(crate) const PK_PATH: &str = "PUBLIC_KEY_PATH";
     pub(crate) const SK_PATH: &str = "SECRET_KEY_PATH";
@@ -80,21 +79,22 @@ impl Config {
 			.version(version.as_str())
 			.author(AUTHORS)
 			.about("A command-line interface for packing and packing with .vach files along with other vach archive related functionality")
-			.arg(Arg::with_name(values::PK_PATH)
+			.arg(Arg::with_name(key_names::PK_PATH)
 				.short("P")
 				.long("public_key")
 				.value_name("PUBLIC_KEY_PATH")
 				.help("Sets the path to the public key to be used")
 				.required(false)
 				.takes_value(true))
-			.arg(Arg::with_name(values::SK_PATH)
+			.arg(Arg::with_name(key_names::SK_PATH)
 				.short("S")
 				.long("secret_key")
 				.value_name("SECRET_KEY_PATH")
 				.help("Sets the path to the secret key to be used")
 				.required(false)
-				.takes_value(true))
-			.arg(Arg::with_name(values::KP_PATH)
+				.takes_value(true)
+			)
+			.arg(Arg::with_name(key_names::KP_PATH)
 				.short("K")
 				.long("keypair")
 				.help("Sets the path to the keypair to be used (if this and the secret_key or public_key are explicitly set, the one specified here will be used)")
@@ -104,7 +104,7 @@ impl Config {
 				.about("Package files into a vach archive")
 				.version(version.as_str())
 				.author(AUTHORS)
-				.arg(Arg::with_name(values::KEY_COMPRESS_MODE)
+				.arg(Arg::with_name(key_names::KEY_COMPRESS_MODE)
 					.short("C")
 					.long("compress_mode")
 					.value_name("COMPRESS_MODE")
@@ -112,7 +112,7 @@ impl Config {
 					.required(false)
 					.multiple(false)
 					.takes_value(true))
-				.arg(Arg::with_name(values::KEY_ENCRYPT)
+				.arg(Arg::with_name(key_names::KEY_ENCRYPT)
 					.long("encrypt")
 					.short("E")
 					.value_name("BOOL")
@@ -120,13 +120,13 @@ impl Config {
 					.required(false)
 					.multiple(false)
 					.takes_value(false))
-				.arg(Arg::with_name(values::KEY_ARCHIVE_SAVE_PATH)
+				.arg(Arg::with_name(key_names::KEY_ARCHIVE_SAVE_PATH)
 					.value_name("SAVE_PATH")
 					.help("Where to save the generated archive")
 					.required(true)
 					.takes_value(true)
 					.multiple(false))
-				.arg(Arg::with_name(values::KEY_FILE_OR_FOLDER_PATHS)
+				.arg(Arg::with_name(key_names::KEY_FILE_OR_FOLDER_PATHS)
 					.value_name("FILE_OR_FOLDER_PATHS")
 					.help("The files to package, or when passing a folder, all files in the folder are added, however, folders in the folder are ignored")
 					.required(true)
@@ -137,12 +137,12 @@ impl Config {
 				.about("Open an archive, and list or extract all files in it")
 				.version(version.as_str())
 				.author(AUTHORS)
-				.arg(Arg::with_name(values::KEY_ARCHIVE_PATH)
+				.arg(Arg::with_name(key_names::KEY_ARCHIVE_PATH)
 					.value_name("ARCHIVE_PATH")
 					.help("The path to the archive")
 					.required(true)
 					.takes_value(true))
-				.arg(Arg::with_name(values::KEY_OPEN_SAVE_FOLDER)
+				.arg(Arg::with_name(key_names::KEY_OPEN_SAVE_FOLDER)
 					.value_name("SAVE_FOLDER")
 					.help("If set, where to save the extracted files. Leave this empty to only list the contents of the archive")
 					.required(false)
@@ -151,7 +151,7 @@ impl Config {
 				.about("Generate a keypair (public & secret key)")
 				.version(version.as_str())
 				.author(AUTHORS)
-				.arg(Arg::with_name(values::KEY_KEYPAIR_FOLDER)
+				.arg(Arg::with_name(key_names::KEY_KEYPAIR_FOLDER)
 					.value_name("SAVE_FOLDER")
 					.help("The folder in which to store the public, secret and keypair files")
 					.required(true)
@@ -164,7 +164,7 @@ impl Config {
 			mode: Mode::None,
 		};
 
-		match read_file_from_value_name(&matches, values::KP_PATH) {
+		match read_file_from_value_name(&matches, key_names::KP_PATH) {
 			Ok((data, path)) => match Keypair::from_bytes(&data) {
 				Ok(keypair) => {
 					config.public_key = Some(keypair.public);
@@ -178,7 +178,7 @@ impl Config {
 
 		// the only way this can not be None is if a keypair was specified, thus skip this if it's Some
 		if config.public_key.is_none() {
-			match read_file_from_value_name(&matches, values::PK_PATH) {
+			match read_file_from_value_name(&matches, key_names::PK_PATH) {
 				Ok((data, path)) => match PublicKey::from_bytes(&data) {
 					Ok(key) => {
 						config.public_key = Some(key);
@@ -189,7 +189,7 @@ impl Config {
 				Err(_) => (),
 			}
 
-			match read_file_from_value_name(&matches, values::SK_PATH) {
+			match read_file_from_value_name(&matches, key_names::SK_PATH) {
 				Ok((data, path)) => match SecretKey::from_bytes(&data) {
 					Ok(key) => {
 						config.secret_key = Some(key);
@@ -214,22 +214,10 @@ impl Config {
 	}
 }
 
-fn read_file_from_value_name(matches: &ArgMatches, value_name: &str) -> Result<(Vec<u8>, String)> {
-	let path = match matches.value_of(value_name) {
-		Some(x) => x,
-		None => bail!("no value specified for {}", value_name),
-	};
-	let mut file = File::open(path)?;
-	let mut buf = Vec::new();
-	file.read_to_end(&mut buf)?;
-
-	Ok((buf, path.to_string()))
-}
-
 impl Mode {
 	fn parse_package(matches: &ArgMatches) -> Self {
 		let mut compress_mode = CompressMode::Detect;
-		if let Some(value) = matches.value_of(values::KEY_COMPRESS_MODE) {
+		if let Some(value) = matches.value_of(key_names::KEY_COMPRESS_MODE) {
 			match value.to_lowercase().as_str() {
 				"always" => compress_mode = CompressMode::Always,
 				"detect" => compress_mode = CompressMode::Detect,
@@ -244,17 +232,17 @@ impl Mode {
 
 		// unwrapping is ok, because the value is required, and we won't get here without it being set
 		let paths = matches
-			.values_of(values::KEY_FILE_OR_FOLDER_PATHS)
+			.values_of(key_names::KEY_FILE_OR_FOLDER_PATHS)
 			.unwrap()
 			.map(|v| PathBuf::from(v))
 			.collect();
 
 		let save_path: PathBuf = matches
-			.value_of(values::KEY_ARCHIVE_SAVE_PATH)
+			.value_of(key_names::KEY_ARCHIVE_SAVE_PATH)
 			.unwrap()
 			.into();
 
-		let encrypt = matches.is_present(values::KEY_ENCRYPT);
+		let encrypt = matches.is_present(key_names::KEY_ENCRYPT);
 
 		Self::Package {
 			files: paths,
@@ -266,7 +254,7 @@ impl Mode {
 
 	fn parse_open(matches: &ArgMatches) -> Self {
 		// unwrapping is ok, because the value is required, and we won't get here without it being set
-		let archive_path: PathBuf = matches.value_of(values::KEY_ARCHIVE_PATH).unwrap().into();
+		let archive_path: PathBuf = matches.value_of(key_names::KEY_ARCHIVE_PATH).unwrap().into();
 
 		if archive_path.is_dir() || !archive_path.exists() {
 			return Self::Error {
@@ -279,7 +267,7 @@ impl Mode {
 
 		let mut save_path = None;
 
-		if let Some(path) = matches.value_of(values::KEY_OPEN_SAVE_FOLDER) {
+		if let Some(path) = matches.value_of(key_names::KEY_OPEN_SAVE_FOLDER) {
 			let path: PathBuf = path.into();
 
 			if path.is_file() || !path.exists() {
@@ -302,7 +290,7 @@ impl Mode {
 
 	fn parse_generate_keys(matches: &ArgMatches) -> Self {
 		// unwrapping is ok, because the value is required, and we won't get here without it being set
-		let save_folder: PathBuf = matches.value_of(values::KEY_KEYPAIR_FOLDER).unwrap().into();
+		let save_folder: PathBuf = matches.value_of(key_names::KEY_KEYPAIR_FOLDER).unwrap().into();
 
 		if save_folder.is_file() || !save_folder.exists() {
 			return Self::Error {

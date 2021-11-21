@@ -2,7 +2,7 @@
 name = "vach-cli"
 version = "0.1.0"
 edition = "2018"
-authors = ["Jasper Fortuin <zeskeertwee@gmail.com>"]
+authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A command-line tool to work with .vach files"
 license = "GPL-2.0"
 repository = "https://github.com/zeskeertwee/virtfs-rs"
@@ -33,9 +33,10 @@ lazy_static = "1.4.0"
 tabled = "0.3.0"
 log = "0.4.14"
 pretty_env_logger = "0.4.0"
-vach = "0.2.0"
-reqwest = "0.11.6"
+vach = {	path = "../vach"	}
+walkdir = "2.3.2"
+bytesize = "1.1.0"
 
 [[bin]]
-name = "vach"
+name = "vachcli"
 path = "src/main.rs"

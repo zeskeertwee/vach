@@ -9,11 +9,36 @@ vach repack == vach r
 vach keypair == vach k
 vach split == vach s
 
+## Keys usable in the CLI
+ -o 	| --output				-> general target output
+ -i 	| --input 				-> general LIST of input sources
+ -s 	| --source				-> treats the entries in a .vach file like regular files, but with metadata from the archive
+
+ -d 	| --directory			-> add all files in a directory into the input queue
+ -dr	| --directory-r		-> same as above, only that it adds files from the directory recursively
+
+ -x 	| --exclude			-> exclude the given files from the write queue
+ -t 	| --truncates			-> deletes the original files after they have been processed successfully
+
+ -f 	| --flags			-> The flags that go into the .vach file header section
+ -m 	| --magic			-> the magic used to generate the archive
+ -c 	| --compress-mode	-> the compress mode of the adjacent leafs
+ -v 	| --version			-> the version of the leafs being read or to be written
+ -h 	| --hash				-> to sign the entries and include the signatures in the target
+ -e 	| --encrypt			-> encrypt the data, an sk or kp must be provided
+ -sp	| --split				-> used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts
+
+ -sk	| --secret-key		-> The secret key to be used in signing of signatures
+ -pk	| --public-key		-> The public key to be used in decryption and validation of signatures
+ -kp	| --keypair			-> A keypair is just a pair of the above two, but when set will be chosen over the above
+
+ -q	| --quiet			-> Tells the CLI to not log any messages to the console
+
 # Pack the given files, outputs to textures.vach, use magic TXTRS, compress-mode detect, and truncates(deletes) the original files after being archived
 vach pack -o textures.vach -i face.webm brick.png logo.png -m TXTRS -c detect -t
 
-# Verify that the archive textures.vach has magic TXTRS and the archive version is greater than 12 ( the CLI may be backwards compatible )
-vach verify -i textures.vach -m TXTRS -v ^12
+# Verify that the archive textures.vach has magic and the archive has the same version as the loader
+vach verify -i textures.vach -m TXTRS
 
 # List the entries in textures.vach
 vach list -i textures.vach
@@ -34,7 +59,7 @@ vach pack -o keys.vach -d ./keys -x github.key
 vach repack -s sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15 -m SUNDS
 
 # Pack using encryption, and sign the data to check for integrity
-vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -s
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -h
 #    scripts.vach
 #    keypair.kp
 
@@ -46,20 +71,20 @@ vach keypair -o generated.kp
 #    generated.kp
 
 # Generate a random keypair, split it into its public and secret keys
-vach keypair -o generated2.kp -s
+vach keypair -o generated2.kp -sp
 #    generated2.pk
 #    generated2.sk
 
 # Split an existing keypair into it's key
-vach split -i generated.pk
+vach split -i generated.kp
 #    generated.pk
 #    generated.sk
 
 # Pack and sign the data to check for integrity, using an existing keypair
-vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -s -kp generated.kp
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -h -kp generated.kp
 
 # Pack and sign the data to check for integrity, using an existing secret key
-vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -s -sk generated.sk
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -h -sk generated.sk
 
 # Or if you only have the public key
 vach unpack -i scripts.vach -pk generated.pk
@@ -67,5 +92,8 @@ vach unpack -i scripts.vach -pk generated.pk
 # Overridden properties for leafs
 vach pack -o textures.vach -i normals.png [logo.png -c never -v 00] diffuse.png -c always
 
-# HTTP requests as leafs
-vach pack -o textures.vach -i normals.png [https://example.com/house.webp -id house.png] diffuse.png -c always
+# Source an encrypted archive
+vach pack -o sounds.vach -i boom.wav death.wav button.wav -s redist.vach kp=redist-keypair.kp
+
+# Source an encrypted archive, using only public key
+vach pack -o sounds.vach -i boom.wav death.wav button.wav -s redist.vach pk=redist-keypair.pk
