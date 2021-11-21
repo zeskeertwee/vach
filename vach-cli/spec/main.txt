@@ -15,7 +15,7 @@ vach split == vach s
  -s 	| --source				-> treats the entries in a .vach file like regular files, but with metadata from the archive
 
  -d 	| --directory			-> add all files in a directory into the input queue
- -dr	| --directory-r		-> same as above, only that it adds files from the directory recursively
+ -r	| --directory-r		-> same as above, only that it adds files from the directory recursively
 
  -x 	| --exclude			-> exclude the given files from the write queue
  -t 	| --truncates			-> deletes the original files after they have been processed successfully
@@ -26,11 +26,11 @@ vach split == vach s
  -v 	| --version			-> the version of the leafs being read or to be written
  -h 	| --hash				-> to sign the entries and include the signatures in the target
  -e 	| --encrypt			-> encrypt the data, an sk or kp must be provided
- -sp	| --split				-> used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts
+ -s	| --split				-> used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts
 
- -sk	| --secret-key		-> The secret key to be used in signing of signatures
- -pk	| --public-key		-> The public key to be used in decryption and validation of signatures
- -kp	| --keypair			-> A keypair is just a pair of the above two, but when set will be chosen over the above
+ -s	| --secret-key		-> The secret key to be used in signing of signatures
+ -p	| --public-key		-> The public key to be used in decryption and validation of signatures
+ -k	| --keypair			-> A keypair is just a pair of the above two, but when set will be chosen over the above
 
  -q	| --quiet			-> Tells the CLI to not log any messages to the console
 
@@ -50,7 +50,7 @@ vach unpack -i textures.vach
 vach pack -o levels.vach -d ./levels ./dlc-levels -i easteregg.lvl
 
 # Add directories recursively
-vach pack -o sounds.vach -dr ./sounds
+vach pack -o sounds.vach -r ./sounds
 
 # Add specific files from a directory, but exclude some files
 vach pack -o keys.vach -d ./keys -x github.key
@@ -64,14 +64,14 @@ vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -h
 #    keypair.kp
 
 # Unpack from encrypted source
-vach unpack -i scripts.vach -kp keypair.kp
+vach unpack -i scripts.vach -r keypair.kp
 
 # Generate a random keypair
 vach keypair -o generated.kp
 #    generated.kp
 
 # Generate a random keypair, split it into its public and secret keys
-vach keypair -o generated2.kp -sp
+vach keypair -o generated2.kp -s
 #    generated2.pk
 #    generated2.sk
 
@@ -81,13 +81,13 @@ vach split -i generated.kp
 #    generated.sk
 
 # Pack and sign the data to check for integrity, using an existing keypair
-vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -h -kp generated.kp
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -h -k generated.kp
 
 # Pack and sign the data to check for integrity, using an existing secret key
-vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -h -sk generated.sk
+vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -h -s generated.sk
 
 # Or if you only have the public key
-vach unpack -i scripts.vach -pk generated.pk
+vach unpack -i scripts.vach -p generated.pk
 
 # Overridden properties for leafs
 vach pack -o textures.vach -i normals.png [logo.png -c never -v 00] diffuse.png -c always
