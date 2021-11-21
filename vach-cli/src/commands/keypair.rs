@@ -31,7 +31,7 @@ impl CommandTrait for Evaluator {
 			let mut sk_path = output_path.clone();
 			sk_path.push_str(".sk");
 
-			let mut pk_path = output_path.clone();
+			let mut pk_path = output_path;
 			pk_path.push_str(".pk");
 
 			utils::create_and_write_to_file(&sk_path, &kp.secret.to_bytes())?;

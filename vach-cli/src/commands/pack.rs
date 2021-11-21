@@ -65,7 +65,7 @@ impl CommandTrait for Evaluator {
 		let excludes = args
 			.values_of(key_names::EXCLUDE)
 			.unwrap()
-			.map(|v| PathBuf::from(v))
+			.map(PathBuf::from)
 			.filter(|v| v.is_file())
 			.collect::<HashSet<PathBuf>>();
 
@@ -73,7 +73,7 @@ impl CommandTrait for Evaluator {
 		let mut inputs = args
 			.values_of(key_names::INPUT)
 			.unwrap()
-			.map(|v| PathBuf::from(v))
+			.map(PathBuf::from)
 			.filter(|v| v.is_file() || excludes.contains(v))
 			.collect::<Vec<PathBuf>>();
 

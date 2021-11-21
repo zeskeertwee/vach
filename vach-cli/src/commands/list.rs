@@ -16,7 +16,6 @@ pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
-		dbg!(&args);
 		let archive_path = match args.value_of(key_names::INPUT) {
 			Some(path) => path,
 			None => bail!("Please provide an input archive file using the -i or --input keys!"),
