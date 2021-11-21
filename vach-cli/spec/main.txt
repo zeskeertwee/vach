@@ -64,7 +64,7 @@ vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -h
 #    keypair.kp
 
 # Unpack from encrypted source
-vach unpack -i scripts.vach -r keypair.kp
+vach unpack -i scripts.vach -k keypair.kp
 
 # Generate a random keypair
 vach keypair -o generated.kp
