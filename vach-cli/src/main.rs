@@ -14,7 +14,7 @@ fn main() {
 	let matches = app.get_matches();
 
 	if matches.is_present(key_names::QUIET) {
-		env::set_var("RUST_LOG", "none");
+		env::set_var("RUST_LOG", "error");
 	};
 
 	let res = match matches.subcommand() {
