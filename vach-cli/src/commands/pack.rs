@@ -17,11 +17,11 @@ pub struct Evaluator;
 impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
 		let output_path = match args.value_of(key_names::OUTPUT) {
-			Some(path) => PathBuf::from(path),
+			Some(path) => path,
 			None => bail!("Please provide an output path using the -o or --output key"),
 		};
 
-		let output_file = File::open(&output_path)?;
+		let output_file = File::create(&output_path)?;
 
 		// The archives magic
 		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
@@ -62,39 +62,43 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Extract entries to be excluded
-		let excludes = args
-			.values_of(key_names::EXCLUDE)
-			.unwrap()
-			.map(PathBuf::from)
-			.filter(|v| v.is_file())
-			.collect::<HashSet<PathBuf>>();
+		let excludes = match args.values_of(key_names::EXCLUDE) {
+			Some(val) => val
+				.map(PathBuf::from)
+				.filter(|v| {dbg!(&v); v.is_file()})
+				.collect::<HashSet<PathBuf>>(),
+			None => HashSet::new(),
+		};
 
 		// Extract the inputs
-		let mut inputs = args
-			.values_of(key_names::INPUT)
-			.unwrap()
-			.map(PathBuf::from)
-			.filter(|v| v.is_file() || excludes.contains(v))
-			.collect::<Vec<PathBuf>>();
+		let mut inputs: Vec<PathBuf> = vec![];
+
+		if let Some(val) = args.values_of(key_names::INPUT) {
+			val.map(PathBuf::from)
+				.filter(|v| v.is_file() || excludes.contains(v))
+				.for_each(|p| inputs.push(p));
+		};
 
 		// Extract directory inputs
-		args.values_of(key_names::DIR_INPUT).unwrap().for_each(|dir| {
-			walkdir::WalkDir::new(dir)
-				.max_depth(0)
-				.into_iter()
-				.map(|v| v.unwrap().into_path())
-				.filter(|f| excludes.contains(f))
-				.for_each(|p| inputs.push(p))
-		});
+		if let Some(val) = args.values_of(key_names::DIR_INPUT) {
+			val.for_each(|dir| {
+				walkdir::WalkDir::new(dir)
+					.max_depth(1)
+					.into_iter()
+					.map(|v| v.unwrap().into_path())
+					.filter(|f| excludes.contains(f) || f.is_file())
+					.for_each(|p| inputs.push(p))
+			});
+		};
 
 		// Extract recursive directory inputs
-		args.values_of(key_names::DIR_INPUT_REC)
-			.unwrap()
-			.map(|dir| walkdir::WalkDir::new(dir).into_iter())
-			.flatten()
-			.map(|v| v.unwrap().into_path())
-			.filter(|f| excludes.contains(f))
-			.for_each(|p| inputs.push(p));
+		if let Some(val) = args.values_of(key_names::DIR_INPUT_REC) {
+			val.map(|dir| walkdir::WalkDir::new(dir).into_iter())
+				.flatten()
+				.map(|v| v.unwrap().into_path())
+				.filter(|f| excludes.contains(f))
+				.for_each(|p| inputs.push(p));
+		}
 
 		// Extract valueless flags
 		let encrypt = args.is_present(key_names::ENCRYPT);
@@ -148,8 +152,8 @@ impl CommandTrait for Evaluator {
 				continue;
 			}
 
-			let id = match entry.file_name() {
-				Some(name) => name.to_string_lossy().to_string(),
+			let id = match entry.to_str() {
+				Some(name) => name.to_string(),
 				None => "".to_string(),
 			};
 
@@ -180,7 +184,7 @@ impl CommandTrait for Evaluator {
 		pbar.inc(2);
 
 		// Dumping processed data
-		pbar.println(format!("Writing to {}", output_path.to_string_lossy()));
+		pbar.println(format!("Writing to {}", output_path));
 		builder.dump(output_file, &builder_config)?;
 		pbar.inc(3);
 
