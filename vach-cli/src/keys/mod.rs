@@ -114,7 +114,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 		key_names::SOURCE,
 		Arg::with_name(key_names::SOURCE)
 			.long("source")
-			.short("s")
+			.short("z")
 			.value_name(key_names::SOURCE)
 			.help("Treats the entries in a .vach file like regular files and adds them to the input queue")
 			.required(false)

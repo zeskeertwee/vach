@@ -13,7 +13,7 @@ vach repack == vach r
 ## Keys usable in the CLI
  -o 	| --output				-> general target output
  -i 	| --input 				-> general LIST of input sources
- -s 	| --source				-> treats the entries in a .vach file like regular files, but with metadata from the archive. This archive must use the standard `VfACH` magic and must not be encrypted.
+ -z 	| --source				-> treats the entries in a .vach file like regular files, but with metadata from the archive. This archive must use the standard `VfACH` magic and must not be encrypted.
 										it can otherwise be signed and compressed. Just know that the signatures can't be validated. This is an ultra-standard vach archive
 
  -d 	| --directory			-> add all files in a directory into the input queue
@@ -58,7 +58,7 @@ vach pack -o sounds.vach -r ./sounds
 vach pack -o keys.vach -d ./keys -x github.key
 
 # Repack from the given source to the given target, and also add some extra files
-vach pack -s sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15 -m SUNDS
+vach pack -z sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15 -m SUNDS
 
 # Pack using encryption, and sign the data to check for integrity
 vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -h
@@ -95,7 +95,7 @@ vach unpack -i scripts.vach -p generated.pk
 vach pack -o textures.vach -i normals.png [logo.png -c never -v 00] diffuse.png -c always
 
 # Source an encrypted archive
-vach pack -o sounds.vach -i boom.wav death.wav button.wav -s redist.vach kp=redist-keypair.kp
+vach pack -o sounds.vach -i boom.wav death.wav button.wav -z redist.vach kp=redist-keypair.kp
 
 # Source an encrypted archive, using only public key
-vach pack -o sounds.vach -i boom.wav death.wav button.wav -s redist.vach pk=redist-keypair.pk
+vach pack -o sounds.vach -i boom.wav death.wav button.wav -z redist.vach pk=redist-keypair.pk
