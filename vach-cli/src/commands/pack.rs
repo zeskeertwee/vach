@@ -11,6 +11,17 @@ use walkdir;
 use super::CommandTrait;
 use crate::keys::key_names;
 
+enum InputSource {
+	PathBuf(PathBuf),
+	VachResource(Resource, String),
+}
+
+impl From<PathBuf> for InputSource {
+	fn from(pb: PathBuf) -> InputSource {
+		InputSource::PathBuf(pb)
+	}
+}
+
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
@@ -56,12 +67,12 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Extract the inputs
-		let mut inputs: Vec<PathBuf> = vec![];
+		let mut inputs: Vec<InputSource> = vec![];
 
 		if let Some(val) = args.values_of(key_names::INPUT) {
 			val.map(PathBuf::from)
 				.filter(|v| v.is_file() || excludes.contains(v))
-				.for_each(|p| inputs.push(p));
+				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
 		};
 
 		// Extract directory inputs
@@ -72,7 +83,7 @@ impl CommandTrait for Evaluator {
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
 					.filter(|f| !excludes.contains(f) && f.is_file())
-					.for_each(|p| inputs.push(p))
+					.for_each(|p| inputs.push(InputSource::PathBuf(p)))
 			});
 		};
 
@@ -82,7 +93,33 @@ impl CommandTrait for Evaluator {
 				.flatten()
 				.map(|v| v.unwrap().into_path())
 				.filter(|f| !excludes.contains(f) && f.is_file())
-				.for_each(|p| inputs.push(p));
+				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
+		}
+
+		// Extract inputs from the archive
+		let mut archive = None;
+		let mut archive_path = "";
+		if let Some(path) = args.value_of(key_names::SOURCE) {
+			// Storing the path of the archive for reporting purposes
+			archive_path = path;
+			dbg!(archive_path);
+
+			let archive_file = File::open(PathBuf::from(path))?;
+			archive = Some(Archive::from_handle(archive_file)?);
+		};
+
+		if let Some(arch) = &mut archive {
+			let arch_pointer = arch as *mut Archive<File>;
+
+			for (id, _) in arch.entries().iter() {
+				// This safe archive.fetch does not interact with &archive.entries mutably, therefore can not cause "pulling the rug from beneath your feet" problems
+				unsafe {
+					inputs.push(InputSource::VachResource(
+						(*arch_pointer).fetch(id)?,
+						id.clone(),
+					))
+				}
+			}
 		}
 
 		// Read valueless flags
@@ -156,37 +193,47 @@ impl CommandTrait for Evaluator {
 
 		// Process the files
 		for entry in &inputs {
-			if !entry.exists() {
-				pbar.println(format!(
-					"Skipping {}, does not exist!",
-					entry.to_string_lossy()
-				));
-				pbar.inc(1);
-				continue;
-			}
-
-			let id = match entry.to_str() {
-				Some(name) => name.to_string(),
-				None => "".to_string(),
-			};
-
-			pbar.println(format!("Packaging {}", id));
-
-			match File::open(&entry) {
-				Ok(file) => {
-					if let Err(e) = builder.add(file, &id) {
+			match entry {
+				InputSource::VachResource(res, id) => {
+					builder.add(res.data.as_slice(), id)?;
+					pbar.println(format!("Packaging entry from archive: {} @ {}", id, archive_path));
+				}
+				InputSource::PathBuf(path) => {
+					if !path.exists() {
 						pbar.println(format!(
-							"Couldn't add file: {}. {}",
-							entry.to_string_lossy(),
+							"Skipping {}, does not exist!",
+							path.to_string_lossy()
+						));
+
+						pbar.inc(1);
+
+						continue;
+					}
+
+					let id = match path.to_str() {
+						Some(name) => name.to_string(),
+						None => "".to_string(),
+					};
+
+					pbar.println(format!("Packaging {}", id));
+
+					match File::open(&path) {
+						Ok(file) => {
+							if let Err(e) = builder.add(file, &id) {
+								pbar.println(format!(
+									"Couldn't add file: {}. {}",
+									path.to_string_lossy(),
+									e
+								))
+							}
+						}
+						Err(e) => pbar.println(format!(
+							"Couldn't open file {}: {}",
+							path.to_string_lossy(),
 							e
-						))
+						)),
 					}
 				}
-				Err(e) => pbar.println(format!(
-					"Couldn't open file {}: {}",
-					entry.to_string_lossy(),
-					e
-				)),
 			}
 
 			pbar.inc(1);
@@ -201,13 +248,15 @@ impl CommandTrait for Evaluator {
 
 		// Truncate original files
 		if truncate {
-			for entry in inputs {
-				std::fs::remove_file(&entry)?;
+			for entry in &inputs {
+				if let InputSource::PathBuf(buf) = entry {
+					std::fs::remove_file(&buf)?;
 
-				pbar.println(format!(
-					"Truncated original file @ {}",
-					entry.to_string_lossy()
-				));
+					pbar.println(format!(
+						"Truncated original file @ {}",
+						buf.to_string_lossy()
+					));
+				}
 			}
 
 			pbar.inc(3);
