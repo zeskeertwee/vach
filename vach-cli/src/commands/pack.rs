@@ -11,13 +11,13 @@ use walkdir;
 use super::CommandTrait;
 use crate::keys::key_names;
 
-enum InputSource {
+enum InputSource<'a> {
 	PathBuf(PathBuf),
-	VachResource(Resource, String),
+	VachResource(Resource, &'a str),
 }
 
-impl From<PathBuf> for InputSource {
-	fn from(pb: PathBuf) -> InputSource {
+impl<'a> From<PathBuf> for InputSource<'a> {
+	fn from(pb: PathBuf) -> InputSource<'a> {
 		InputSource::PathBuf(pb)
 	}
 }
@@ -116,7 +116,7 @@ impl CommandTrait for Evaluator {
 				unsafe {
 					inputs.push(InputSource::VachResource(
 						(*arch_pointer).fetch(id)?,
-						id.clone(),
+						id,
 					))
 				}
 			}

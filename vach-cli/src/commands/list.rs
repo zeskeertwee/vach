@@ -26,7 +26,7 @@ impl CommandTrait for Evaluator {
 		let file = File::open(archive_path)?;
 		let archive = Archive::with_config(file, &HeaderConfig::new(magic, None))?;
 
-		if archive.entries().len() != 0 {
+		if !archive.entries().is_empty() {
 			let table_entries: Vec<FileTableEntry> = archive
 				.entries()
 				.iter()
