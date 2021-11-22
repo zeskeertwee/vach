@@ -1,7 +1,4 @@
-use std::{
-	convert::TryInto,
-	fs::File,
-};
+use std::{convert::TryInto, fs::File};
 
 use tabled::{Style, Table, Tabled};
 use anyhow::{Result, bail};
@@ -29,18 +26,22 @@ impl CommandTrait for Evaluator {
 		let file = File::open(archive_path)?;
 		let archive = Archive::with_config(file, &HeaderConfig::new(magic, None))?;
 
-		let table_entries: Vec<FileTableEntry> = archive
-			.entries()
-			.iter()
-			.map(|(id, entry)| FileTableEntry {
-				id,
-				size: ByteSize(entry.offset).to_string(),
-                flags: entry.flags
-			})
-			.collect();
+		if archive.entries().len() != 0 {
+			let table_entries: Vec<FileTableEntry> = archive
+				.entries()
+				.iter()
+				.map(|(id, entry)| FileTableEntry {
+					id,
+					size: ByteSize(entry.offset).to_string(),
+					flags: entry.flags,
+				})
+				.collect();
 
-		let table = Table::new(table_entries).with(Style::pseudo_clean());
-		println!("{}", table.to_string());
+			let table = Table::new(table_entries).with(Style::pseudo_clean());
+			println!("{}", table.to_string());
+		} else {
+			println!("<EMPTY ARCHIVE> @ {}", archive_path);
+		}
 
 		Ok(())
 	}
@@ -54,5 +55,5 @@ impl CommandTrait for Evaluator {
 struct FileTableEntry<'a> {
 	id: &'a str,
 	size: String,
-    flags: Flags
+	flags: Flags,
 }
