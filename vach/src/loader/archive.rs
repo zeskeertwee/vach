@@ -202,7 +202,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
 	/// ### `None` case:
 	/// If no entry with the given ID exists then None is returned.
-	pub fn fetch_entry(&mut self, id: &str) -> Option<RegistryEntry> {
+	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
 		match self.entries.get(id) {
 			Some(entry) => Some(entry.clone()),
 			None => None,
