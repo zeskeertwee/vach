@@ -23,7 +23,6 @@ fn main() {
 		 ("list", Some(mtx)) => { commands::LIST_COMMAND.evaluate(mtx) },
 		 ("pack", Some(mtx)) => { commands::PACK_COMMAND.evaluate(mtx) },
 		 ("unpack", Some(mtx)) => { commands::UNPACK_COMMAND.evaluate(mtx) },
-		 ("repack", Some(mtx)) => { commands::REPACK_COMMAND.evaluate(mtx) },
 		 (cmd, _) => panic!("Unknown command, {}", cmd)
 	};
 
