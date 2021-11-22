@@ -195,7 +195,7 @@ impl CommandTrait for Evaluator {
 		pbar.inc(2);
 
 		// Dumping processed data
-		pbar.println(format!("Generated a new archive & {}", output_path));
+		pbar.println(format!("Generated a new archive @ {}", output_path));
 		builder.dump(output_file, &builder_config)?;
 		pbar.inc(3);
 
