@@ -211,7 +211,7 @@ impl CommandTrait for Evaluator {
 					}
 
 					let id = match path.to_str() {
-						Some(name) => name.to_string(),
+						Some(name) => name.trim_start_matches("./").to_string(),
 						None => "".to_string(),
 					};
 
