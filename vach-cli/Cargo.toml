@@ -1,6 +1,6 @@
 [package]
 name = "vach-cli"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A command-line tool to work with .vach files"
