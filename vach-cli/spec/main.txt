@@ -8,11 +8,13 @@ vach unpack == vach u
 vach repack == vach r
 vach keypair == vach k
 vach split == vach s
+vach repack == vach r
 
 ## Keys usable in the CLI
  -o 	| --output				-> general target output
  -i 	| --input 				-> general LIST of input sources
- -s 	| --source				-> treats the entries in a .vach file like regular files, but with metadata from the archive
+ -s 	| --source				-> treats the entries in a .vach file like regular files, but with metadata from the archive. This archive must use the standard `VfACH` magic and must not be encrypted.
+										it can otherwise be signed and compressed. Just know that the signatures can't be validated. This is an ultra-standard vach archive
 
  -d 	| --directory			-> add all files in a directory into the input queue
  -r	| --directory-r		-> same as above, only that it adds files from the directory recursively
