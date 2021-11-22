@@ -58,7 +58,7 @@ vach pack -o sounds.vach -r ./sounds
 vach pack -o keys.vach -d ./keys -x github.key
 
 # Repack from the given source to the given target, and also add some extra files
-vach repack -s sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15 -m SUNDS
+vach pack -s sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15 -m SUNDS
 
 # Pack using encryption, and sign the data to check for integrity
 vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -h
