@@ -18,6 +18,7 @@ pub mod pack;
 pub mod split;
 pub mod list;
 pub mod verify;
+pub mod repack;
 
 lazy_static! {
 	pub static ref KEYPAIR_COMMAND: Box<dyn CommandTrait> = Box::new(keypair::Evaluator);
@@ -26,4 +27,5 @@ lazy_static! {
 	pub static ref LIST_COMMAND: Box<dyn CommandTrait> = Box::new(list::Evaluator);
 	pub static ref UNPACK_COMMAND: Box<dyn CommandTrait> = Box::new(unpack::Evaluator);
 	pub static ref PACK_COMMAND: Box<dyn CommandTrait> = Box::new(pack::Evaluator);
+	pub static ref REPACK_COMMAND: Box<dyn CommandTrait> = Box::new(repack::Evaluator);
 }
