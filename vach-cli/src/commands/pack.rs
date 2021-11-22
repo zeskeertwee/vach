@@ -88,6 +88,7 @@ impl CommandTrait for Evaluator {
 		// Extract valueless flags
 		let encrypt = args.is_present(key_names::ENCRYPT);
 		let hash = args.is_present(key_names::HASH);
+		let truncate = args.is_present(key_names::TRUNCATE);
 
 		// Extract the version information to be set
 		let version = match args.value_of(key_names::VERSION) {
@@ -133,7 +134,7 @@ impl CommandTrait for Evaluator {
 			kp = Some(generated);
 		}
 
-		let pbar = ProgressBar::new(inputs.len() as u64 + 5);
+		let pbar = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
 		pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
 
 		// Build a builder-config using the above extracted data
@@ -154,7 +155,7 @@ impl CommandTrait for Evaluator {
 		);
 
 		// Process the files
-		for entry in inputs {
+		for entry in &inputs {
 			if !entry.exists() {
 				pbar.println(format!(
 					"Skipping {}, does not exist!",
@@ -197,6 +198,21 @@ impl CommandTrait for Evaluator {
 		// Dumping processed data
 		pbar.println(format!("Generated a new archive @ {}", output_path));
 		builder.dump(output_file, &builder_config)?;
+
+		// Truncate original files
+		if truncate {
+			for entry in inputs {
+				std::fs::remove_file(&entry)?;
+
+				pbar.println(format!(
+					"Truncated original file @ {}",
+					entry.to_string_lossy()
+				));
+			}
+
+			pbar.inc(3);
+		};
+
 		pbar.inc(3);
 
 		// SUCCESS

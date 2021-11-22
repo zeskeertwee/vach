@@ -37,6 +37,7 @@ impl CommandTrait for Evaluator {
 			None => *vach::DEFAULT_MAGIC,
 		};
 
+		// Attempting to extract a public key from a -p or -k input
 		let public_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = match File::open(path) {
@@ -55,13 +56,18 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
+		// Whether to truncate the original archive after extraction
+		let truncate = args.is_present(key_names::TRUNCATE);
+
 		let input_file = match File::open(input_path) {
 			Ok(it) => it,
 			Err(err) => bail!("IOError: {} @ {}", err, input_path),
 		};
 
+		// Generate HeaderConfig using given magic and public key
 		let header_config = HeaderConfig::new(magic, public_key);
 
+		// Parse then extract archive
 		let mut archive = match Archive::with_config(input_file, &header_config) {
 			 Ok(archive) => archive,
 			 Err(err) => match err {
@@ -71,7 +77,15 @@ impl CommandTrait for Evaluator {
 			 },
 		};
 
-		extract_archive(&mut archive, output_path)
+		extract_archive(&mut archive, output_path)?;
+
+		// Delete original archive
+		if truncate {
+			println!("Truncating original archive @ {}", &input_path);
+			std::fs::remove_file(input_path)?;
+		};
+
+		Ok(())
 	}
 
 	fn version(&self) -> &'static str {
