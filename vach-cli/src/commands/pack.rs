@@ -85,7 +85,7 @@ impl CommandTrait for Evaluator {
 				.for_each(|p| inputs.push(p));
 		}
 
-		// Extract valueless flags
+		// Read valueless flags
 		let encrypt = args.is_present(key_names::ENCRYPT);
 		let hash = args.is_present(key_names::HASH);
 		let truncate = args.is_present(key_names::TRUNCATE);

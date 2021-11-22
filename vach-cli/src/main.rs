@@ -1,9 +1,8 @@
+// Fundamental modules
 mod commands;
 mod keys;
 mod utils;
 mod app;
-
-use std::env;
 
 // NOTE: Unwrapping in a CLI is a no-no. Since throwing Rust developer errors at average users is mental overload
 fn main() {
@@ -14,7 +13,7 @@ fn main() {
 	let matches = app.get_matches();
 
 	if matches.is_present(key_names::QUIET) {
-		env::set_var("RUST_LOG", "error");
+		std::env::set_var("RUST_LOG", "error");
 	};
 
 	let res = match matches.subcommand() {
