@@ -28,7 +28,7 @@ const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
 #[test]
 fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
-	let mut archive = Archive::from_handle(target)?;
+	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = Flags::from_bits(entry.flags.bits());
 	assert_eq!(flags.bits(), entry.flags.bits());
