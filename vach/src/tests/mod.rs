@@ -189,7 +189,7 @@ fn gen_keypair() -> InternalResult<()> {
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
-	let mut build_config = BuilderConfig::default().callback(Box::new(|_,_, d| {
+	let mut build_config = BuilderConfig::default().callback(Box::new(|_, _, d| {
 		dbg!(&d);
 	}));
 	build_config.load_keypair(File::open(KEYPAIR)?)?;

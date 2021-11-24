@@ -17,9 +17,7 @@ impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
 		let mut output_path = match args.value_of(key_names::OUTPUT) {
 			Some(path) => path.to_string(),
-			None => {
-				KEYPAIR_FILE_NAME.to_string()
-			}
+			None => KEYPAIR_FILE_NAME.to_string(),
 		};
 
 		let to_split = args.is_present(key_names::SPLIT_KEY);
@@ -35,13 +33,22 @@ impl CommandTrait for Evaluator {
 			pk_path.push_str(".pk");
 
 			utils::create_and_write_to_file(&sk_path, &kp.secret.to_bytes())?;
-			info!("Secret Key successfully generated and saved in: {}", sk_path);
+			info!(
+				"Secret Key successfully generated and saved in: {}",
+				sk_path
+			);
 
 			utils::create_and_write_to_file(&pk_path, &kp.public.to_bytes())?;
-			info!("Public Key successfully generated and saved in: {}", pk_path);
+			info!(
+				"Public Key successfully generated and saved in: {}",
+				pk_path
+			);
 		} else {
 			utils::create_and_write_to_file(&output_path, &kp.to_bytes())?;
-			info!("KeyPair successfully generated and saved in: {}", output_path);
+			info!(
+				"KeyPair successfully generated and saved in: {}",
+				output_path
+			);
 		}
 
 		Ok(())

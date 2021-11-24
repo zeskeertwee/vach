@@ -79,7 +79,12 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut target = io::Cursor::new(Vec::<u8>::new());
 
 	{
-		let mut builder = Builder::new().template(Leaf::default().encrypt(true).sign(false).compress(CompressMode::Detect));
+		let mut builder = Builder::new().template(
+			Leaf::default()
+				.encrypt(true)
+				.sign(false)
+				.compress(CompressMode::Detect),
+		);
 
 		// Add data
 		builder.add(data_1, "d1").unwrap();

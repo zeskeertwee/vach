@@ -148,13 +148,7 @@ impl Header {
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: [
-				buffer[0],
-				buffer[1],
-				buffer[2],
-				buffer[3],
-				buffer[4],
-			],
+			magic: [buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]],
 			// Read flags, u16 from [u8;2]
 			flags: Flags::from_bits(u16::from_le_bytes([buffer[5], buffer[6]])),
 			// Read version, u16 from [u8;2]

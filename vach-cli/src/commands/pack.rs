@@ -113,12 +113,7 @@ impl CommandTrait for Evaluator {
 
 			for (id, _) in arch.entries().iter() {
 				// This safe archive.fetch does not interact with &archive.entries mutably, therefore can not cause "pulling the rug from beneath your feet" problems
-				unsafe {
-					inputs.push(InputSource::VachResource(
-						(*arch_pointer).fetch(id)?,
-						id,
-					))
-				}
+				unsafe { inputs.push(InputSource::VachResource((*arch_pointer).fetch(id)?, id)) }
 			}
 		}
 
@@ -196,7 +191,9 @@ impl CommandTrait for Evaluator {
 			match entry {
 				InputSource::VachResource(res, id) => {
 					builder.add(res.data.as_slice(), id)?;
-					pbar.println(format!("Packaging entry from archive: {} @ {}", id, archive_path));
+
+					let message = format!("Packaging entry from archive: {} @ {}", id, archive_path);
+					pbar.println(message);
 				}
 				InputSource::PathBuf(path) => {
 					if !path.exists() {

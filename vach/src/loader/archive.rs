@@ -54,9 +54,7 @@ impl<T: Seek + Read> Archive<T> {
 	///  - The archive fails to validate
 	///  - `io` errors
 	///  - If any `ID`s are not valid UTF-8
-	pub fn with_config(
-		mut handle: T, config: &HeaderConfig,
-	) -> InternalResult<Archive<T>> {
+	pub fn with_config(mut handle: T, config: &HeaderConfig) -> InternalResult<Archive<T>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 

@@ -16,9 +16,9 @@ pub enum CompressMode {
 }
 
 impl Default for CompressMode {
-    fn default() -> CompressMode {
-        CompressMode::Never
-    }
+	fn default() -> CompressMode {
+		CompressMode::Never
+	}
 }
 
 /// A wrapper around an `io::Read` handle.

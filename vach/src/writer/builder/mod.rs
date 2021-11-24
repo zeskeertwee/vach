@@ -129,21 +129,17 @@ impl<'a> Builder<'a> {
 		let mut reg_buffer = Vec::new();
 
 		// Calculate the size of the registry and check for `Leaf`s that request for encryption
-		let mut leaf_offset = self
-			.leafs
-			.iter()
-			.map(|leaf| {
-				// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-				leaf.id.len()
-					+ RegistryEntry::MIN_SIZE
-					+ (if config.keypair.is_some() {
-						crate::SIGNATURE_LENGTH
-					} else {
-						0
-					})
-			})
-			.reduce(|l1, l2| l1 + l2)
-			.unwrap_or(0) + Header::BASE_SIZE;
+		let mut leaf_offset =
+			self.leafs
+				.iter()
+				.map(|leaf| {
+					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
+					leaf.id.len()
+						+ RegistryEntry::MIN_SIZE
+						+ (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 })
+				})
+				.reduce(|l1, l2| l1 + l2)
+				.unwrap_or(0) + Header::BASE_SIZE;
 
 		// Start at the very start of the file
 		target.seek(SeekFrom::Start(0))?;

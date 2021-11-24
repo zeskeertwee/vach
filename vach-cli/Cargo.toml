@@ -2,28 +2,17 @@
 name = "vach-cli"
 version = "0.3.0"
 edition = "2018"
-authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
+authors = [
+	"Jasper Fortuin <zeskeertwee@gmail.com>",
+	"Newton Toto <nyachiengatoto@gmail.com>",
+]
 description = "A command-line tool to work with .vach files"
 license = "GPL-2.0"
 repository = "https://github.com/zeskeertwee/virtfs-rs"
-categories = [
-	"command-line-utilities",
-	"encoding",
-	"game-development"
-]
-keywords = [
-	"archive",
-	"command-line",
-	"vach",
-	"assets",
-	"game"
-]
+categories = ["command-line-utilities", "encoding", "game-development"]
+keywords = ["archive", "command-line", "vach", "assets", "game"]
 readme = "README.md"
-include = [
-	"src/*",
-	"Cargo.toml",
-	"../README.md"
-]
+include = ["src/*", "Cargo.toml", "../README.md"]
 [[bin]]
 name = "vach"
 path = "src/main.rs"
@@ -36,6 +25,6 @@ lazy_static = "1.4.0"
 tabled = "0.3.0"
 log = "0.4.14"
 pretty_env_logger = "0.4.0"
-vach = {	path = "../vach"	}
+vach = { path = "../vach" }
 walkdir = "2.3.2"
 bytesize = "1.1.0"
