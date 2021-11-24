@@ -60,20 +60,27 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a, 'a>>) -> App<'a, 'a>
 				.author(AUTHORS)
 				.version(commands::pack::VERSION)
 				.about("Packages all input files into a .vach archive")
-				.arg(key_map.get(key_names::INPUT).unwrap())
+				// Output file
 				.arg(key_map.get(key_names::OUTPUT).unwrap())
-				.arg(key_map.get(key_names::SOURCE).unwrap())
-				.arg(key_map.get(key_names::FLAGS).unwrap())
-				.arg(key_map.get(key_names::KEYPAIR).unwrap())
-				.arg(key_map.get(key_names::SECRET_KEY).unwrap())
-				.arg(key_map.get(key_names::COMPRESS_MODE).unwrap())
-				.arg(key_map.get(key_names::MAGIC).unwrap())
+
+				// Data sources
+				.arg(key_map.get(key_names::INPUT).unwrap())
 				.arg(key_map.get(key_names::DIR_INPUT).unwrap())
 				.arg(key_map.get(key_names::DIR_INPUT_REC).unwrap())
+				.arg(key_map.get(key_names::SOURCE).unwrap())
+				.arg(key_map.get(key_names::EXCLUDE).unwrap())
+
+				// Crypto shit
+				.arg(key_map.get(key_names::KEYPAIR).unwrap())
+				.arg(key_map.get(key_names::SECRET_KEY).unwrap())
+
+				// Modifiers
+				.arg(key_map.get(key_names::FLAGS).unwrap())
+				.arg(key_map.get(key_names::COMPRESS_MODE).unwrap())
+				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::ENCRYPT).unwrap())
 				.arg(key_map.get(key_names::HASH).unwrap())
 				.arg(key_map.get(key_names::VERSION).unwrap())
-				.arg(key_map.get(key_names::EXCLUDE).unwrap())
 				.arg(key_map.get(key_names::TRUNCATE).unwrap()),
 		)
 }
