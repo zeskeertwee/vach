@@ -34,6 +34,21 @@ pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<esdalek::Public
 
 	match esdalek::PublicKey::from_bytes(&keypair_bytes) {
 		Ok(pk) => Ok(pk),
-		Err(err) => return Err(InternalError::ValidationError(err.to_string())),
+		Err(err) => Err(InternalError::ValidationError(err.to_string())),
+	}
+}
+/// Read and parse a secret key from a read stream
+///
+/// ### Errors
+///  - If parsing of the secret key fails
+///  - `io` errors
+pub fn read_secret_key<T: Read>(mut handle: T) -> InternalResult<esdalek::SecretKey> {
+	let mut secret_bytes = [0; crate::SECRET_KEY_LENGTH];
+
+	handle.read_exact(&mut secret_bytes)?;
+
+	match esdalek::SecretKey::from_bytes(&secret_bytes) {
+		Ok(sk) => Ok(sk),
+		Err(err) => Err(InternalError::ValidationError(err.to_string())),
 	}
 }

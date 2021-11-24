@@ -28,7 +28,7 @@ const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
 #[test]
 fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
-	let mut archive = Archive::from_handle(target)?;
+	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = Flags::from_bits(entry.flags.bits());
 	assert_eq!(flags.bits(), entry.flags.bits());
@@ -189,7 +189,9 @@ fn gen_keypair() -> InternalResult<()> {
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
-	let mut build_config = BuilderConfig::default();
+	let mut build_config = BuilderConfig::default().callback(Box::new(|_,_, d| {
+		dbg!(&d);
+	}));
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
 	builder.add_dir(
@@ -306,8 +308,12 @@ fn edcryptor_test() -> InternalResult<()> {
 
 #[test]
 fn builder_with_encryption() -> InternalResult<()> {
-	let mut builder =
-		Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
+	let mut builder = Builder::new().template(
+		Leaf::default()
+			.encrypt(true)
+			.compress(CompressMode::Never)
+			.sign(true),
+	);
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -319,6 +325,7 @@ fn builder_with_encryption() -> InternalResult<()> {
 		"Number of bytes written: {}, into encrypted and fully compressed archive.",
 		builder.dump(&mut target, &build_config)?
 	);
+
 	Ok(())
 }
 
@@ -390,8 +397,8 @@ fn cyclic_linked_leafs() {
 	// Assert that this causes an error, [Cyclic Linked Leafs]
 	if let Err(err) = archive.fetch("d1_link") {
 		match err {
-			 InternalError::CyclicLinkReferenceError(_, _) => (),
-			 _ => panic!("Unrecognized error. Expected cyclic linked leaf error"),
+			InternalError::CyclicLinkReferenceError(_, _) => (),
+			_ => panic!("Unrecognized error. Expected cyclic linked leaf error"),
 		}
 	};
 }

@@ -1,44 +1,53 @@
-use std::path::PathBuf;
-use anyhow::{Result, bail};
+use anyhow::Result;
 use vach::utils::gen_keypair;
-use std::fs::File;
-use std::io::Write;
 use log::info;
 
-const KEYPAIR_FILE_NAME: &str = "key.pair";
-const PUBLIC_KEY_FILE_NAME: &str = "key.pub";
-const SECRET_KEY_FILE_NAME: &str = "key.prv";
+use crate::utils;
+use crate::keys::key_names;
 
-pub fn handle_keypair_command(save_folder: PathBuf) -> Result<()> {
-	let keypair = gen_keypair();
-	let pair_path = append_to_path(&save_folder, KEYPAIR_FILE_NAME);
-	let public_path = append_to_path(&save_folder, PUBLIC_KEY_FILE_NAME);
-	let secret_path = append_to_path(&save_folder, SECRET_KEY_FILE_NAME);
+use super::CommandTrait;
 
-	create_and_write_to_file(&pair_path, &keypair.to_bytes())?;
-	create_and_write_to_file(&public_path, &keypair.public.to_bytes())?;
-	create_and_write_to_file(&secret_path, &keypair.secret.to_bytes())?;
+// Default keypair write destination
+const KEYPAIR_FILE_NAME: &str = "keypair.kp";
 
-	info!(
-		"Keypair successfully generated and saved in {}",
-		save_folder.to_string_lossy()
-	);
+/// This command is used to generate keypair
+pub struct Evaluator;
 
-	Ok(())
-}
+impl CommandTrait for Evaluator {
+	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
+		let mut output_path = match args.value_of(key_names::OUTPUT) {
+			Some(path) => path.to_string(),
+			None => {
+				KEYPAIR_FILE_NAME.to_string()
+			}
+		};
 
-fn append_to_path(original: &PathBuf, append: &str) -> PathBuf {
-	let mut copy = original.clone();
-	copy.push(append);
-	copy
-}
+		let to_split = args.is_present(key_names::SPLIT_KEY);
+		let kp = gen_keypair();
 
-fn create_and_write_to_file(path: &PathBuf, data: &[u8]) -> Result<()> {
-	if path.exists() {
-		bail!("The file {} already exists!", path.to_string_lossy());
+		if to_split {
+			output_path = output_path.trim_end_matches(".kp").to_string();
+
+			let mut sk_path = output_path.clone();
+			sk_path.push_str(".sk");
+
+			let mut pk_path = output_path;
+			pk_path.push_str(".pk");
+
+			utils::create_and_write_to_file(&sk_path, &kp.secret.to_bytes())?;
+			info!("Secret Key successfully generated and saved in: {}", sk_path);
+
+			utils::create_and_write_to_file(&pk_path, &kp.public.to_bytes())?;
+			info!("Public Key successfully generated and saved in: {}", pk_path);
+		} else {
+			utils::create_and_write_to_file(&output_path, &kp.to_bytes())?;
+			info!("KeyPair successfully generated and saved in: {}", output_path);
+		}
+
+		Ok(())
 	}
 
-	let mut file = File::create(path)?;
-	file.write_all(data)?;
-	Ok(())
+	fn version(&self) -> &'static str {
+		"0.0.1"
+	}
 }

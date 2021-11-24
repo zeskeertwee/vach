@@ -15,6 +15,12 @@ pub enum CompressMode {
 	Never,
 }
 
+impl Default for CompressMode {
+    fn default() -> CompressMode {
+        CompressMode::Never
+    }
+}
+
 /// A wrapper around an `io::Read` handle.
 /// Allows for multiple types of data implementing `io::Read` to be used under one structure.
 /// Also used to configure how data will be processed and embedded into an write target.
