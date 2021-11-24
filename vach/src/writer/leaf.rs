@@ -5,7 +5,7 @@ use std::{io::Read, fmt};
 
 /// Configures how `Leaf`s should be compressed.
 /// Default is `CompressMode::Never`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressMode {
 	/// The data will always be compressed
 	Always,
@@ -111,6 +111,8 @@ impl<'a> Leaf<'a> {
 	///    .compress(CompressMode::Always);
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
+	/// assert_eq!(&leaf.content_version, &template.content_version);
+	/// assert_eq!(&leaf.compress, &template.compress);
 	/// ```
 	pub fn template(self, other: &Leaf<'a>) -> Self {
 		Leaf {
