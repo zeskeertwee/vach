@@ -36,7 +36,7 @@ impl Debug for BuilderConfig {
 			.field(
 				"progress_callback",
 				if self.progress_callback.is_some() {
-					&"[Dynamically dispatched callback]"
+					&"dyn Fn(id: &String, glob_size: usize, reg_entry: &RegistryEntry)"
 				} else {
 					&"None"
 				},
