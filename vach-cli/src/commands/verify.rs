@@ -9,6 +9,8 @@ use anyhow::{Result, bail};
 use super::CommandTrait;
 use crate::keys::key_names;
 
+pub const VERSION: &str = "0.0.1";
+
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
@@ -34,9 +36,5 @@ impl CommandTrait for Evaluator {
 		};
 
 		Ok(())
-	}
-
-	fn version(&self) -> &'static str {
-		"0.0.1"
 	}
 }

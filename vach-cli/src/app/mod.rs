@@ -2,18 +2,20 @@ use std::collections::HashMap;
 use clap::{App, Arg, SubCommand};
 
 use crate::keys::key_names;
+use crate::commands;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a, 'a>>) -> App<'a, 'a> {
 	App::new("vach-cli")
-		.author(AUTHORS)
+		.author(self::AUTHORS)
 		.about("A command-line interface for unpacking and packing .vach files")
+		.version(self::VERSION)
 		.subcommand(
 			SubCommand::with_name("keypair")
 				.author(AUTHORS)
-				.version(VERSION)
+				.version(commands::keypair::VERSION)
 				.about("Generate a keypair (public & secret key)")
 				.arg(key_map.get(key_names::OUTPUT).unwrap())
 				.arg(key_map.get(key_names::SPLIT_KEY).unwrap()),
@@ -21,14 +23,14 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a, 'a>>) -> App<'a, 'a>
 		.subcommand(
 			SubCommand::with_name("split")
 				.author(AUTHORS)
-				.version(VERSION)
+				.version(commands::split::VERSION)
 				.about("Splits a keypair into it's respective secret and public keys")
 				.arg(key_map.get(key_names::INPUT).unwrap()),
 		)
 		.subcommand(
 			SubCommand::with_name("verify")
 				.author(AUTHORS)
-				.version(VERSION)
+				.version(commands::verify::VERSION)
 				.about("Verifies the validity of a .vach file")
 				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::INPUT).unwrap()),
@@ -36,7 +38,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a, 'a>>) -> App<'a, 'a>
 		.subcommand(
 			SubCommand::with_name("list")
 				.author(AUTHORS)
-				.version(VERSION)
+				.version(commands::list::VERSION)
 				.about("Lists all the entries in a .vach archive and their metadata")
 				.arg(key_map.get(key_names::INPUT).unwrap())
 				.arg(key_map.get(key_names::MAGIC).unwrap()),
@@ -44,7 +46,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a, 'a>>) -> App<'a, 'a>
 		.subcommand(
 			SubCommand::with_name("unpack")
 				.author(AUTHORS)
-				.version(VERSION)
+				.version(commands::unpack::VERSION)
 				.about("Unpacks a .vach archive")
 				.arg(key_map.get(key_names::OUTPUT).unwrap())
 				.arg(key_map.get(key_names::INPUT).unwrap())
@@ -56,7 +58,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a, 'a>>) -> App<'a, 'a>
 		.subcommand(
 			SubCommand::with_name("pack")
 				.author(AUTHORS)
-				.version(VERSION)
+				.version(commands::pack::VERSION)
 				.about("Packages all input files into a .vach archive")
 				.arg(key_map.get(key_names::INPUT).unwrap())
 				.arg(key_map.get(key_names::OUTPUT).unwrap())

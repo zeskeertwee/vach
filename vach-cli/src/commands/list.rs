@@ -8,6 +8,9 @@ use bytesize::ByteSize;
 use super::CommandTrait;
 use crate::keys::key_names;
 
+
+pub const VERSION: &str = "0.0.1";
+
 /// This command lists the entries in an archive in tabulated form
 pub struct Evaluator;
 
@@ -44,10 +47,6 @@ impl CommandTrait for Evaluator {
 		}
 
 		Ok(())
-	}
-
-	fn version(&self) -> &'static str {
-		"0.0.1"
 	}
 }
 

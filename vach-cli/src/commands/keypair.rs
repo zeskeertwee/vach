@@ -9,6 +9,7 @@ use super::CommandTrait;
 
 // Default keypair write destination
 const KEYPAIR_FILE_NAME: &str = "keypair.kp";
+pub const VERSION: &str = "0.0.1";
 
 /// This command is used to generate keypair
 pub struct Evaluator;
@@ -52,9 +53,5 @@ impl CommandTrait for Evaluator {
 		}
 
 		Ok(())
-	}
-
-	fn version(&self) -> &'static str {
-		"0.0.1"
 	}
 }

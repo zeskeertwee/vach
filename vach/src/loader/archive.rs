@@ -114,6 +114,7 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
 	) -> InternalResult<(Flags, u8, bool)> {
+		// Literally the hottest function in the block (🕶)
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
@@ -153,6 +154,7 @@ impl<T: Seek + Read> Archive<T> {
 					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id)));
 				}
 			}
+
 			// 2: Decompression layer
 			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 				let mut rdr = lz4::frame::FrameDecoder::new(raw.as_slice());
@@ -161,6 +163,7 @@ impl<T: Seek + Read> Archive<T> {
 
 				raw = buffer;
 			};
+
 			// 3: Deref layer, dereferences link leafs
 			// NOTE: This may break the upcoming cache functionality in `vf`. So `vf` must check for linked `Leaf`s
 			if entry.flags.contains(Flags::LINK_FLAG) {

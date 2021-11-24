@@ -8,7 +8,6 @@ const PROGRESS_BAR_STYLE: &str = "{wide_bar} {pos:>7}/{len:7} ETA {eta_precise}"
 // Trait that must be implemented by all subcommands
 pub trait CommandTrait: Sync {
 	fn evaluate(&self, args: &ArgMatches) -> Result<()>;
-	fn version(&self) -> &'static str;
 }
 
 // All sub-commands are defined in the below modules

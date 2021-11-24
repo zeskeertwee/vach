@@ -22,6 +22,8 @@ impl<'a> From<PathBuf> for InputSource<'a> {
 	}
 }
 
+pub const VERSION: &str = "0.0.1";
+
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
@@ -265,9 +267,5 @@ impl CommandTrait for Evaluator {
 		pbar.finish_and_clear();
 
 		Ok(())
-	}
-
-	fn version(&self) -> &'static str {
-		"0.0.1"
 	}
 }

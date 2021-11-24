@@ -7,6 +7,8 @@ use vach::utils::read_keypair;
 use super::CommandTrait;
 use crate::{keys::key_names, utils};
 
+pub const VERSION: &str = "0.0.1";
+
 /// This command splits an existing valid keypair into it's public and secret key parts
 pub struct Evaluator;
 
@@ -42,9 +44,5 @@ impl CommandTrait for Evaluator {
 		);
 
 		Ok(())
-	}
-
-	fn version(&self) -> &'static str {
-		"0.0.1"
 	}
 }

@@ -13,6 +13,7 @@ categories = ["command-line-utilities", "encoding", "game-development"]
 keywords = ["archive", "command-line", "vach", "assets", "game"]
 readme = "README.md"
 include = ["src/*", "Cargo.toml", "../README.md"]
+
 [[bin]]
 name = "vach"
 path = "src/main.rs"
