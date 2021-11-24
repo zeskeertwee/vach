@@ -36,8 +36,9 @@ pub struct Leaf<'a> {
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
 	pub encrypt: bool,
-	/// Whether to include a signature with this `Leaf`, defaults to false
-	/// If set to true then a hash generated and validated when loaded
+	/// Whether to include a signature with this `Leaf`, defaults to false.
+	/// If set to true then a hash generated and validated when loaded.
+	/// > *NOTE:* **Turning `sign` on severely hurts performance for making `Archive::fetch(---)`**.
 	pub sign: bool,
 	/// If a `Leaf` has a link_mode of Some("dw"), then this leaf simply routes the data pointed by the adjacent Leaf with the ID "dw".
 	/// Use this if you want to have multiple pointers|registry entries aliasing to the same data.
@@ -48,7 +49,7 @@ pub struct Leaf<'a> {
 impl<'a> fmt::Debug for Leaf<'a> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("Leaf")
-			.field("handle", &"Dynamically dispatched handle")
+			.field("handle", &"[Box<dyn io::Read>]")
 			.field("id", &self.id)
 			.field("content_version", &self.content_version)
 			.field("compress", &self.compress)
@@ -111,13 +112,13 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
 	/// ```
-	pub fn template(mut self, other: &Leaf) -> Self {
-		self.compress = other.compress;
-		self.content_version = other.content_version;
-		self.flags = other.flags;
-		self.encrypt = other.encrypt;
-		self.sign = other.sign;
-		self
+	pub fn template(self, other: &Leaf<'a>) -> Self {
+		Leaf {
+			handle: self.handle,
+			id: self.id,
+			link_mode: self.link_mode,
+			..*other
+		}
 	}
 
 	// Setters
