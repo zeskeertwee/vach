@@ -31,8 +31,11 @@ fn custom_bitflags() -> InternalResult<()> {
 	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = Flags::from_bits(entry.flags.bits());
+
 	assert_eq!(flags.bits(), entry.flags.bits());
 	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
+
+	dbg!(flags);
 
 	Ok(())
 }

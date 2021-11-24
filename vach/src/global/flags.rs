@@ -122,6 +122,6 @@ impl fmt::Debug for Flags {
 		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
 		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
 
-		write!(f, "Flags[{}{}{}]: {:#016b}", compressed, encrypted, signed, self.bits)
+		write!(f, "Flags[{}{}{}]: <{}u16 : {:#016b}>", compressed, encrypted, signed, self.bits, self.bits)
 	}
 }
