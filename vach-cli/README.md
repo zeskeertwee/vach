@@ -171,7 +171,6 @@ vach verify -i textures.vach -m TXTRS
 > Key-pair generation command
 
 ```shell
-# Simplest command
 vach keypair -o keypair.kp
 
 # Splits the keypair into it's secret and public components
