@@ -96,7 +96,6 @@ builder.dump(&mut target, &config).unwrap();
 As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/), you could refer to their docs to read further about them.
 
 ```
-use vach;
 use vach::prelude::{Keypair, SecretKey, PublicKey};
 use vach::utils::gen_keypair;
 
