@@ -15,7 +15,7 @@ use ed25519_dalek::Signer;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
-	leafs: Vec<Leaf<'a>>,
+	pub(crate) leafs: Vec<Leaf<'a>>,
 	pub(crate) id_set: HashSet<String>,
 	leaf_template: Leaf<'a>,
 }
@@ -47,6 +47,12 @@ impl<'a> Builder<'a> {
 		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
 		self.add_leaf(leaf)?;
 		Ok(())
+	}
+
+	/// Removes all the `Leaf`s from the `Builder`. Leaves the `template` intact. Use this to re-use `Builder`s instead of instantiating new ones
+	pub fn clear(&mut self) {
+		self.id_set.clear();
+		self.leafs.clear();
 	}
 
 	/// Loads all files from a directory, parses them into `Leaf`s and appends them into the processing queue.

@@ -25,7 +25,9 @@ impl Default for CompressMode {
 /// Allows for multiple types of data implementing `io::Read` to be used under one structure.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
-	pub(crate) handle: Box<dyn Read + 'a>, // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+	// The lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+	pub(crate) handle: Box<dyn Read + 'a>,
+
 	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
@@ -40,9 +42,8 @@ pub struct Leaf<'a> {
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts performance for making `Archive::fetch(---)`**.
 	pub sign: bool,
-	/// If a `Leaf` has a link_mode of Some("dw"), then this leaf simply routes the data pointed by the adjacent Leaf with the ID "dw".
-	/// Use this if you want to have multiple pointers|registry entries aliasing to the same data.
-	/// The handle of a link leaf stores the ID of the aliased leaf.
+	/// If a `Leaf` has a link_mode of `Some("dw")`, then the leaf simply points to the Leaf with the ID "dw".
+	/// Use this if you want to have multiple entries aliasing the same data.
 	pub link_mode: Option<String>,
 }
 
