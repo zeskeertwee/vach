@@ -55,7 +55,7 @@ impl<'a> Builder<'a> {
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
-	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> InternalResult<()> {
+	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf<'a>>) -> InternalResult<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;

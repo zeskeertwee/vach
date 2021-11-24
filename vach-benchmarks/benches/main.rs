@@ -39,7 +39,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut h_config = HeaderConfig::default().magic(*MAGIC);
 	h_config.load_public_key(&keypair_bytes[32..]).unwrap();
 
-	// Data to be written
+	/* BUILDER::DUMP(---) BENCHMARKS */
 	let data_1 = b"Around The World, Fatter wetter stronker" as &[u8];
 	let data_2 = b"Imagine if this made sense" as &[u8];
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
@@ -76,15 +76,15 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		});
 	});
 
+	/* ARCHIVE::FETCH(---) BENCHMARKS */
 	let mut target = io::Cursor::new(Vec::<u8>::new());
+	let template = Leaf::default()
+		.encrypt(true)
+		.sign(false)
+		.compress(CompressMode::Detect);
 
 	{
-		let mut builder = Builder::new().template(
-			Leaf::default()
-				.encrypt(true)
-				.sign(false)
-				.compress(CompressMode::Detect),
-		);
+		let mut builder = Builder::new().template(template);
 
 		// Add data
 		builder.add(data_1, "d1").unwrap();
