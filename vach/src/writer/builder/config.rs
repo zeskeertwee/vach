@@ -14,10 +14,10 @@ pub struct BuilderConfig {
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
-	/// An optional callback that is called every time a `Leaf` finishes processing
+	/// An optional callback that is called every time a `Leaf` finishes processing.
 	/// The type signature is:
 	/// ```ignore
-	/// type OptionalCallback = Option<Box<dyn Fn(&String, usize, &RegistryEntry)>>;
+	/// type OptionalCallback = Option<Box<dyn Fn(id: &String, glob_size: usize, reg_entry: &RegistryEntry)>>;
 	/// ```
 	///
 	/// Usage:
