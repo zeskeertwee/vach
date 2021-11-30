@@ -23,7 +23,8 @@ fn main() {
 		("list", Some(mtx)) => commands::LIST_COMMAND.evaluate(mtx),
 		("pack", Some(mtx)) => commands::PACK_COMMAND.evaluate(mtx),
 		("unpack", Some(mtx)) => commands::UNPACK_COMMAND.evaluate(mtx),
-		(cmd, _) => panic!("Unknown command, {}", cmd),
+		("", _) => Ok(println!("vach-cli: Run `vach --help` for usage")),
+		(cmd, _) => Err(anyhow::anyhow!("[Unknown Command]: {}", cmd)),
 	};
 
 	if let Err(err) = res {
