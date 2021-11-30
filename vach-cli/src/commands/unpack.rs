@@ -6,8 +6,6 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 use vach::prelude::*;
-use anyhow::{Result, bail};
-use log::info;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use super::CommandTrait;
@@ -19,10 +17,10 @@ pub const VERSION: &str = "0.0.1";
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
-	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
+	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		let input_path = match args.value_of(key_names::INPUT) {
 			Some(path) => path,
-			None => bail!("Please provide an input path using the -i or --input key"),
+			None => anyhow::bail!("Please provide an input path using the -i or --input key"),
 		};
 
 		let output_path = match args.value_of(key_names::OUTPUT) {
@@ -31,7 +29,7 @@ impl CommandTrait for Evaluator {
 		};
 
 		if output_path.is_file() {
-			bail!("Please provide a directory|folder path as the value of -o | --output")
+			anyhow::bail!("Please provide a directory|folder path as the value of -o | --output")
 		};
 
 		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
@@ -44,7 +42,7 @@ impl CommandTrait for Evaluator {
 			Some(path) => {
 				let file = match File::open(path) {
 					Ok(it) => it,
-					Err(err) => bail!("IOError: {} @ {}", err, path),
+					Err(err) => anyhow::bail!("IOError: {} @ {}", err, path),
 				};
 
 				Some(vach::utils::read_keypair(file)?.public)
@@ -63,7 +61,7 @@ impl CommandTrait for Evaluator {
 
 		let input_file = match File::open(input_path) {
 			Ok(it) => it,
-			Err(err) => bail!("IOError: {} @ {}", err, input_path),
+			Err(err) => anyhow::bail!("IOError: {} @ {}", err, input_path),
 		};
 
 		// Generate HeaderConfig using given magic and public key
@@ -73,9 +71,9 @@ impl CommandTrait for Evaluator {
 		let mut archive = match Archive::with_config(input_file, &header_config) {
 			 Ok(archive) => archive,
 			 Err(err) => match err {
-				  InternalError::NoKeypairError(_) => bail!("Please provide a public key or a keypair for use in decryption or signature verification"),
-				  InternalError::ValidationError(err) => bail!("Unable to validate the archive: {}", err),
-				  err => bail!("Encountered an error: {}", err.to_string())
+				  InternalError::NoKeypairError(_) => anyhow::bail!("Please provide a public key or a keypair for use in decryption or signature verification"),
+				  InternalError::ValidationError(err) => anyhow::bail!("Unable to validate the archive: {}", err),
+				  err => anyhow::bail!("Encountered an error: {}", err.to_string())
 			 },
 		};
 
@@ -91,7 +89,7 @@ impl CommandTrait for Evaluator {
 	}
 }
 
-fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBuf) -> Result<()> {
+fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBuf) -> anyhow::Result<()> {
 	// For measuring the time difference
 	let time = Instant::now();
 
@@ -142,7 +140,7 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 
 	// Finished extracting
 	pbar.finish_and_clear();
-	info!(
+	log::info!(
 		"Extracted {} files in {}s",
 		archive.entries().len(),
 		time.elapsed().as_secs_f64()

@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::convert::TryInto;
 use std::collections::HashSet;
 
-use anyhow::{Result, bail};
 use vach::{self, prelude::*};
 use indicatif::{ProgressBar, ProgressStyle};
 use walkdir;
@@ -28,10 +27,10 @@ pub const VERSION: &str = "0.0.1";
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
-	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
+	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		let output_path = match args.value_of(key_names::OUTPUT) {
 			Some(path) => path,
-			None => bail!("Please provide an output path using the -o or --output key"),
+			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
 		};
 
 		let output_file = File::create(&output_path)?;
@@ -55,7 +54,7 @@ impl CommandTrait for Evaluator {
 				"always" => CompressMode::Always,
 				"detect" => CompressMode::Detect,
 				"never" => CompressMode::Never,
-				invalid_value => bail!("{} is an invalid value for COMPRESS_MODE", invalid_value),
+				invalid_value => anyhow::bail!("{} is an invalid value for COMPRESS_MODE", invalid_value),
 			}
 		};
 

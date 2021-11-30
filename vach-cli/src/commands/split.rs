@@ -1,8 +1,5 @@
 use std::fs::File;
 
-use anyhow::{Result, bail};
-
-use log::info;
 use vach::utils::read_keypair;
 use super::CommandTrait;
 use crate::{keys::key_names, utils};
@@ -13,11 +10,11 @@ pub const VERSION: &str = "0.0.1";
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
-	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
+	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		let mut input_path = match args.value_of(key_names::INPUT) {
 			Some(path) => path.to_string(),
 			None => {
-				bail!("Please provide a some input to a keypair files using the -i or --input key!")
+				anyhow::bail!("Please provide a some input to a keypair files using the -i or --input key!")
 			}
 		};
 
@@ -38,7 +35,7 @@ impl CommandTrait for Evaluator {
 		utils::create_and_write_to_file(&pk_path, &kp.public.to_bytes())?;
 		utils::create_and_write_to_file(&sk_path, &kp.secret.to_bytes())?;
 
-		info!(
+		log::info!(
 			"Successfully split keypair: {} -> into {} and {}",
 			input_path, pk_path, sk_path
 		);

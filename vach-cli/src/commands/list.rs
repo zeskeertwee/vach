@@ -1,7 +1,6 @@
 use std::{convert::TryInto, fs::File};
 
 use tabled::{Style, Table, Tabled};
-use anyhow::{Result, bail};
 use vach::prelude::*;
 use bytesize::ByteSize;
 
@@ -15,10 +14,10 @@ pub const VERSION: &str = "0.0.1";
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
-	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
+	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		let archive_path = match args.value_of(key_names::INPUT) {
 			Some(path) => path,
-			None => bail!("Please provide an input archive file using the -i or --input keys!"),
+			None => anyhow::bail!("Please provide an input archive file using the -i or --input keys!"),
 		};
 
 		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {

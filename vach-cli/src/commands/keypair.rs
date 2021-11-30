@@ -1,6 +1,4 @@
-use anyhow::Result;
 use vach::utils::gen_keypair;
-use log::info;
 
 use crate::utils;
 use crate::keys::key_names;
@@ -15,7 +13,7 @@ pub const VERSION: &str = "0.0.1";
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
-	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
+	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		let mut output_path = match args.value_of(key_names::OUTPUT) {
 			Some(path) => path.to_string(),
 			None => KEYPAIR_FILE_NAME.to_string(),
@@ -34,19 +32,19 @@ impl CommandTrait for Evaluator {
 			pk_path.push_str(".pk");
 
 			utils::create_and_write_to_file(&sk_path, &kp.secret.to_bytes())?;
-			info!(
+			log::info!(
 				"Secret Key successfully generated and saved in: {}",
 				sk_path
 			);
 
 			utils::create_and_write_to_file(&pk_path, &kp.public.to_bytes())?;
-			info!(
+			log::info!(
 				"Public Key successfully generated and saved in: {}",
 				pk_path
 			);
 		} else {
 			utils::create_and_write_to_file(&output_path, &kp.to_bytes())?;
-			info!(
+			log::info!(
 				"KeyPair successfully generated and saved in: {}",
 				output_path
 			);
