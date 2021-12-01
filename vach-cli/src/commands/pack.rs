@@ -61,7 +61,17 @@ impl CommandTrait for Evaluator {
 		// Extract entries to be excluded
 		let excludes = match args.values_of(key_names::EXCLUDE) {
 			Some(val) => val
-				.map(PathBuf::from)
+				.filter_map(|f| {
+					let path = PathBuf::from(f);
+
+					match path.canonicalize() {
+						 Ok(path) => Some(path),
+						 Err(err) => {
+							 println!("Failed to evaluate: {}. Skipping due to error: {}", path.to_string_lossy(), err);
+							 None
+						 },
+					}
+				})
 				.filter(|v| v.is_file())
 				.collect::<HashSet<PathBuf>>(),
 			None => HashSet::new(),
@@ -70,9 +80,20 @@ impl CommandTrait for Evaluator {
 		// Extract the inputs
 		let mut inputs: Vec<InputSource> = vec![];
 
+		// Used to filter invalid inputs and excluded inputs
+		let path_filter = |path: &PathBuf| {
+			match path.canonicalize() {
+				Ok(canonical) => !excludes.contains(&canonical) && canonical.is_file(),
+				Err(err) => {
+					println!("Failed to evaluate: {}. Skipping due to error: {}", path.to_string_lossy(), err);
+					false
+				},
+		  }
+		};
+
 		if let Some(val) = args.values_of(key_names::INPUT) {
 			val.map(PathBuf::from)
-				.filter(|v| v.is_file() || excludes.contains(v))
+				.filter(|f| path_filter(f))
 				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
 		};
 
@@ -83,7 +104,7 @@ impl CommandTrait for Evaluator {
 					.max_depth(1)
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
-					.filter(|f| !excludes.contains(f) && f.is_file())
+					.filter(|f| path_filter(f))
 					.for_each(|p| inputs.push(InputSource::PathBuf(p)))
 			});
 		};
@@ -93,7 +114,7 @@ impl CommandTrait for Evaluator {
 			val.map(|dir| walkdir::WalkDir::new(dir).into_iter())
 				.flatten()
 				.map(|v| v.unwrap().into_path())
-				.filter(|f| !excludes.contains(f) && f.is_file())
+				.filter(|f| path_filter(f))
 				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
 		}
 
@@ -208,10 +229,7 @@ impl CommandTrait for Evaluator {
 						continue;
 					}
 
-					let id = match path.to_str() {
-						Some(name) => name.trim_start_matches("./").to_string(),
-						None => "".to_string(),
-					};
+					let id = path.to_string_lossy().trim_start_matches("./").trim_start_matches(".\\").to_string();
 
 					pbar.println(format!("Packaging {}", id));
 
