@@ -1,4 +1,4 @@
-use std::fs::{create_dir, File};
+use std::fs::{self, File};
 use std::str::FromStr;
 use std::{convert::TryInto};
 use std::io::{Read, Seek};
@@ -92,6 +92,7 @@ impl CommandTrait for Evaluator {
 fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBuf) -> anyhow::Result<()> {
 	// For measuring the time difference
 	let time = Instant::now();
+	fs::create_dir_all(&save_folder)?;
 
 	let total_size = archive
 		.entries()
@@ -118,15 +119,6 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 			id,
 			save_path.to_string_lossy()
 		));
-
-		for ancestor in save_path.ancestors().skip(1) {
-			if ancestor.exists() {
-				break;
-			} else {
-				pbar.println(format!("Creating folder {}", ancestor.to_string_lossy()));
-				create_dir(ancestor)?;
-			}
-		}
 
 		let mut file = File::create(save_path)?;
 
