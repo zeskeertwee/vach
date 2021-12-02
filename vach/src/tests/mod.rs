@@ -416,7 +416,7 @@ fn consolidated_example() -> InternalResult<()> {
 
 	// Data to be written
 	let data_1 = b"Around The World, Fatter wetter stronker" as &[u8];
-	let data_2 = b"Imagine if this made sense" as &[u8];
+	let data_2 = b"Imago" as &[u8];
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
 	// Builder definition
