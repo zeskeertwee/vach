@@ -172,7 +172,7 @@ impl<T: Seek + Read> Archive<T> {
 				raw.as_slice().read_to_string(&mut target_id)?;
 
 				match self.fetch_entry(target_id.as_str()) {
-					// Prevent cyclic hell
+					// Prevents cyclic hell
 					Some(alias) if alias.flags.contains(Flags::LINK_FLAG) => {
 						return Err(InternalError::CyclicLinkReferenceError(
 							id.to_string(),
