@@ -114,7 +114,8 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
 	) -> InternalResult<(Flags, u8, bool)> {
-		// Literally the hottest function in the block (🕶)
+		/* Literally the hottest function in the block (🕶) */
+
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
@@ -170,14 +171,15 @@ impl<T: Seek + Read> Archive<T> {
 				let mut target_id = String::new();
 				raw.as_slice().read_to_string(&mut target_id)?;
 
-				// Prevent cyclic hell
 				match self.fetch_entry(target_id.as_str()) {
+					// Prevent cyclic hell
 					Some(alias) if alias.flags.contains(Flags::LINK_FLAG) => {
 						return Err(InternalError::CyclicLinkReferenceError(
 							id.to_string(),
 							target_id.to_string(),
 						));
 					}
+
 					Some(_) => return self.fetch_write(&target_id, target),
 					None => {
 						return Err(InternalError::MissingResourceError(format!(
@@ -202,7 +204,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Fetch a `RegistryEntry` from this `Archive`.
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
 	/// ### `None` case:
-	/// If no entry with the given ID exists then None is returned.
+	/// If no entry with the given ID exists then `None` is returned.
 	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
 		match self.entries.get(id) {
 			Some(entry) => Some(entry.clone()),

@@ -83,7 +83,7 @@ impl fmt::Display for HeaderConfig {
 impl Default for HeaderConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		HeaderConfig::new(*crate::DEFAULT_MAGIC, None)
+		HeaderConfig::new(crate::DEFAULT_MAGIC.clone(), None)
 	}
 }
 
@@ -99,7 +99,7 @@ impl Default for Header {
 	#[inline(always)]
 	fn default() -> Header {
 		Header {
-			magic: *crate::DEFAULT_MAGIC,
+			magic: crate::DEFAULT_MAGIC.clone(),
 			flags: Flags::default(),
 			arch_version: crate::VERSION,
 			capacity: 0,

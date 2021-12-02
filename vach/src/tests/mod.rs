@@ -297,7 +297,7 @@ fn edcryptor_test() -> InternalResult<()> {
 
 	let pk = gen_keypair().public;
 
-	let crypt = EDCryptor::new(&pk, *crate::DEFAULT_MAGIC);
+	let crypt = EDCryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
 
 	let data = vec![12, 12, 12, 12];
 
