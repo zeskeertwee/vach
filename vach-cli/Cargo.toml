@@ -4,7 +4,7 @@ version = "0.3.0"
 edition = "2018"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A command-line tool to work with .vach files"
-license = "GPL-2.0"
+license = "MIT"
 repository = "https://github.com/zeskeertwee/virtfs-rs"
 categories = [
 	"command-line-utilities",

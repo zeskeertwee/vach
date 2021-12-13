@@ -4,7 +4,7 @@ version = "0.2.3" # Make sure spec.txt and vach::VERSION constants are all synce
 edition = "2021"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
-license = "GPL-2.0"
+license = "MIT"
 repository = "https://github.com/zeskeertwee/virtfs-rs"
 categories = [
 	"games",
