@@ -7,7 +7,7 @@ authors = [
 	"Newton Toto <nyachiengatoto@gmail.com>",
 ]
 description = "A command-line tool to work with .vach files"
-license = "GPL-2.0"
+license = "MIT"
 repository = "https://github.com/zeskeertwee/virtfs-rs"
 categories = ["command-line-utilities", "encoding", "game-development"]
 keywords = ["archive", "command-line", "vach", "assets", "game"]
