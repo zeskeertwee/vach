@@ -1,18 +1,24 @@
-# **`vach-cli` Usage**
+# **`vach-cli`**
 
 `vach-cli` is a simple CLI for packing, unpacking and handling `.vach` files.
 
 ---
 
-Generally it's usage follows the same template:
+## **Installation**
+
+```sh
+cargo install vach-cli
+```
+
+## **Usage:**
+
+Generally follows the template:
 
 ```sh
 vach [subcommand] -[key] [...values]
 ```
 
-## **Example:**
-
-```shell
+```sh
 # List all entries in the archive "source.vach"
 vach list -i source.vach
 
@@ -44,9 +50,9 @@ vach list -i textures.vach
 
 - You can also run `vach [command] --help` to see help on each individual command.
 
-- Because of how the CLI is built, the positions of the keys does not matter, so:
+- Because of how the CLI works, the positions of the keys does not matter, so:
 
-   `vach list -i target.vach -m CMYKV` == `vach list -m CMYKV -i target.vach`.
+   `vach list -i target.vach -m CMYKV` and `vach list -m CMYKV -i target.vach` are equivalent.
 
 ---
 
@@ -54,7 +60,7 @@ vach list -i textures.vach
 
 > `pack` is used to pack files and directories into archives. It takes inputs for customizing how the archive should be packaged.
 
-```shell
+```sh
 # The simplest pack command.
 # Any pack command must have an output, set using the "-o" or "--output" keys
 # This builds only an empty archive
@@ -118,7 +124,7 @@ vach pack -t -o hello.vach -i hello.txt goodbye.txt
 
 >`unpack` is used to unpack archives back into their constituent files.
 
-```shell
+```sh
 # The simplest unpack command
 # Provide an input: "-i" or "--input"
 vach unpack -i target.vach
@@ -144,7 +150,7 @@ vach unpack -s keypair.sk -i source.vach
 
 > Lists all the entries in the archive as a table
 
-```shell
+```sh
 # The simplest list command
 # Provide some input: "-i" or "--input"
 vach list -i textures.vach
@@ -158,7 +164,7 @@ vach list -i textures.vach -m TXTRS
 
 > Verifies the validity of a file as an archive
 
-```shell
+```sh
 # Simplest command
 vach verify -i textures.vach
 
@@ -170,10 +176,11 @@ vach verify -i textures.vach -m TXTRS
 
 > Key-pair generation command
 
-```shell
+```sh
 vach keypair -o keypair.kp
+# -> keypair.kp
 
-# Splits the keypair into it's secret and public components
+# Splits the keypair into it's secret and public components immediately after generation
 vach keypair -s -o keypair.kp
 
 # -> keypair.pk
@@ -184,6 +191,9 @@ vach keypair -s -o keypair.kp
 
 > Splits an existing keypair into it's public and secret components
 
-```shell
+```sh
 vach split -i keypair.kp
+
+# -> keypair.pk
+# -> keypair.sk
 ```

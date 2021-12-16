@@ -11,7 +11,7 @@
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
   <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
   <br/>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LISCENCE: GPL 2.0" src="https://img.shields.io/crates/l/vach?style=flat-square"></a>
+  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LICENSE: MIT" src="https://img.shields.io/crates/l/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/actions/workflows/rust.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/virtfs-rs/workflows/Rust/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
 </p>
@@ -182,14 +182,15 @@ assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 ```
 
-> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) And pass by the examples folder( not yet implemented ).
+> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) And pass by the examples folder (not yet implemented).
 
 ---
 
 ### 🛠 Yet to be implemented
 
-- [x] An official **CLI**.
+- [ ] `vf` as a whole
+- [ ] Skynet, (coming _very_ soon).
+- [ ] `Some(examples)` directory instead of `None`
+- [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
 - [x] Data encryption.
 - [x] Benchmarks.
-- [ ] Skynet, (coming very soon).
-- [ ] `Some(examples)` directory instead of `None`
