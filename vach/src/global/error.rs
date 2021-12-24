@@ -55,20 +55,22 @@ impl fmt::Display for InternalError {
 }
 
 impl PartialEq for InternalError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::OtherError(l0), Self::OtherError(r0)) => l0 == r0,
-            (Self::ParseError(l0), Self::ParseError(r0)) => l0 == r0,
-            (Self::ValidationError(l0), Self::ValidationError(r0)) => l0 == r0,
-            (Self::MissingResourceError(l0), Self::MissingResourceError(r0)) => l0 == r0,
-            (Self::LeafAppendError(l0), Self::LeafAppendError(r0)) => l0 == r0,
-            (Self::NoKeypairError(l0), Self::NoKeypairError(r0)) => l0 == r0,
-            (Self::CryptoError(l0), Self::CryptoError(r0)) => l0 == r0,
-            (Self::CyclicLinkReferenceError(l0, l1), Self::CyclicLinkReferenceError(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::IDSizeOverflowError(l0), Self::IDSizeOverflowError(r0)) => l0 == r0,
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
+	fn eq(&self, other: &Self) -> bool {
+		match (self, other) {
+			(Self::OtherError(l0), Self::OtherError(r0)) => l0 == r0,
+			(Self::ParseError(l0), Self::ParseError(r0)) => l0 == r0,
+			(Self::ValidationError(l0), Self::ValidationError(r0)) => l0 == r0,
+			(Self::MissingResourceError(l0), Self::MissingResourceError(r0)) => l0 == r0,
+			(Self::LeafAppendError(l0), Self::LeafAppendError(r0)) => l0 == r0,
+			(Self::NoKeypairError(l0), Self::NoKeypairError(r0)) => l0 == r0,
+			(Self::CryptoError(l0), Self::CryptoError(r0)) => l0 == r0,
+			(Self::CyclicLinkReferenceError(l0, l1), Self::CyclicLinkReferenceError(r0, r1)) => {
+				l0 == r0 && l1 == r1
+			}
+			(Self::IDSizeOverflowError(l0), Self::IDSizeOverflowError(r0)) => l0 == r0,
+			_ => core::mem::discriminant(self) == core::mem::discriminant(other),
+		}
+	}
 }
 
 impl error::Error for InternalError {}

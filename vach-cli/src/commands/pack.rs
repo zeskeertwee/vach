@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use std::convert::TryInto;
 use std::collections::HashSet;
 
-use anyhow::{Result, bail};
 use vach::{self, prelude::*};
 use indicatif::{ProgressBar, ProgressStyle};
 use walkdir;
@@ -22,14 +21,16 @@ impl<'a> From<PathBuf> for InputSource<'a> {
 	}
 }
 
+pub const VERSION: &str = "0.0.2";
+
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
-	fn evaluate(&self, args: &clap::ArgMatches) -> Result<()> {
+	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		let output_path = match args.value_of(key_names::OUTPUT) {
 			Some(path) => path,
-			None => bail!("Please provide an output path using the -o or --output key"),
+			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
 		};
 
 		let output_file = File::create(&output_path)?;
@@ -53,14 +54,24 @@ impl CommandTrait for Evaluator {
 				"always" => CompressMode::Always,
 				"detect" => CompressMode::Detect,
 				"never" => CompressMode::Never,
-				invalid_value => bail!("{} is an invalid value for COMPRESS_MODE", invalid_value),
+				invalid_value => anyhow::bail!("{} is an invalid value for COMPRESS_MODE", invalid_value),
 			}
 		};
 
 		// Extract entries to be excluded
 		let excludes = match args.values_of(key_names::EXCLUDE) {
 			Some(val) => val
-				.map(PathBuf::from)
+				.filter_map(|f| {
+					let path = PathBuf::from(f);
+
+					match path.canonicalize() {
+						 Ok(path) => Some(path),
+						 Err(err) => {
+							 println!("Failed to evaluate: {}. Skipping due to error: {}", path.to_string_lossy(), err);
+							 None
+						 },
+					}
+				})
 				.filter(|v| v.is_file())
 				.collect::<HashSet<PathBuf>>(),
 			None => HashSet::new(),
@@ -69,9 +80,20 @@ impl CommandTrait for Evaluator {
 		// Extract the inputs
 		let mut inputs: Vec<InputSource> = vec![];
 
+		// Used to filter invalid inputs and excluded inputs
+		let path_filter = |path: &PathBuf| {
+			match path.canonicalize() {
+				Ok(canonical) => !excludes.contains(&canonical) && canonical.is_file(),
+				Err(err) => {
+					println!("Failed to evaluate: {}. Skipping due to error: {}", path.to_string_lossy(), err);
+					false
+				},
+		  }
+		};
+
 		if let Some(val) = args.values_of(key_names::INPUT) {
 			val.map(PathBuf::from)
-				.filter(|v| v.is_file() || excludes.contains(v))
+				.filter(|f| path_filter(f))
 				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
 		};
 
@@ -82,7 +104,7 @@ impl CommandTrait for Evaluator {
 					.max_depth(1)
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
-					.filter(|f| !excludes.contains(f) && f.is_file())
+					.filter(|f| path_filter(f))
 					.for_each(|p| inputs.push(InputSource::PathBuf(p)))
 			});
 		};
@@ -92,7 +114,7 @@ impl CommandTrait for Evaluator {
 			val.map(|dir| walkdir::WalkDir::new(dir).into_iter())
 				.flatten()
 				.map(|v| v.unwrap().into_path())
-				.filter(|f| !excludes.contains(f) && f.is_file())
+				.filter(|f| path_filter(f))
 				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
 		}
 
@@ -113,12 +135,7 @@ impl CommandTrait for Evaluator {
 
 			for (id, _) in arch.entries().iter() {
 				// This safe archive.fetch does not interact with &archive.entries mutably, therefore can not cause "pulling the rug from beneath your feet" problems
-				unsafe {
-					inputs.push(InputSource::VachResource(
-						(*arch_pointer).fetch(id)?,
-						id,
-					))
-				}
+				unsafe { inputs.push(InputSource::VachResource((*arch_pointer).fetch(id)?, id)) }
 			}
 		}
 
@@ -196,7 +213,9 @@ impl CommandTrait for Evaluator {
 			match entry {
 				InputSource::VachResource(res, id) => {
 					builder.add(res.data.as_slice(), id)?;
-					pbar.println(format!("Packaging entry from archive: {} @ {}", id, archive_path));
+
+					let message = format!("Packaging entry from archive: {} @ {}", id, archive_path);
+					pbar.println(message);
 				}
 				InputSource::PathBuf(path) => {
 					if !path.exists() {
@@ -210,10 +229,7 @@ impl CommandTrait for Evaluator {
 						continue;
 					}
 
-					let id = match path.to_str() {
-						Some(name) => name.trim_start_matches("./").to_string(),
-						None => "".to_string(),
-					};
+					let id = path.to_string_lossy().trim_start_matches("./").trim_start_matches(".\\").to_string();
 
 					pbar.println(format!("Packaging {}", id));
 
@@ -268,9 +284,5 @@ impl CommandTrait for Evaluator {
 		pbar.finish_and_clear();
 
 		Ok(())
-	}
-
-	fn version(&self) -> &'static str {
-		"0.0.1"
 	}
 }

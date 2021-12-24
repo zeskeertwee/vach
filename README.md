@@ -8,10 +8,10 @@
 <p style="color:white; background-color: red; text-align: center; font-weight: bold;" align=center>STABILITY WARNING! Some crates in this repo are in very early development, APIs and standards are expected to change!</p>
 
 <p align=center>
-  <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a> 
-  <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a> 
+  <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
+  <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
   <br/>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LISCENCE: GPL 2.0" src="https://img.shields.io/crates/l/vach?style=flat-square"></a> 
+  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LICENSE: MIT" src="https://img.shields.io/crates/l/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/actions/workflows/rust.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/virtfs-rs/workflows/Rust/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
 </p>
@@ -30,7 +30,7 @@
 
 - **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
 - **vf:** An asset management system utilizing **vach** for transmission and adds features like hot reloading, caching and archive management. **WIP 🚧**
-- **vach-cli:** A CLI tool for dealing with `.vach` files. **WIP 🚧**
+- **vach-cli:** A CLI tool for dealing with `.vach` files.
 
 ---
 
@@ -75,7 +75,7 @@ let target = File::open("sounds.vach")?;
 let mut archive = Archive::from_handle(target)?;
 let resource: Resource = archive.fetch("ambient")?;
 
-// By default all resources are flagged as NOT secured
+// By default all resources are flagged as NOT secure
 println!("{}", Sound::new(&resource.data)?);
 assert!(!resource.secured);
 
@@ -110,7 +110,6 @@ builder.dump(&mut target, &config).unwrap();
 As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/), you could refer to their docs to read further about them.
 
 ```rust
-use vach;
 use vach::prelude::{Keypair, SecretKey, PublicKey};
 use vach::utils::gen_keypair;
 
@@ -183,14 +182,16 @@ assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 ```
 
-> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) And pass by the examples folder( not yet implemented ).
+> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) And pass by the examples folder (not yet implemented).
 
 ---
 
 ### 🛠 Yet to be implemented
 
-- [ ] An official **CLI**.
+- [ ] `vf` as a whole
+- [ ] Skynet, (coming _very_ soon).
+- [ ] Some proper benchmarking code. (Call for participation)
+- [ ] `Some(examples)` directory instead of `None`
+- [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
 - [x] Data encryption.
 - [x] Benchmarks.
-- [ ] Skynet, (coming very soon).
-- [ ] `Some(examples)` directory instead of `None`

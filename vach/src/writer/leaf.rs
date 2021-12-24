@@ -5,7 +5,7 @@ use std::{io::Read, fmt};
 
 /// Configures how `Leaf`s should be compressed.
 /// Default is `CompressMode::Never`.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressMode {
 	/// The data will always be compressed
 	Always,
@@ -16,16 +16,18 @@ pub enum CompressMode {
 }
 
 impl Default for CompressMode {
-    fn default() -> CompressMode {
-        CompressMode::Never
-    }
+	fn default() -> CompressMode {
+		CompressMode::Never
+	}
 }
 
 /// A wrapper around an `io::Read` handle.
 /// Allows for multiple types of data implementing `io::Read` to be used under one structure.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
-	pub(crate) handle: Box<dyn Read + 'a>, // This lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+	// The lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+	pub(crate) handle: Box<dyn Read + 'a>,
+
 	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
@@ -36,19 +38,19 @@ pub struct Leaf<'a> {
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
 	pub encrypt: bool,
-	/// Whether to include a signature with this `Leaf`, defaults to false
-	/// If set to true then a hash generated and validated when loaded
+	/// Whether to include a signature with this `Leaf`, defaults to false.
+	/// If set to true then a hash generated and validated when loaded.
+	/// > *NOTE:* **Turning `sign` on severely hurts performance for making `Archive::fetch(---)`**.
 	pub sign: bool,
-	/// If a `Leaf` has a link_mode of Some("dw"), then this leaf simply routes the data pointed by the adjacent Leaf with the ID "dw".
-	/// Use this if you want to have multiple pointers|registry entries aliasing to the same data.
-	/// The handle of a link leaf stores the ID of the aliased leaf.
+	/// If a `Leaf` has a link_mode of `Some("dw")`, then the leaf simply points to the Leaf with the ID "dw".
+	/// Use this if you want to have multiple entries aliasing the same data.
 	pub link_mode: Option<String>,
 }
 
 impl<'a> fmt::Debug for Leaf<'a> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("Leaf")
-			.field("handle", &"Dynamically dispatched handle")
+			.field("handle", &"[Box<dyn io::Read>]")
 			.field("id", &self.id)
 			.field("content_version", &self.content_version)
 			.field("compress", &self.compress)
@@ -110,14 +112,16 @@ impl<'a> Leaf<'a> {
 	///    .compress(CompressMode::Always);
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
+	/// assert_eq!(&leaf.content_version, &template.content_version);
+	/// assert_eq!(&leaf.compress, &template.compress);
 	/// ```
-	pub fn template(mut self, other: &Leaf) -> Self {
-		self.compress = other.compress;
-		self.content_version = other.content_version;
-		self.flags = other.flags;
-		self.encrypt = other.encrypt;
-		self.sign = other.sign;
-		self
+	pub fn template(self, other: &Leaf<'a>) -> Self {
+		Leaf {
+			handle: self.handle,
+			id: self.id,
+			link_mode: self.link_mode,
+			..*other
+		}
 	}
 
 	// Setters

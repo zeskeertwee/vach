@@ -3,7 +3,7 @@ use std::io;
 use ed25519_dalek as esdalek;
 use std::fmt::Debug;
 
-type OptionalCallback = Option<Box<dyn Fn(&String, usize, &RegistryEntry)>>;
+type OptionalCallback = Option<Box<dyn Fn(&str, usize, &RegistryEntry)>>;
 
 /// Allows for the customization of valid `vach` archives during their construction.
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
@@ -14,10 +14,10 @@ pub struct BuilderConfig {
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
-	/// An optional callback that is called every time a `Leaf` finishes processing
+	/// An optional callback that is called every time a `Leaf` finishes processing.
 	/// The type signature is:
 	/// ```ignore
-	/// type OptionalCallback = Option<Box<dyn Fn(&String, usize, &RegistryEntry)>>;
+	/// type OptionalCallback = Option<Box<dyn Fn(id: &str, glob_size: usize, reg_entry: &RegistryEntry)>>;
 	/// ```
 	///
 	/// Usage:
@@ -36,7 +36,7 @@ impl Debug for BuilderConfig {
 			.field(
 				"progress_callback",
 				if self.progress_callback.is_some() {
-					&"[Dynamically dispatched callback]"
+					&"dyn Fn(id: &str, glob_size: usize, reg_entry: &RegistryEntry)"
 				} else {
 					&"None"
 				},
@@ -77,7 +77,9 @@ impl BuilderConfig {
 	/// use vach::prelude::BuilderConfig;
 	/// let config = BuilderConfig::default().callback(Box::new(|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) }));
 	///```
-	pub fn callback(mut self, callback: Box<dyn Fn(&String, usize, &RegistryEntry)>) -> BuilderConfig {
+	pub fn callback(
+		mut self, callback: Box<dyn Fn(&str, usize, &RegistryEntry)>,
+	) -> BuilderConfig {
 		self.progress_callback = Some(callback);
 		self
 	}
@@ -97,7 +99,7 @@ impl Default for BuilderConfig {
 		BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
-			magic: *crate::DEFAULT_MAGIC,
+			magic: crate::DEFAULT_MAGIC.clone(),
 			progress_callback: None,
 		}
 	}

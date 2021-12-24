@@ -15,7 +15,7 @@ use ed25519_dalek::Signer;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
 pub struct Builder<'a> {
-	leafs: Vec<Leaf<'a>>,
+	pub(crate) leafs: Vec<Leaf<'a>>,
 	pub(crate) id_set: HashSet<String>,
 	leaf_template: Leaf<'a>,
 }
@@ -49,13 +49,19 @@ impl<'a> Builder<'a> {
 		Ok(())
 	}
 
+	/// Removes all the `Leaf`s from the `Builder`. Leaves the `template` intact. Use this to re-use `Builder`s instead of instantiating new ones
+	pub fn clear(&mut self) {
+		self.id_set.clear();
+		self.leafs.clear();
+	}
+
 	/// Loads all files from a directory, parses them into `Leaf`s and appends them into the processing queue.
 	/// An optional `Leaf` is passed as a template from which the new `Leaf`s shall implement, pass `None` to use the `Builder` internal default template.
 	/// Appended `Leaf`s have an `ID` in the form of of: `directory_name/file_name`. For example: "sounds/footstep.wav", "sample/script.data"
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
-	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf>) -> InternalResult<()> {
+	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf<'a>>) -> InternalResult<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -129,21 +135,17 @@ impl<'a> Builder<'a> {
 		let mut reg_buffer = Vec::new();
 
 		// Calculate the size of the registry and check for `Leaf`s that request for encryption
-		let mut leaf_offset = self
-			.leafs
-			.iter()
-			.map(|leaf| {
-				// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-				leaf.id.len()
-					+ RegistryEntry::MIN_SIZE
-					+ (if config.keypair.is_some() {
-						crate::SIGNATURE_LENGTH
-					} else {
-						0
-					})
-			})
-			.reduce(|l1, l2| l1 + l2)
-			.unwrap_or(0) + Header::BASE_SIZE;
+		let mut leaf_offset =
+			self.leafs
+				.iter()
+				.map(|leaf| {
+					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
+					leaf.id.len()
+						+ RegistryEntry::MIN_SIZE
+						+ (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 })
+				})
+				.reduce(|l1, l2| l1 + l2)
+				.unwrap_or(0) + Header::BASE_SIZE;
 
 		// Start at the very start of the file
 		target.seek(SeekFrom::Start(0))?;

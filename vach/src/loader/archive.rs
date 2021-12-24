@@ -54,9 +54,7 @@ impl<T: Seek + Read> Archive<T> {
 	///  - The archive fails to validate
 	///  - `io` errors
 	///  - If any `ID`s are not valid UTF-8
-	pub fn with_config(
-		mut handle: T, config: &HeaderConfig,
-	) -> InternalResult<Archive<T>> {
+	pub fn with_config(mut handle: T, config: &HeaderConfig) -> InternalResult<Archive<T>> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
@@ -116,6 +114,8 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
 	) -> InternalResult<(Flags, u8, bool)> {
+		/* Literally the hottest function in the block (🕶) */
+
 		if let Some(entry) = self.fetch_entry(id) {
 			let handle = &mut self.handle;
 			let mut is_secure = false;
@@ -155,6 +155,7 @@ impl<T: Seek + Read> Archive<T> {
 					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id)));
 				}
 			}
+
 			// 2: Decompression layer
 			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 				let mut rdr = lz4::frame::FrameDecoder::new(raw.as_slice());
@@ -163,20 +164,22 @@ impl<T: Seek + Read> Archive<T> {
 
 				raw = buffer;
 			};
+
 			// 3: Deref layer, dereferences link leafs
 			// NOTE: This may break the upcoming cache functionality in `vf`. So `vf` must check for linked `Leaf`s
 			if entry.flags.contains(Flags::LINK_FLAG) {
 				let mut target_id = String::new();
 				raw.as_slice().read_to_string(&mut target_id)?;
 
-				// Prevent cyclic hell
 				match self.fetch_entry(target_id.as_str()) {
+					// Prevents cyclic hell
 					Some(alias) if alias.flags.contains(Flags::LINK_FLAG) => {
 						return Err(InternalError::CyclicLinkReferenceError(
 							id.to_string(),
 							target_id.to_string(),
 						));
 					}
+
 					Some(_) => return self.fetch_write(&target_id, target),
 					None => {
 						return Err(InternalError::MissingResourceError(format!(
@@ -201,7 +204,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Fetch a `RegistryEntry` from this `Archive`.
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
 	/// ### `None` case:
-	/// If no entry with the given ID exists then None is returned.
+	/// If no entry with the given ID exists then `None` is returned.
 	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
 		match self.entries.get(id) {
 			Some(entry) => Some(entry.clone()),

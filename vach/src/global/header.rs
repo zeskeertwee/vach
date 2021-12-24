@@ -83,7 +83,7 @@ impl fmt::Display for HeaderConfig {
 impl Default for HeaderConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		HeaderConfig::new(*crate::DEFAULT_MAGIC, None)
+		HeaderConfig::new(crate::DEFAULT_MAGIC.clone(), None)
 	}
 }
 
@@ -99,7 +99,7 @@ impl Default for Header {
 	#[inline(always)]
 	fn default() -> Header {
 		Header {
-			magic: *crate::DEFAULT_MAGIC,
+			magic: crate::DEFAULT_MAGIC.clone(),
 			flags: Flags::default(),
 			arch_version: crate::VERSION,
 			capacity: 0,
@@ -148,13 +148,7 @@ impl Header {
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: [
-				buffer[0],
-				buffer[1],
-				buffer[2],
-				buffer[3],
-				buffer[4],
-			],
+			magic: [buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]],
 			// Read flags, u16 from [u8;2]
 			flags: Flags::from_bits(u16::from_le_bytes([buffer[5], buffer[6]])),
 			// Read version, u16 from [u8;2]

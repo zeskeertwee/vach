@@ -31,8 +31,11 @@ fn custom_bitflags() -> InternalResult<()> {
 	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = Flags::from_bits(entry.flags.bits());
+
 	assert_eq!(flags.bits(), entry.flags.bits());
 	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
+
+	dbg!(flags);
 
 	Ok(())
 }
@@ -189,7 +192,7 @@ fn gen_keypair() -> InternalResult<()> {
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
-	let mut build_config = BuilderConfig::default().callback(Box::new(|_,_, d| {
+	let mut build_config = BuilderConfig::default().callback(Box::new(|_, _, d| {
 		dbg!(&d);
 	}));
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -294,7 +297,7 @@ fn edcryptor_test() -> InternalResult<()> {
 
 	let pk = gen_keypair().public;
 
-	let crypt = EDCryptor::new(&pk, *crate::DEFAULT_MAGIC);
+	let crypt = EDCryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
 
 	let data = vec![12, 12, 12, 12];
 
@@ -413,7 +416,7 @@ fn consolidated_example() -> InternalResult<()> {
 
 	// Data to be written
 	let data_1 = b"Around The World, Fatter wetter stronker" as &[u8];
-	let data_2 = b"Imagine if this made sense" as &[u8];
+	let data_2 = b"Imago" as &[u8];
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
 	// Builder definition
