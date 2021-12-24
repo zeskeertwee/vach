@@ -115,7 +115,7 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 		save_path.push(&id);
 
 		if let Some(parent_dir) = save_path.ancestors().skip(1).next() {
-			#[allow(unused_must_use)] { fs::create_dir_all(parent_dir); }
+			fs::create_dir_all(parent_dir)?;
 		};
 
 		pbar.println(format!(

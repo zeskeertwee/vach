@@ -190,6 +190,7 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 - [ ] `vf` as a whole
 - [ ] Skynet, (coming _very_ soon).
+- [ ] Some proper benchmarking code. (Call for participation)
 - [ ] `Some(examples)` directory instead of `None`
 - [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
 - [x] Data encryption.

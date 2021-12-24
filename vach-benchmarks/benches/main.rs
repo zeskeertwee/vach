@@ -1,5 +1,5 @@
 use std::io::{self, Seek};
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 
 use vach::prelude::*;
 use vach::utils::gen_keypair;
@@ -39,12 +39,17 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut h_config = HeaderConfig::default().magic(*MAGIC);
 	h_config.load_public_key(&keypair_bytes[32..]).unwrap();
 
-	/* BUILDER::DUMP(---) BENCHMARKS */
+	/* BUILDER BENCHMARKS */
+	let mut builder_group = c.benchmark_group("Builder");
+
 	let data_1 = b"Around The World, Fatter wetter stronker" as &[u8];
 	let data_2 = b"Imagine if this made sense" as &[u8];
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
-	c.bench_function("Builder::dump(---)", |b| {
+	// Configure benchmark
+	builder_group.throughput(Throughput::Bytes((data_1.len() + data_2.len() + data_3.len()) as u64));
+
+	builder_group.bench_function("Builder::dump(---)", |b| {
 		b.iter(|| {
 			let mut builder = Builder::new();
 
@@ -76,14 +81,19 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		});
 	});
 
-	/* ARCHIVE::FETCH(---) BENCHMARKS */
+	// Drop Builder group
+	drop(builder_group);
+
+	/* ARCHIVE BENCHMARKS */
+	let mut loader_group = c.benchmark_group("Loader");
 	let mut target = io::Cursor::new(Vec::<u8>::new());
-	let template = Leaf::default()
-		.encrypt(true)
-		.sign(false)
-		.compress(CompressMode::Detect);
 
 	{
+		// Builds an archive source from which to benchmark
+		let template = Leaf::default()
+			.encrypt(true)
+			.sign(false)
+			.compress(CompressMode::Detect);
 		let mut builder = Builder::new().template(template);
 
 		// Add data
@@ -97,22 +107,17 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 	// Load data
 	target.seek(io::SeekFrom::Start(0)).unwrap();
+	loader_group.throughput(Throughput::Bytes((data_1.len() + data_2.len() + data_3.len()) as u64));
 
 	let mut archive = Archive::with_config(&mut target, &h_config).unwrap();
 	let mut sink = Sink::new();
 
-	c.bench_function("Archive::fetch(---)", |b| {
+	loader_group.bench_function("Archive::fetch_write(---)", |b| {
 		// Load data
 		b.iter(|| {
-			// Quick assertions
-			let mut data = Vec::new();
-
 			archive.fetch_write("d1", &mut sink).unwrap();
 			archive.fetch_write("d2", &mut sink).unwrap();
-			archive.fetch_write("d3", &mut data).unwrap();
-
-			let string = String::from_utf8(data).unwrap();
-			assert_eq!(String::from_utf8(data_3.to_vec()).unwrap(), string);
+			archive.fetch_write("d3", &mut sink).unwrap();
 		});
 	});
 }
