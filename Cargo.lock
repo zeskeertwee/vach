@@ -947,6 +947,8 @@ dependencies = [
 [[package]]
 name = "vach"
 version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72293ed7e6dbb60a79652f20ed2e4709b0ab0568a4fd43cc708c417f0edb5d93"
 dependencies = [
  "aes-gcm-siv",
  "ed25519-dalek",
@@ -956,9 +958,7 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72293ed7e6dbb60a79652f20ed2e4709b0ab0568a4fd43cc708c417f0edb5d93"
+version = "0.3.0"
 dependencies = [
  "aes-gcm-siv",
  "ed25519-dalek",
@@ -971,7 +971,7 @@ name = "vach-benchmarks"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "vach 0.2.3",
+ "vach 0.3.0",
 ]
 
 [[package]]
@@ -986,7 +986,7 @@ dependencies = [
  "log",
  "pretty_env_logger",
  "tabled",
- "vach 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vach 0.2.3",
  "walkdir",
 ]
 

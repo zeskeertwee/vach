@@ -68,7 +68,6 @@ impl<'a> Builder<'a> {
 		for file in directory {
 			let uri = file?.path();
 
-			// BUG: Fix this DUMB DUMB code
 			let v = uri
 				.iter()
 				.map(|u| String::from(u.to_str().unwrap()))

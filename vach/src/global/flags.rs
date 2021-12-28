@@ -5,7 +5,7 @@ use super::{error::InternalError, result::InternalResult};
 /// A knock-off minimal bitflags of sorts.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
-	pub(crate) bits: u16,
+	pub(crate) bits: u32,
 }
 
 // based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
@@ -13,24 +13,28 @@ pub struct Flags {
 impl Flags {
 	/// The flags used within the crate, to whom all access is denied.
 	/// Any interaction with set will cause an exception.
-	pub const RESERVED_MASK: u16 = 0b1111_0000_0000_0000;
+	pub const RESERVED_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 	/// The flag that represents compressed sources
-	pub const COMPRESSED_FLAG: u16 = 0b_1000_0000_0000_0000;
+	pub const COMPRESSED_FLAG: u32 = 0b_1000_0000_0000_0000_0000_0000_0000_0000;
 	/// The flag that denotes that the archive source has signatures
-	pub const SIGNED_FLAG: u16 = 0b_0100_0000_0000_0000;
+	pub const SIGNED_FLAG: u32 = 0b_0000_1000_0000_0000_0000_0000_0000_0000;
 	/// The flag that marks registry entries as links rather than leaf pointers
-	pub const LINK_FLAG: u16 = 0b_0010_0000_0000_0000;
+	pub const LINK_FLAG: u32 = 0b_0000_0100_0000_0000_0000_0000_0000_0000;
 	/// The flag that shows data in the leaf in encrypted
-	pub const ENCRYPTED_FLAG: u16 = 0b_0001_0000_0000_0000;
+	pub const ENCRYPTED_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
+	/// A flag that is set if the registry
+	pub const MUTABLE_REGISTRY_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
+	/// The size in bytes of any flags entry
+	pub const SIZE: usize = 32 / 8;
 
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u16` number
-	pub fn from_bits(bits: u16) -> Self {
+	pub fn from_bits(bits: u32) -> Self {
 		Flags { bits }
 	}
 	/// Returns a copy of the underlying number.
 	#[inline(always)]
-	pub fn bits(&self) -> u16 {
+	pub fn bits(&self) -> u32 {
 		self.bits
 	}
 	/// Yield a new empty `Flags` instance.
@@ -62,7 +66,7 @@ impl Flags {
 	///
 	/// ### Errors
 	///  - Trying to set a bit in the forbidden section of the flags
-	pub fn set(&mut self, bit: u16, toggle: bool) -> InternalResult<u16> {
+	pub fn set(&mut self, bit: u32, toggle: bool) -> InternalResult<u32> {
 		if Flags::_contains(Flags::RESERVED_MASK, bit) {
 			return Err(InternalError::RestrictedFlagAccessError);
 		} else {
@@ -71,7 +75,7 @@ impl Flags {
 
 		Ok(self.bits)
 	}
-	pub(crate) fn force_set(&mut self, mask: u16, toggle: bool) {
+	pub(crate) fn force_set(&mut self, mask: u32, toggle: bool) {
 		if toggle {
 			self.bits |= mask;
 		} else {
@@ -89,12 +93,12 @@ impl Flags {
 	/// flag.set(0b0000_1000_0000_0000, true);
 	/// assert!(flag.contains(0b0000_1000_0000_0000));
 	/// ```
-	pub fn contains(&self, bit: u16) -> bool {
+	pub fn contains(&self, bit: u32) -> bool {
 		Flags::_contains(self.bits, bit)
 	}
 
 	// Auxillary function
-	fn _contains(first: u16, other: u16) -> bool {
+	fn _contains(first: u32, other: u32) -> bool {
 		(first & other) != 0
 	}
 }

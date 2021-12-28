@@ -21,8 +21,8 @@ pub struct RegistryEntry {
 }
 
 impl RegistryEntry {
-	// 2(flags) + 1(content version) + 8(location) + 8(offset) + 2(path length) + ..Dynamic
-	pub(crate) const MIN_SIZE: usize = 21;
+	// (flags) + 1(content version) + 8(location) + 8(offset) + 2(path length) + ..Dynamic
+	pub(crate) const MIN_SIZE: usize = Flags::SIZE + 19;
 
 	#[inline(always)]
 	pub(crate) fn empty() -> RegistryEntry {
@@ -44,19 +44,18 @@ impl RegistryEntry {
 
 		// Construct entry
 		let mut entry = RegistryEntry::empty();
-		entry.flags = Flags::from_bits(u16::from_le_bytes([buffer[0], buffer[1]]));
-		entry.content_version = buffer[2];
+		entry.flags = Flags::from_bits(u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]));
+		entry.content_version = buffer[4];
 
 		entry.location = u64::from_le_bytes([
-			buffer[3], buffer[4], buffer[5], buffer[6], buffer[7], buffer[8], buffer[9], buffer[10],
+			buffer[5], buffer[6], buffer[7], buffer[8], buffer[9], buffer[10], buffer[11], buffer[12],
 		]);
 
 		entry.offset = u64::from_le_bytes([
-			buffer[11], buffer[12], buffer[13], buffer[14], buffer[15], buffer[16], buffer[17],
-			buffer[18],
+			buffer[13], buffer[14], buffer[15], buffer[16], buffer[17], buffer[18], buffer[19], buffer[20],
 		]);
 
-		let id_length = u16::from_le_bytes([buffer[19], buffer[20]]);
+		let id_length = u16::from_le_bytes([buffer[21], buffer[22]]);
 
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed

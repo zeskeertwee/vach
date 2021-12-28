@@ -4,7 +4,7 @@
 // Boring, average every day contemporary imports
 use std::{
 	fs::File,
-	io::{Seek, SeekFrom},
+	io::{Seek, SeekFrom, Read},
 	str,
 };
 
@@ -20,17 +20,17 @@ const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
 const ENCRYPTED_TARGET: &str = "test_data/encrypted/target.vach";
 
 // Custom bitflag tests
-const CUSTOM_FLAG_1: u16 = 0b_0000_1000_0000_0000;
-const CUSTOM_FLAG_2: u16 = 0b_0000_0100_0000_0000;
-const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
-const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
+const CUSTOM_FLAG_1: u32 = 0b0000_1000_0000_0000;
+const CUSTOM_FLAG_2: u32 = 0b0000_0100_0000_0000;
+const CUSTOM_FLAG_3: u32 = 0b0000_0000_1000_0000;
+const CUSTOM_FLAG_4: u32 = 0b0000_0000_0001_0000;
 
 #[test]
 fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
-	let flags = Flags::from_bits(entry.flags.bits());
+	let flags = entry.flags;
 
 	assert_eq!(flags.bits(), entry.flags.bits());
 	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
@@ -97,7 +97,7 @@ fn header_config() -> InternalResult<()> {
 	use crate::global::header::Header;
 
 	let config = HeaderConfig::new(*b"VfACH", None);
-	let mut file = File::open("test_data/simple/target.vach")?;
+	let mut file = File::open("test_data/simple/target.vach")?.take(Header::BASE_SIZE as u64);
 	println!("{}", &config);
 
 	let header = Header::from_handle(&mut file)?;

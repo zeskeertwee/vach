@@ -25,6 +25,9 @@ pub struct BuilderConfig {
 	/// let builder_config = BuilderConfig::new()
 	/// ```
 	pub progress_callback: OptionalCallback,
+	/// Reserve some space in the registry section of an archive, allowing entries to be added later in the archives lifetime.
+	/// Thus making the archive mutable. Passing `None` or `Some(x) (where x < RegistryEntry::SIZE)`, results in an immutable archive
+	pub reserved_reg_space: bool
 }
 
 impl Debug for BuilderConfig {
@@ -101,6 +104,7 @@ impl Default for BuilderConfig {
 			keypair: None,
 			magic: crate::DEFAULT_MAGIC.clone(),
 			progress_callback: None,
+			reserved_reg_space: false
 		}
 	}
 }
