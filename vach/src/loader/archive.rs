@@ -161,7 +161,7 @@ impl<T: Seek + Read> Archive<T> {
 				raw = if entry.flags.contains(Flags::LZ4_COMPRESSED) {
 					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4)?
 				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli)?
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0))?
 				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
 					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy)?
 				} else {

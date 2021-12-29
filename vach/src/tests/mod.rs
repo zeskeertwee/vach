@@ -496,7 +496,7 @@ fn test_compression() -> InternalResult<()> {
 	builder.add_leaf(
 		Leaf::from_handle(input.as_slice())
 			.id("BROTLI")
-			.compression_algo(CompressionAlgorithm::Brotli)
+			.compression_algo(CompressionAlgorithm::Brotli(9))
 			.compress(CompressMode::Always),
 	)?;
 	builder.add_leaf(

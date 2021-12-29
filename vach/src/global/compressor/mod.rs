@@ -36,13 +36,16 @@ impl<'a, T: Read> Compressor<T> {
 				compressor.read_to_end(&mut buffer);
 				Ok(buffer)
 			},
-			CompressionAlgorithm::Brotli => {
+			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
 				let mut buffer = vec![];
-				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, 10u32, 21u32);
+				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
 				compressor.read_to_end(&mut buffer)?;
 
 				Ok(buffer)
 			},
+			CompressionAlgorithm::Brotli(quality) => {
+				Err(InternalError::DeCompressionError("Maximum Brotli compression level is 11 and minimum is 1".to_string()))
+			}
 		}
 	}
 	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
@@ -61,7 +64,7 @@ impl<'a, T: Read> Compressor<T> {
 				rdr.read_to_end(&mut buffer)?;
 				Ok(buffer)
 			},
-			CompressionAlgorithm::Brotli => {
+			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
 				let mut buffer = vec![];
 
@@ -80,7 +83,9 @@ pub enum CompressionAlgorithm {
 	/// Uses [LZ4](https://crates.io/crates/lz4_flex) for very fast decompression with average compression ratios
 	LZ4,
 	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
-	Brotli,
+	/// Allows one to specify the quality of the compression, from 1-11. (9 Recommended, 11 for extra compression)
+	/// The higher the compression level, the smaller the file (and the more computationally expensive the compression is)
+	Brotli(u32),
 }
 
 impl From<CompressionAlgorithm> for u32 {
@@ -88,7 +93,7 @@ impl From<CompressionAlgorithm> for u32 {
 		match algo {
 			CompressionAlgorithm::Snappy => Flags::SNAPPY_COMPRESSED,
 			CompressionAlgorithm::LZ4 => Flags::LZ4_COMPRESSED,
-			CompressionAlgorithm::Brotli => Flags::BROTLI_COMPRESSED,
+			CompressionAlgorithm::Brotli(_) => Flags::BROTLI_COMPRESSED,
 		}
 	}
 }
