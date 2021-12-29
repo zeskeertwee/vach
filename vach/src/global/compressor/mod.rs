@@ -6,7 +6,10 @@ use std::{
 use crate::prelude::Flags;
 
 use super::{error::InternalError, result::InternalResult};
+
 use lz4_flex as lz4;
+use snap;
+use brotli;
 
 #[derive(Debug)]
 pub struct Compressor<T: Read> {
@@ -23,10 +26,23 @@ impl<'a, T: Read> Compressor<T> {
 				let mut compressor = lz4::frame::FrameEncoder::new(vec![]);
 				io::copy(&mut self.data, &mut compressor)?;
 
+				compressor.flush()?;
 				Ok(compressor.finish()?)
 			}
-			CompressionAlgorithm::Snappy => todo!(),
-			CompressionAlgorithm::Brotli => todo!(),
+			CompressionAlgorithm::Snappy => {
+				let mut buffer = vec![];
+				let mut compressor = snap::read::FrameEncoder::new(&mut self.data);
+
+				compressor.read_to_end(&mut buffer);
+				Ok(buffer)
+			},
+			CompressionAlgorithm::Brotli => {
+				let mut buffer = vec![];
+				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, 10u32, 21u32);
+				compressor.read_to_end(&mut buffer)?;
+
+				Ok(buffer)
+			},
 		}
 	}
 	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
@@ -38,12 +54,25 @@ impl<'a, T: Read> Compressor<T> {
 				rdr.read_to_end(&mut buffer)?;
 				Ok(buffer)
 			}
-			CompressionAlgorithm::Snappy => todo!(),
-			CompressionAlgorithm::Brotli => todo!(),
+			CompressionAlgorithm::Snappy => {
+				let mut rdr = snap::read::FrameDecoder::new(&mut self.data);
+				let mut buffer = vec![];
+
+				rdr.read_to_end(&mut buffer)?;
+				Ok(buffer)
+			},
+			CompressionAlgorithm::Brotli => {
+				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
+				let mut buffer = vec![];
+
+				rdr.read_to_end(&mut buffer)?;
+				Ok(buffer)
+			},
 		}
 	}
 }
 
+/// Allows a user to specify one of three `Compression Algorithm`s to use. Each with a specific use case
 #[derive(Clone, Copy, Debug)]
 pub enum CompressionAlgorithm {
 	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced
