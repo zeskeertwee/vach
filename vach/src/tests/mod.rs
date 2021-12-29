@@ -4,7 +4,7 @@
 // Boring, average every day contemporary imports
 use std::{
 	fs::File,
-	io::{Seek, SeekFrom, Read},
+	io::{Seek, SeekFrom, Read, Cursor},
 	str,
 };
 
@@ -476,5 +476,59 @@ fn consolidated_example() -> InternalResult<()> {
 	println!("Fetching took: {}us", then.elapsed().as_micros());
 
 	// All seems ok
+	Ok(())
+}
+
+#[test]
+fn test_compression() -> InternalResult<()> {
+	const INPUT_LEN: usize = 4096;
+
+	let input = [12u8; INPUT_LEN];
+	let mut target = Cursor::new(vec![]);
+	let mut builder = Builder::new();
+
+	builder.add_leaf(
+		Leaf::from_handle(input.as_slice())
+			.id("LZ4")
+			.compression_algo(CompressionAlgorithm::LZ4)
+			.compress(CompressMode::Always),
+	)?;
+	builder.add_leaf(
+		Leaf::from_handle(input.as_slice())
+			.id("BROTLI")
+			.compression_algo(CompressionAlgorithm::Brotli)
+			.compress(CompressMode::Always),
+	)?;
+	builder.add_leaf(
+		Leaf::from_handle(input.as_slice())
+			.id("SNAPPY")
+			.compression_algo(CompressionAlgorithm::Snappy)
+			.compress(CompressMode::Always),
+	)?;
+
+	builder.dump(&mut target, &BuilderConfig::default())?;
+
+	target.seek(SeekFrom::Start(0))?;
+
+	let mut archive = Archive::from_handle(&mut target)?;
+
+	let d1 = archive.fetch("LZ4")?;
+	let d2 = archive.fetch("BROTLI")?;
+	let d3 = archive.fetch("SNAPPY")?;
+
+	// Identity tests
+	assert_eq!(d1.data.len(), INPUT_LEN);
+	assert_eq!(d2.data.len(), INPUT_LEN);
+	assert_eq!(d3.data.len(), INPUT_LEN);
+
+	assert!(&d1.data[..] == &input);
+	assert!(&d2.data[..] == &input);
+	assert!(&d3.data[..] == &input);
+
+	// Compression tests
+	assert!(archive.fetch_entry("LZ4").unwrap().offset < INPUT_LEN as u64);
+	assert!(archive.fetch_entry("BROTLI").unwrap().offset < INPUT_LEN as u64);
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset < INPUT_LEN as u64);
+
 	Ok(())
 }
