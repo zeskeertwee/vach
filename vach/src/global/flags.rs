@@ -14,6 +14,8 @@ impl Flags {
 	/// The flags used within the crate, to whom all access is denied.
 	/// Any interaction with set will cause an exception.
 	pub const RESERVED_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
+	/// The size in bytes of any flags entry
+	pub const SIZE: usize = 32 / 8;
 
 	/// This flag shows that the adjacent entry is compressed
 	pub const COMPRESSED_FLAG: u32 = 0b_1000_0000_0000_0000_0000_0000_0000_0000;
@@ -30,10 +32,8 @@ impl Flags {
 	pub const LINK_FLAG: u32 = 0b_0000_0100_0000_0000_0000_0000_0000_0000;
 	/// The flag that shows data in the leaf in encrypted
 	pub const ENCRYPTED_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
-	/// A flag that is set if the registry
+	/// A flag that is set if the registry has space reserved for more entries
 	pub const MUTABLE_REGISTRY_FLAG: u32 = 0b_0000_0001_0000_0000_0000_0000_0000_0000;
-	/// The size in bytes of any flags entry
-	pub const SIZE: usize = 32 / 8;
 
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u16` number
@@ -59,17 +59,23 @@ impl Flags {
 	/// Returns a error if mask contains a reserved bit.
 	/// Set a flag into the underlying structure.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
+	///
+	/// As the `Flag` struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
+	/// are reserved for internal use (ie the first 16 half bits). The good thing is that because of endianness, one can use the remaining 16 bits
+	/// just fine, as seen below. Just using the `0b0000_0000_0000_0000` literal works because `vach` is little endian.
 	/// ```
 	/// use vach::prelude::Flags;
 	///
 	/// let mut flag = Flags::from_bits(0b0000_0000_0000_0000);
-	/// flag.set(0b0000_1000_0000_0000, true);
-	/// flag.set(0b0000_0000_1000_0000, true);
-	/// assert_eq!(flag.bits(), 0b0000_1000_1000_0000);
+	/// flag.set(0b0000_1000_0000_0000, true).unwrap();
+	/// flag.set(0b1000_0000_0000_0000, true).unwrap();
+	///
+	/// assert_eq!(flag.bits(), 0b1000_1000_0000_0000);
+	/// assert!(flag.contains(0b1000_0000_0000_0000));
 	///
 	/// // --------------------------v---------
-	/// flag.set(0b0000_1000_0000_0001, false); // 0 flags remain zero
-	/// assert_eq!(flag.bits(), 0b0000_0000_1000_0000);
+	/// flag.set(0b0000_1000_0000_0001, false).unwrap(); // 0 flags remain zero
+	/// assert_eq!(flag.bits(), 0b1000_0000_0000_0000);
 	/// ```
 	///
 	/// ### Errors
@@ -98,8 +104,8 @@ impl Flags {
 	///
 	/// let mut flag = Flags::from_bits(0b0000_0000_0000_0000);
 	///
-	/// flag.set(0b0000_1000_0000_0000, true);
-	/// assert!(flag.contains(0b0000_1000_0000_0000));
+	/// flag.set(0b1000_0000_0000_0000, true).unwrap();
+	/// assert!(flag.contains(0b1000_0000_0000_0000));
 	/// ```
 	pub fn contains(&self, bit: u32) -> bool {
 		Flags::_contains(self.bits, bit)

@@ -5,7 +5,6 @@
   <strong>vach</strong>
 </h1>
 <p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
-<p style="color:white; background-color: red; text-align: center; font-weight: bold;" align=center>STABILITY WARNING! Some crates in this repo are in very early development, APIs and standards are expected to change!</p>
 
 <p align=center>
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
