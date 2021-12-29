@@ -1,16 +1,16 @@
-use std::io::{self, BufWriter, Write, Read, Seek, SeekFrom};
+use std::io::{BufWriter, Write, Read, Seek, SeekFrom};
 use std::collections::HashSet;
 
 mod config;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, CompressMode};
+use crate::global::compressor::Compressor;
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
 use crate::{
 	global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
 };
 
-use lz4_flex as lz4;
 use ed25519_dalek::Signer;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
@@ -68,7 +68,6 @@ impl<'a> Builder<'a> {
 		for file in directory {
 			let uri = file?.path();
 
-			// BUG: Fix this DUMB DUMB code
 			let v = uri
 				.iter()
 				.map(|u| String::from(u.to_str().unwrap()))
@@ -214,23 +213,23 @@ impl<'a> Builder<'a> {
 					leaf.handle.read_to_end(&mut leaf_bytes)?;
 				}
 				CompressMode::Always => {
-					let mut compressor = lz4::frame::FrameEncoder::new(leaf_bytes);
-					io::copy(&mut leaf.handle, &mut compressor)?;
-					leaf_bytes = compressor.finish()?;
+					leaf_bytes = Compressor::new(&mut leaf.handle).compress(leaf.compression_algo)?;
+
 					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
+					entry.flags.force_set(leaf.compression_algo.into(), true);
 				}
 				CompressMode::Detect => {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
 
-					let mut compressor = lz4::frame::FrameEncoder::new(Vec::new());
-					io::copy(&mut buffer.as_slice(), &mut compressor)?;
-					let mut compressed_data = compressor.finish()?;
-
+					let compressed_data = Compressor::new(buffer.as_slice()).compress(leaf.compression_algo)?;
 					let ratio = compressed_data.len() as f32 / buffer.len() as f32;
+
 					if ratio < 1f32 {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-						leaf_bytes.append(&mut compressed_data);
+						entry.flags.force_set(leaf.compression_algo.into(), true);
+
+						leaf_bytes = compressed_data;
 					} else {
 						buffer.as_slice().read_to_end(&mut leaf_bytes)?;
 					};

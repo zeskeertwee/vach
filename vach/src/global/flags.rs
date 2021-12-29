@@ -5,7 +5,7 @@ use super::{error::InternalError, result::InternalResult};
 /// A knock-off minimal bitflags of sorts.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Flags {
-	pub(crate) bits: u16,
+	pub(crate) bits: u32,
 }
 
 // based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
@@ -13,26 +13,40 @@ pub struct Flags {
 impl Flags {
 	/// The flags used within the crate, to whom all access is denied.
 	/// Any interaction with set will cause an exception.
-	pub const RESERVED_MASK: u16 = 0b1111_0000_0000_0000;
-	/// The flag that represents compressed sources
-	pub const COMPRESSED_FLAG: u16 = 0b_1000_0000_0000_0000;
+	pub const RESERVED_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
+	/// The size in bytes of any flags entry
+	pub const SIZE: usize = 32 / 8;
+
+	/// This flag shows that the adjacent entry is compressed
+	pub const COMPRESSED_FLAG: u32 = 0b_1000_0000_0000_0000_0000_0000_0000_0000;
+	/// Uses [LZ4](https://crates.io/crates/lz4_flex) for very fast decompression with average compression ratios
+	pub const LZ4_COMPRESSED: u32 = 0b_0100_0000_0000_0000_0000_0000_0000_0000;
+	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced
+	pub const SNAPPY_COMPRESSED: u32 = 0b_0010_0000_0000_0000_0000_0000_0000_0000;
+	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
+	pub const BROTLI_COMPRESSED: u32 = 0b_0001_0000_0000_0000_0000_0000_0000_0000;
+
 	/// The flag that denotes that the archive source has signatures
-	pub const SIGNED_FLAG: u16 = 0b_0100_0000_0000_0000;
+	pub const SIGNED_FLAG: u32 = 0b_0000_1000_0000_0000_0000_0000_0000_0000;
 	/// The flag that marks registry entries as links rather than leaf pointers
-	pub const LINK_FLAG: u16 = 0b_0010_0000_0000_0000;
+	pub const LINK_FLAG: u32 = 0b_0000_0100_0000_0000_0000_0000_0000_0000;
 	/// The flag that shows data in the leaf in encrypted
-	pub const ENCRYPTED_FLAG: u16 = 0b_0001_0000_0000_0000;
+	pub const ENCRYPTED_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
+	/// A flag that is set if the registry has space reserved for more entries
+	pub const MUTABLE_REGISTRY_FLAG: u32 = 0b_0000_0001_0000_0000_0000_0000_0000_0000;
 
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u16` number
-	pub fn from_bits(bits: u16) -> Self {
+	pub fn from_bits(bits: u32) -> Self {
 		Flags { bits }
 	}
+
 	/// Returns a copy of the underlying number.
 	#[inline(always)]
-	pub fn bits(&self) -> u16 {
+	pub fn bits(&self) -> u32 {
 		self.bits
 	}
+
 	/// Yield a new empty `Flags` instance.
 	/// ```
 	/// use vach::prelude::Flags;
@@ -47,22 +61,28 @@ impl Flags {
 	/// Returns a error if mask contains a reserved bit.
 	/// Set a flag into the underlying structure.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
+	///
+	/// As the `Flag` struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
+	/// are reserved for internal use (ie the first 16 half bits). The good thing is that because of endianness, one can use the remaining 16 bits
+	/// just fine, as seen below. Just using the `0b0000_0000_0000_0000` literal works because `vach` is little endian.
 	/// ```
 	/// use vach::prelude::Flags;
 	///
 	/// let mut flag = Flags::from_bits(0b0000_0000_0000_0000);
-	/// flag.set(0b0000_1000_0000_0000, true);
-	/// flag.set(0b0000_0000_1000_0000, true);
-	/// assert_eq!(flag.bits(), 0b0000_1000_1000_0000);
+	/// flag.set(0b0000_1000_0000_0000, true).unwrap();
+	/// flag.set(0b1000_0000_0000_0000, true).unwrap();
+	///
+	/// assert_eq!(flag.bits(), 0b1000_1000_0000_0000);
+	/// assert!(flag.contains(0b1000_0000_0000_0000));
 	///
 	/// // --------------------------v---------
-	/// flag.set(0b0000_1000_0000_0001, false); // 0 flags remain zero
-	/// assert_eq!(flag.bits(), 0b0000_0000_1000_0000);
+	/// flag.set(0b0000_1000_0000_0001, false).unwrap(); // 0 flags remain zero
+	/// assert_eq!(flag.bits(), 0b1000_0000_0000_0000);
 	/// ```
 	///
 	/// ### Errors
 	///  - Trying to set a bit in the forbidden section of the flags
-	pub fn set(&mut self, bit: u16, toggle: bool) -> InternalResult<u16> {
+	pub fn set(&mut self, bit: u32, toggle: bool) -> InternalResult<u32> {
 		if Flags::_contains(Flags::RESERVED_MASK, bit) {
 			return Err(InternalError::RestrictedFlagAccessError);
 		} else {
@@ -71,7 +91,7 @@ impl Flags {
 
 		Ok(self.bits)
 	}
-	pub(crate) fn force_set(&mut self, mask: u16, toggle: bool) {
+	pub(crate) fn force_set(&mut self, mask: u32, toggle: bool) {
 		if toggle {
 			self.bits |= mask;
 		} else {
@@ -86,15 +106,15 @@ impl Flags {
 	///
 	/// let mut flag = Flags::from_bits(0b0000_0000_0000_0000);
 	///
-	/// flag.set(0b0000_1000_0000_0000, true);
-	/// assert!(flag.contains(0b0000_1000_0000_0000));
+	/// flag.set(0b1000_0000_0000_0000, true).unwrap();
+	/// assert!(flag.contains(0b1000_0000_0000_0000));
 	/// ```
-	pub fn contains(&self, bit: u16) -> bool {
+	pub fn contains(&self, bit: u32) -> bool {
 		Flags::_contains(self.bits, bit)
 	}
 
 	// Auxillary function
-	fn _contains(first: u16, other: u16) -> bool {
+	fn _contains(first: u32, other: u32) -> bool {
 		(first & other) != 0
 	}
 }
@@ -118,10 +138,26 @@ impl fmt::Display for Flags {
 
 impl fmt::Debug for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
-		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
-		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
+		let compressed = if self.contains(Flags::COMPRESSED_FLAG) {
+			'C'
+		} else {
+			'-'
+		};
+		let signed = if self.contains(Flags::SIGNED_FLAG) {
+			'S'
+		} else {
+			'-'
+		};
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) {
+			'E'
+		} else {
+			'-'
+		};
 
-		write!(f, "Flags[{}{}{}]: <{}u16 : {:#016b}>", compressed, encrypted, signed, self.bits, self.bits)
+		write!(
+			f,
+			"Flags[{}{}{}]: <{}u16 : {:#016b}>",
+			compressed, encrypted, signed, self.bits, self.bits
+		)
 	}
 }

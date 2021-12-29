@@ -1,6 +1,9 @@
 [package]
 name = "vach"
-version = "0.2.3" # Make sure spec.txt and vach::VERSION constants are all synced up
+
+# NOTE: Make sure spec.txt and vach::VERSION constants are all synced up
+version = "0.3.0"
+
 edition = "2021"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
@@ -18,11 +21,11 @@ keywords = [
 	"assets"
 ]
 documentation = "https://docs.rs/vach"
-readme = "../README.md"
+readme = "README.md"
 include = [
 	"Cargo.toml",
+	"Cargo.lock",
 	"src/*",
-	"../README.md"
 ]
 
 [dependencies]
@@ -30,3 +33,5 @@ ed25519-dalek = "1.0.1"
 lz4_flex = "0.9.0"
 rand = "0.7.0"
 aes-gcm-siv = "0.10.3"
+snap = "1.0.5"
+brotli = "3.3.2"

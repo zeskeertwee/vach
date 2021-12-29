@@ -108,12 +108,10 @@ impl Default for Header {
 }
 
 impl Header {
-	// BASE_SIZE => 5 + 2 + 2 + 2 = 11
 	pub const BASE_SIZE: usize =
-		crate::MAGIC_LENGTH + Self::FLAG_SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
+		crate::MAGIC_LENGTH + Flags::SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
 
 	// Data appears in this order
-	pub const FLAG_SIZE: usize = 2;
 	pub const VERSION_SIZE: usize = 2;
 	pub const CAPACITY_SIZE: usize = 2;
 
@@ -150,11 +148,11 @@ impl Header {
 			// Read magic, [u8;5]
 			magic: [buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]],
 			// Read flags, u16 from [u8;2]
-			flags: Flags::from_bits(u16::from_le_bytes([buffer[5], buffer[6]])),
+			flags: Flags::from_bits(u32::from_le_bytes([buffer[5], buffer[6], buffer[7], buffer[8]])),
 			// Read version, u16 from [u8;2]
-			arch_version: u16::from_le_bytes([buffer[7], buffer[8]]),
+			arch_version: u16::from_le_bytes([buffer[9], buffer[10]]),
 			// Read the capacity of the archive, u16 from [u8;2]
-			capacity: u16::from_le_bytes([buffer[9], buffer[10]]),
+			capacity: u16::from_le_bytes([buffer[11], buffer[12]]),
 		})
 	}
 }

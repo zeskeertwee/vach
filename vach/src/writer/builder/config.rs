@@ -25,6 +25,9 @@ pub struct BuilderConfig {
 	/// let builder_config = BuilderConfig::new()
 	/// ```
 	pub progress_callback: OptionalCallback,
+	/// Reserve some space in the registry section of an archive, allowing entries to be added later in the archives lifetime.
+	/// Thus making the archive mutable. Passing `None` or `Some(x) (where x < RegistryEntry::SIZE)`, results in an immutable archive
+	pub reserved_reg_space: bool
 }
 
 impl Debug for BuilderConfig {
@@ -75,12 +78,12 @@ impl BuilderConfig {
 	/// Setter for the `progress_callback` field
 	///```
 	/// use vach::prelude::BuilderConfig;
-	/// let config = BuilderConfig::default().callback(Box::new(|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) }));
+	/// let config = BuilderConfig::default().callback(|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) });
 	///```
 	pub fn callback(
-		mut self, callback: Box<dyn Fn(&str, usize, &RegistryEntry)>,
+		mut self, callback: impl Fn(&str, usize, &RegistryEntry) + 'static,
 	) -> BuilderConfig {
-		self.progress_callback = Some(callback);
+		self.progress_callback = Some(Box::new(callback));
 		self
 	}
 
@@ -101,6 +104,7 @@ impl Default for BuilderConfig {
 			keypair: None,
 			magic: crate::DEFAULT_MAGIC.clone(),
 			progress_callback: None,
+			reserved_reg_space: false
 		}
 	}
 }

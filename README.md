@@ -5,13 +5,12 @@
   <strong>vach</strong>
 </h1>
 <p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
-<p style="color:white; background-color: red; text-align: center; font-weight: bold;" align=center>STABILITY WARNING! Some crates in this repo are in very early development, APIs and standards are expected to change!</p>
 
 <p align=center>
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
   <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
   <br/>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LICENSE: MIT" src="https://img.shields.io/crates/l/vach?style=flat-square"></a>
+  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/actions/workflows/rust.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/virtfs-rs/workflows/Rust/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
 </p>

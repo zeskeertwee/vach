@@ -29,7 +29,7 @@ pub enum InternalError {
 	/// When a `Leaf` has an ID that is longer than `crate::MAX_ID_LENGTH`
 	IDSizeOverflowError(String),
 	/// Errors thrown during compression or decompression
-	LZ4Error(lz4::frame::Error),
+	DeCompressionError(String),
 }
 
 impl fmt::Display for InternalError {
@@ -49,7 +49,7 @@ impl fmt::Display for InternalError {
 			Self::RestrictedFlagAccessError => write!(f, "[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!"),
 			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
 			Self::LeafAppendError(id) => write!(f, "[VachError::LeafAppendError] A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", id),
-			Self::LZ4Error(err) => write!(f, "[VachError::LZ4Error] Encountered an error during compression or decompression: {}", err),
+			Self::DeCompressionError(err) => write!(f, "[VachError::DeCompressionError] Encountered an error during compression or decompression: {}", err),
 		}
 	}
 }
@@ -83,6 +83,6 @@ impl From<io::Error> for InternalError {
 
 impl From<lz4::frame::Error> for InternalError {
 	fn from(err: lz4::frame::Error) -> InternalError {
-		InternalError::LZ4Error(err)
+		InternalError::DeCompressionError(err.to_string())
 	}
 }

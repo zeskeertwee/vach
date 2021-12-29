@@ -4,7 +4,7 @@
 // Boring, average every day contemporary imports
 use std::{
 	fs::File,
-	io::{Seek, SeekFrom},
+	io::{Seek, SeekFrom, Read, Cursor},
 	str,
 };
 
@@ -20,17 +20,17 @@ const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
 const ENCRYPTED_TARGET: &str = "test_data/encrypted/target.vach";
 
 // Custom bitflag tests
-const CUSTOM_FLAG_1: u16 = 0b_0000_1000_0000_0000;
-const CUSTOM_FLAG_2: u16 = 0b_0000_0100_0000_0000;
-const CUSTOM_FLAG_3: u16 = 0b_0000_0000_1000_0000;
-const CUSTOM_FLAG_4: u16 = 0b_0000_0000_0001_0000;
+const CUSTOM_FLAG_1: u32 = 0b0000_0000_0000_0000_0000_1000_0000_0000;
+const CUSTOM_FLAG_2: u32 = 0b0000_0000_0000_0000_0000_0100_0000_0000;
+const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
+const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 #[test]
 fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
-	let flags = Flags::from_bits(entry.flags.bits());
+	let flags = entry.flags;
 
 	assert_eq!(flags.bits(), entry.flags.bits());
 	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
@@ -97,7 +97,7 @@ fn header_config() -> InternalResult<()> {
 	use crate::global::header::Header;
 
 	let config = HeaderConfig::new(*b"VfACH", None);
-	let mut file = File::open("test_data/simple/target.vach")?;
+	let mut file = File::open("test_data/simple/target.vach")?.take(Header::BASE_SIZE as u64);
 	println!("{}", &config);
 
 	let header = Header::from_handle(&mut file)?;
@@ -110,7 +110,9 @@ fn header_config() -> InternalResult<()> {
 #[test]
 fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
-	let build_config = BuilderConfig::default();
+	let build_config = BuilderConfig::default().callback(|id, _, entry| {
+		dbg!(id, entry);
+	});
 
 	builder.add(File::open("test_data/song.txt")?, "song")?;
 	builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
@@ -192,9 +194,9 @@ fn gen_keypair() -> InternalResult<()> {
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
-	let mut build_config = BuilderConfig::default().callback(Box::new(|_, _, d| {
+	let mut build_config = BuilderConfig::default().callback(|_, _, d| {
 		dbg!(&d);
-	}));
+	});
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
 	builder.add_dir(
@@ -474,5 +476,59 @@ fn consolidated_example() -> InternalResult<()> {
 	println!("Fetching took: {}us", then.elapsed().as_micros());
 
 	// All seems ok
+	Ok(())
+}
+
+#[test]
+fn test_compression() -> InternalResult<()> {
+	const INPUT_LEN: usize = 4096;
+
+	let input = [12u8; INPUT_LEN];
+	let mut target = Cursor::new(vec![]);
+	let mut builder = Builder::new();
+
+	builder.add_leaf(
+		Leaf::from_handle(input.as_slice())
+			.id("LZ4")
+			.compression_algo(CompressionAlgorithm::LZ4)
+			.compress(CompressMode::Always),
+	)?;
+	builder.add_leaf(
+		Leaf::from_handle(input.as_slice())
+			.id("BROTLI")
+			.compression_algo(CompressionAlgorithm::Brotli(9))
+			.compress(CompressMode::Always),
+	)?;
+	builder.add_leaf(
+		Leaf::from_handle(input.as_slice())
+			.id("SNAPPY")
+			.compression_algo(CompressionAlgorithm::Snappy)
+			.compress(CompressMode::Always),
+	)?;
+
+	builder.dump(&mut target, &BuilderConfig::default())?;
+
+	target.seek(SeekFrom::Start(0))?;
+
+	let mut archive = Archive::from_handle(&mut target)?;
+
+	let d1 = archive.fetch("LZ4")?;
+	let d2 = archive.fetch("BROTLI")?;
+	let d3 = archive.fetch("SNAPPY")?;
+
+	// Identity tests
+	assert_eq!(d1.data.len(), INPUT_LEN);
+	assert_eq!(d2.data.len(), INPUT_LEN);
+	assert_eq!(d3.data.len(), INPUT_LEN);
+
+	assert!(&d1.data[..] == &input);
+	assert!(&d2.data[..] == &input);
+	assert!(&d3.data[..] == &input);
+
+	// Compression tests
+	assert!(archive.fetch_entry("LZ4").unwrap().offset < INPUT_LEN as u64);
+	assert!(archive.fetch_entry("BROTLI").unwrap().offset < INPUT_LEN as u64);
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset < INPUT_LEN as u64);
+
 	Ok(())
 }

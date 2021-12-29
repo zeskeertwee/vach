@@ -9,7 +9,7 @@
 <p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
 <p align=center>
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
-  <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
+  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LICENSE: MIT" src="https://img.shields.io/crates/l/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/actions/workflows/rust.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/virtfs-rs/workflows/Rust/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
@@ -20,7 +20,7 @@
 
 ---
 
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for [compression](https://github.com/PSeitz/lz4_flex), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and archive customization and archive customization. Check out the `vach` specification at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ### 👄 Terminologies
 
@@ -147,7 +147,7 @@ pub(crate) mod writer;
 pub use rand;
 
 /// Current file spec version, both `Loader` and `Builder`
-pub const VERSION: u16 = 23;
+pub const VERSION: u16 = 30;
 
 /// Size of a keypair: (secret + public)
 pub const KEYPAIR_LENGTH: usize = 64;
@@ -172,16 +172,9 @@ pub const MAGIC_LENGTH: usize = 5;
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
-	pub use crate::global::{
-		header::HeaderConfig, flags::Flags, reg_entry::RegistryEntry, error::InternalError,
-		result::InternalResult,
-	};
-	pub use crate::loader::{archive::Archive, resource::Resource};
-	pub use crate::writer::{
-		builder::{Builder, BuilderConfig},
-		leaf::{Leaf, CompressMode},
-	};
-	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
+	pub use crate::crypto::*;
+	pub use crate::archive::*;
+	pub use crate::builder::*;
 }
 
 /// Import keypairs and signatures from here, mirrors from `ed25519_dalek`
@@ -195,8 +188,10 @@ pub mod builder {
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
-	pub use crate::global::error::InternalError;
-	pub use crate::global::result::InternalResult;
+	pub use crate::global::{
+		error::InternalError, compressor::CompressionAlgorithm, result::InternalResult,
+		flags::Flags,
+	};
 }
 
 /// Loader-based logic and data-structures
@@ -204,7 +199,7 @@ pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
 		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError,
-		result::InternalResult,
+		result::InternalResult, compressor::CompressionAlgorithm, flags::Flags,
 	};
 }
 
