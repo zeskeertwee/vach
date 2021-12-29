@@ -40,11 +40,13 @@ impl Flags {
 	pub fn from_bits(bits: u32) -> Self {
 		Flags { bits }
 	}
+
 	/// Returns a copy of the underlying number.
 	#[inline(always)]
 	pub fn bits(&self) -> u32 {
 		self.bits
 	}
+
 	/// Yield a new empty `Flags` instance.
 	/// ```
 	/// use vach::prelude::Flags;
