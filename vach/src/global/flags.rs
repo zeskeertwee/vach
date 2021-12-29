@@ -14,8 +14,16 @@ impl Flags {
 	/// The flags used within the crate, to whom all access is denied.
 	/// Any interaction with set will cause an exception.
 	pub const RESERVED_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
-	/// The flag that represents compressed sources
+
+	/// This flag shows that the adjacent entry is compressed
 	pub const COMPRESSED_FLAG: u32 = 0b_1000_0000_0000_0000_0000_0000_0000_0000;
+	/// Uses [LZ4](https://crates.io/crates/lz4_flex) for very fast decompression with average compression ratios
+	pub const LZ4_COMPRESSED: u32 = 0b_0100_0000_0000_0000_0000_0000_0000_0000;
+	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced
+	pub const SNAPPY_COMPRESSED: u32 = 0b_0010_0000_0000_0000_0000_0000_0000_0000;
+	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
+	pub const BROTLI_COMPRESSED: u32 = 0b_0001_0000_0000_0000_0000_0000_0000_0000;
+
 	/// The flag that denotes that the archive source has signatures
 	pub const SIGNED_FLAG: u32 = 0b_0000_1000_0000_0000_0000_0000_0000_0000;
 	/// The flag that marks registry entries as links rather than leaf pointers
@@ -23,7 +31,7 @@ impl Flags {
 	/// The flag that shows data in the leaf in encrypted
 	pub const ENCRYPTED_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
 	/// A flag that is set if the registry
-	pub const MUTABLE_REGISTRY_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
+	pub const MUTABLE_REGISTRY_FLAG: u32 = 0b_0000_0001_0000_0000_0000_0000_0000_0000;
 	/// The size in bytes of any flags entry
 	pub const SIZE: usize = 32 / 8;
 
@@ -112,9 +120,21 @@ impl Default for Flags {
 
 impl fmt::Display for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
-		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
-		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
+		let compressed = if self.contains(Flags::COMPRESSED_FLAG) {
+			'C'
+		} else {
+			'-'
+		};
+		let signed = if self.contains(Flags::SIGNED_FLAG) {
+			'S'
+		} else {
+			'-'
+		};
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) {
+			'E'
+		} else {
+			'-'
+		};
 
 		write!(f, "Flags[{}{}{}]", compressed, encrypted, signed)
 	}
@@ -122,10 +142,26 @@ impl fmt::Display for Flags {
 
 impl fmt::Debug for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
-		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
-		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
+		let compressed = if self.contains(Flags::COMPRESSED_FLAG) {
+			'C'
+		} else {
+			'-'
+		};
+		let signed = if self.contains(Flags::SIGNED_FLAG) {
+			'S'
+		} else {
+			'-'
+		};
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) {
+			'E'
+		} else {
+			'-'
+		};
 
-		write!(f, "Flags[{}{}{}]: <{}u16 : {:#016b}>", compressed, encrypted, signed, self.bits, self.bits)
+		write!(
+			f,
+			"Flags[{}{}{}]: <{}u16 : {:#016b}>",
+			compressed, encrypted, signed, self.bits, self.bits
+		)
 	}
 }

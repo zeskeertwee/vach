@@ -20,10 +20,10 @@ const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
 const ENCRYPTED_TARGET: &str = "test_data/encrypted/target.vach";
 
 // Custom bitflag tests
-const CUSTOM_FLAG_1: u32 = 0b0000_1000_0000_0000;
-const CUSTOM_FLAG_2: u32 = 0b0000_0100_0000_0000;
-const CUSTOM_FLAG_3: u32 = 0b0000_0000_1000_0000;
-const CUSTOM_FLAG_4: u32 = 0b0000_0000_0001_0000;
+const CUSTOM_FLAG_1: u32 = 0b0000_0000_0000_0000_0000_1000_0000_0000;
+const CUSTOM_FLAG_2: u32 = 0b0000_0000_0000_0000_0000_0100_0000_0000;
+const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
+const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 #[test]
 fn custom_bitflags() -> InternalResult<()> {
@@ -110,7 +110,9 @@ fn header_config() -> InternalResult<()> {
 #[test]
 fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
-	let build_config = BuilderConfig::default();
+	let build_config = BuilderConfig::default().callback(|id, _, entry| {
+		dbg!(id, entry);
+	});
 
 	builder.add(File::open("test_data/song.txt")?, "song")?;
 	builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
@@ -192,9 +194,9 @@ fn gen_keypair() -> InternalResult<()> {
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
-	let mut build_config = BuilderConfig::default().callback(Box::new(|_, _, d| {
+	let mut build_config = BuilderConfig::default().callback(|_, _, d| {
 		dbg!(&d);
-	}));
+	});
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
 	builder.add_dir(

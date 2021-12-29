@@ -78,12 +78,12 @@ impl BuilderConfig {
 	/// Setter for the `progress_callback` field
 	///```
 	/// use vach::prelude::BuilderConfig;
-	/// let config = BuilderConfig::default().callback(Box::new(|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) }));
+	/// let config = BuilderConfig::default().callback(|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) });
 	///```
 	pub fn callback(
-		mut self, callback: Box<dyn Fn(&str, usize, &RegistryEntry)>,
+		mut self, callback: impl Fn(&str, usize, &RegistryEntry) + 'static,
 	) -> BuilderConfig {
-		self.progress_callback = Some(callback);
+		self.progress_callback = Some(Box::new(callback));
 		self
 	}
 

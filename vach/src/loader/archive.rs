@@ -13,11 +13,11 @@ use crate::{
 		header::{Header, HeaderConfig},
 		reg_entry::RegistryEntry,
 		result::InternalResult,
+		compressor::{Compressor, CompressionAlgorithm},
 	},
 };
 
 use ed25519_dalek as esdalek;
-use lz4_flex as lz4;
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
@@ -58,7 +58,7 @@ impl<T: Seek + Read> Archive<T> {
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
-		// Generate and store Registry EntriesF
+		// Generate and store Registry Entries
 		let mut use_decryption = false;
 		let mut entries = HashMap::new();
 
@@ -158,11 +158,17 @@ impl<T: Seek + Read> Archive<T> {
 
 			// 2: Decompression layer
 			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-				let mut rdr = lz4::frame::FrameDecoder::new(raw.as_slice());
-				let mut buffer = vec![];
-				rdr.read_to_end(&mut buffer)?;
-
-				raw = buffer;
+				raw = if entry.flags.contains(Flags::LZ4_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4)?
+				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli)?
+				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy)?
+				} else {
+					return InternalResult::Err(InternalError::DeCompressionError(
+						"Unspecified compression algorithm bit".to_string(),
+					));
+				};
 			};
 
 			// 3: Deref layer, dereferences link leafs

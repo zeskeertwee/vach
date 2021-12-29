@@ -1,5 +1,5 @@
 use crate::{
-	global::{reg_entry::RegistryEntry, flags::Flags},
+	global::{reg_entry::RegistryEntry, flags::Flags, compressor::CompressionAlgorithm},
 };
 use std::{io::Read, fmt};
 
@@ -34,6 +34,8 @@ pub struct Leaf<'a> {
 	pub content_version: u8,
 	/// How a `Leaf` should be compressed
 	pub compress: CompressMode,
+	/// The specific compression algorithm to use
+	pub compression_algo: CompressionAlgorithm,
 	/// The flags that will go into the archive write target.
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
@@ -58,6 +60,7 @@ impl<'a> fmt::Debug for Leaf<'a> {
 			.field("encrypt", &self.encrypt)
 			.field("sign", &self.sign)
 			.field("link_mode", &self.link_mode)
+			.field("compression_algo", &self.compression_algo)
 			.finish()
 	}
 }
@@ -72,6 +75,7 @@ impl<'a> Default for Leaf<'a> {
 			flags: Flags::empty(),
 			content_version: 0,
 			compress: CompressMode::Never,
+			compression_algo: CompressionAlgorithm::LZ4,
 			encrypt: false,
 			sign: false,
 			link_mode: None,
@@ -192,6 +196,12 @@ impl<'a> Leaf<'a> {
 	///```
 	pub fn link_mode(mut self, link_mode: Option<String>) -> Self {
 		self.link_mode = link_mode;
+		self
+	}
+
+	/// Setter for the `compression_algo` field
+	pub fn compression_algo(mut self, compression_algo: CompressionAlgorithm) -> Self {
+		self.compression_algo = compression_algo;
 		self
 	}
 }
