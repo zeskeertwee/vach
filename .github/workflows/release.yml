@@ -18,7 +18,7 @@ env:
 jobs:
   create-release:
     name: create github & crates.io release
-    if: github.repository-owner == 'zeskeertwee'
+    #if: github.repository-owner == 'zeskeertwee'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -38,7 +38,7 @@ jobs:
 
   upload-binaries:
     name: upload-${{ matrix.target }}
-    if: github.repository-owner == 'zeskeertwee'
+    #if: github.repository-owner == 'zeskeertwee'
     needs:
       - create-release
     strategy:
