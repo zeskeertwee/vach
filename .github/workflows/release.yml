@@ -49,7 +49,7 @@ jobs:
         include:
           # linux x86
           - target: x86_64-unknown-linux-gnu
-          
+
           # windows x86
           - target: x86_64-pc-windows-gnu
             os: windows-latest
@@ -64,7 +64,6 @@ jobs:
           # apple silicon (arm64)
           - target: aarch64-apple-darwin
             os: macos-latest
-
 
     runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     steps:
