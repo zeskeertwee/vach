@@ -18,10 +18,8 @@ env:
 jobs:
   create-release:
     name: create github & crates.io release
-    if: github.repository-owner == 'zeskeertwee'
+    #if: github.repository-owner == 'zeskeertwee'
     runs-on: ubuntu-latest
-    # use the enviroment with CARGO_REGISTRY_TOKEN configured
-    enviroment: release
     steps:
       - uses: actions/checkout@v2
         with:
@@ -29,6 +27,9 @@ jobs:
       - uses: taiki-e/github-actions/install-rust@main
         with:
           toolchain: nightly
+      - run: cargo test --verbose -- --test-threads=1
+      - run: cargo package -p vach
+      - run: cargo package -p vach-cli
       - uses: taiki-e/create-gh-release-action@v1
         with:
           title: $version
@@ -40,7 +41,7 @@ jobs:
 
   upload-binaries:
     name: upload-${{ matrix.target }}
-    if: github.repository-owner == 'zeskeertwee'
+    #if: github.repository-owner == 'zeskeertwee'
     needs:
       - create-release
     strategy:
