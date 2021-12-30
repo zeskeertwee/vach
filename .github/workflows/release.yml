@@ -75,7 +75,7 @@ jobs:
           toolchain: nightly
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          bin: vach-cli
+          bin: vach
           target: ${{ matrix.target }}
           tar: unix
           zip: windows
