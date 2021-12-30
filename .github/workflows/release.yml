@@ -27,6 +27,8 @@ jobs:
       - uses: taiki-e/github-actions/install-rust@main
         with:
           toolchain: nightly
+      - run: cargo package -p vach
+      - run: cargo package -p vach-cli
       - uses: taiki-e/create-gh-release-action@v1
         with:
           title: $version
