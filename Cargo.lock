@@ -1006,7 +1006,7 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.3.0"
+version = "0.3.2"
 dependencies = [
  "aes-gcm-siv",
  "brotli",
@@ -1021,12 +1021,12 @@ name = "vach-benchmarks"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "vach 0.3.0",
+ "vach 0.3.2",
 ]
 
 [[package]]
 name = "vach-cli"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "bytesize",

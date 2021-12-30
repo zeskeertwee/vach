@@ -2,7 +2,7 @@
 name = "vach"
 
 # NOTE: Make sure spec.txt and vach::VERSION constants are all synced up
-version = "0.3.0"
+version = "0.3.2"
 
 edition = "2021"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
