@@ -20,6 +20,8 @@ jobs:
     name: create github & crates.io release
     if: github.repository-owner == 'zeskeertwee'
     runs-on: ubuntu-latest
+    # use the enviroment with CARGO_REGISTRY_TOKEN configured
+    enviroment: release
     steps:
       - uses: actions/checkout@v2
         with:
