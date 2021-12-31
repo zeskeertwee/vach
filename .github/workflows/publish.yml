@@ -1,0 +1,38 @@
+name: Publish to crates.io
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - p[0-9]+.*
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  attempt-cargo-package:
+    name: Attempt to package the crates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run tests
+        run: cargo test --verbose -- --test-threads=1
+
+      - run: cargo package -p vach
+      - run: cargo package -p vach-cli
+
+  crate-publish:
+    name: crates.io release
+    if: github.repository == 'zeskeertwee/vach'
+    runs-on: ubuntu-latest
+    needs: attempt-cargo-package
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: taiki-e/github-actions/install-rust@main
+        with:
+          toolchain: stable
+      - run: cargo publish -p vach --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - run: cargo publish -p vach-cli --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
