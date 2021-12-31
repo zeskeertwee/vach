@@ -16,6 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Run tests
+        run: cargo test --verbose -- --test-threads=1
+
       - run: cargo package -p vach
       - run: cargo package -p vach-cli
 
