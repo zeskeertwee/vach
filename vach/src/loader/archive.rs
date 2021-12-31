@@ -22,8 +22,9 @@ use ed25519_dalek as esdalek;
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
 /// It can be customized with the `HeaderConfig` struct.
-/// > **A word of advice:** Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the `stream_position` is at the right location to avoid hair-splitting bugs.
-/// > Does not buffer any sys-calls to the underlying handle, so consider wrapping `handle` in a `BufReader`
+/// > **A word of advice:**
+/// > Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the [`stream_position`](https://doc.rust-lang.org/stable/std/io/trait.Seek.html#method.stream_position) is at the right location to avoid hair-splitting bugs.
+/// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
