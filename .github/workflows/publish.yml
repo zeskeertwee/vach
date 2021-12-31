@@ -11,14 +11,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  create-release:
-    name: crates.io release
-    #if: github.repository-owner == 'zeskeertwee'
+  attempt-cargo-package:
+    name: Attempt to package the crates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          persist-credentials: false
+      - run: cargo package -p vach
+      - run: cargo package -p vach-cli
+
+  crate-publish:
+    name: crates.io release
+    if: github.repository == 'zeskeertwee/vach'
+    runs-on: ubuntu-latest
+    needs: attempt-cargo-package
+
+    steps:
+      - uses: actions/checkout@v2
       - uses: taiki-e/github-actions/install-rust@main
         with:
           toolchain: stable
