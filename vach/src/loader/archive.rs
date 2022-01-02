@@ -23,7 +23,6 @@ use ed25519_dalek as esdalek;
 /// It also provides query functions for fetching `Resources` and [`RegistryEntry`]s.
 /// It can be customized with the `HeaderConfig` struct.
 /// > **A word of advice:**
-/// > Since [`Archive`] takes in a `impl io::Seek` (Seekable), handle. Make sure the [`stream_position`](https://doc.rust-lang.org/stable/std/io/trait.Seek.html#method.stream_position) is at the right location to avoid hair-splitting bugs.
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 #[derive(Debug)]
 pub struct Archive<T> {
@@ -56,6 +55,9 @@ impl<T: Seek + Read> Archive<T> {
 	///  - `io` errors
 	///  - If any `ID`s are not valid UTF-8
 	pub fn with_config(mut handle: T, config: &HeaderConfig) -> InternalResult<Archive<T>> {
+		// Start reading from the start of the input
+		handle.seek(SeekFrom::Start(0))?;
+
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
@@ -68,6 +70,7 @@ impl<T: Seek + Read> Archive<T> {
 			if entry.flags.contains(Flags::ENCRYPTED_FLAG) && !use_decryption {
 				use_decryption = true;
 			};
+
 			entries.insert(id, entry);
 		}
 

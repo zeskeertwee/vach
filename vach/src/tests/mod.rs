@@ -396,7 +396,6 @@ fn cyclic_linked_leafs() {
 		.dump(&mut target, &BuilderConfig::default())
 		.unwrap();
 
-	target.seek(SeekFrom::Start(0)).unwrap();
 	let mut archive = Archive::from_handle(target).unwrap();
 
 	// Assert that this causes an error, [Cyclic Linked Leafs]
@@ -457,9 +456,6 @@ fn consolidated_example() -> InternalResult<()> {
 	// Just because
 	println!("Building took: {}us", then.elapsed().as_micros());
 
-	// Ensure your stream_position is where you want it to be, so here at the start of the Cursor (0)
-	target.seek(SeekFrom::Start(0))?;
-
 	// Load data
 	let mut config = HeaderConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
@@ -507,8 +503,6 @@ fn test_compression() -> InternalResult<()> {
 	)?;
 
 	builder.dump(&mut target, &BuilderConfig::default())?;
-
-	target.seek(SeekFrom::Start(0))?;
 
 	let mut archive = Archive::from_handle(&mut target)?;
 

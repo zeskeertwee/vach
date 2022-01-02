@@ -1,4 +1,4 @@
-use std::io::{self, Seek};
+use std::io;
 use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 
 use vach::prelude::*;
@@ -106,7 +106,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	}
 
 	// Load data
-	target.seek(io::SeekFrom::Start(0)).unwrap();
 	loader_group.throughput(Throughput::Bytes((data_1.len() + data_2.len() + data_3.len()) as u64));
 
 	let mut archive = Archive::with_config(&mut target, &h_config).unwrap();
