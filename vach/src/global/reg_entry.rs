@@ -35,7 +35,7 @@ impl RegistryEntry {
 		}
 	}
 
-	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
+	/// Given a read handle, will proceed to read and parse bytes into a [`RegistryEntry`] struct. (de-serialization)
 	/// ### Errors
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(Self, String)> {
@@ -78,7 +78,7 @@ impl RegistryEntry {
 		Ok((entry, id))
 	}
 
-	/// Serializes a `RegistryEntry` struct into an array of bytes
+	/// Serializes a [`RegistryEntry`] struct into an array of bytes
 	pub(crate) fn bytes(&self, id_length: &u16) -> Vec<u8> {
 		let mut buffer = Vec::new();
 		buffer.extend_from_slice(&self.flags.bits().to_le_bytes());

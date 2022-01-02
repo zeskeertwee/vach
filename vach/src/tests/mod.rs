@@ -295,11 +295,11 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 #[test]
 fn edcryptor_test() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
-	use crate::global::edcryptor::EDCryptor;
+	use crate::global::edcryptor::Encryptor;
 
 	let pk = gen_keypair().public;
 
-	let crypt = EDCryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
+	let crypt = Encryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
 
 	let data = vec![12, 12, 12, 12];
 

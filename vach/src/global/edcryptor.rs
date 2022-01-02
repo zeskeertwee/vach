@@ -6,24 +6,24 @@ use aes_gcm_siv::aead::{Aead, NewAead};
 use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 
 // Encryption - Decryption, A convenience wrapper around aes encryption and decryption
-pub(crate) struct EDCryptor {
+pub(crate) struct Encryptor {
 	cipher: Aes256GcmSiv,
 	nonce: Nonce,
 }
 
-impl fmt::Debug for EDCryptor {
+impl fmt::Debug for Encryptor {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let nonce = self.nonce.to_ascii_lowercase();
 		write!(
 			f,
-			"[Vach::EDCryptor] cipher: Aes256GcmSiv, nonce: {}",
+			"[Vach::Encryptor] cipher: Aes256GcmSiv, nonce: {}",
 			String::from_utf8_lossy(nonce.as_slice())
 		)
 	}
 }
 
-impl EDCryptor {
-	pub(crate) fn new(pk: &PublicKey, magic: [u8; 5]) -> EDCryptor {
+impl Encryptor {
+	pub(crate) fn new(pk: &PublicKey, magic: [u8; 5]) -> Encryptor {
 		// Build encryption key
 		let bytes = &pk.to_bytes();
 
@@ -32,7 +32,7 @@ impl EDCryptor {
 		let mut v = [178, 5, 239, 228, 165, 44, 169].to_vec();
 		v.extend_from_slice(&magic);
 
-		EDCryptor {
+		Encryptor {
 			cipher: Aes256GcmSiv::new(key),
 			nonce: *Nonce::from_slice(v.as_slice()),
 		}

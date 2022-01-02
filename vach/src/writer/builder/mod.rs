@@ -8,7 +8,7 @@ use crate::global::compressor::Compressor;
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
 use crate::{
-	global::{edcryptor::EDCryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
+	global::{edcryptor::Encryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
 };
 
 use ed25519_dalek::Signer;
@@ -179,7 +179,7 @@ impl<'a> Builder<'a> {
 		let encryptor = if use_encryption {
 			let keypair = &config.keypair;
 
-			Some(EDCryptor::new(
+			Some(Encryptor::new(
 				&keypair.as_ref().unwrap().public,
 				config.magic,
 			))

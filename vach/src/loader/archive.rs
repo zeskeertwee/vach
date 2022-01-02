@@ -7,7 +7,7 @@ use std::{
 use super::resource::Resource;
 use crate::{
 	global::{
-		edcryptor::EDCryptor,
+		edcryptor::Encryptor,
 		error::InternalError,
 		flags::Flags,
 		header::{Header, HeaderConfig},
@@ -20,7 +20,7 @@ use crate::{
 use ed25519_dalek as esdalek;
 
 /// A wrapper for loading data from archive sources.
-/// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
+/// It also provides query functions for fetching `Resources` and [`RegistryEntry`]s.
 /// It can be customized with the `HeaderConfig` struct.
 /// > **A word of advice:**
 /// > Since [`Archive`] takes in a `impl io::Seek` (Seekable), handle. Make sure the [`stream_position`](https://doc.rust-lang.org/stable/std/io/trait.Seek.html#method.stream_position) is at the right location to avoid hair-splitting bugs.
@@ -31,7 +31,7 @@ pub struct Archive<T> {
 	handle: T,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
-	decryptor: Option<EDCryptor>,
+	decryptor: Option<Encryptor>,
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
@@ -76,7 +76,7 @@ impl<T: Seek + Read> Archive<T> {
 
 		if use_decryption {
 			if let Some(pk) = config.public_key {
-				decryptor = Some(EDCryptor::new(&pk, config.magic))
+				decryptor = Some(Encryptor::new(&pk, config.magic))
 			}
 		}
 
@@ -208,8 +208,8 @@ impl<T: Seek + Read> Archive<T> {
 		}
 	}
 
-	/// Fetch a `RegistryEntry` from this [`Archive`].
-	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
+	/// Fetch a [RegistryEntry] from this [`Archive`].
+	/// This can be used for debugging, as the [`RegistryEntry`] holds information about some data within a source.
 	/// ### `None` case:
 	/// If no entry with the given ID exists then `None` is returned.
 	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
@@ -219,7 +219,7 @@ impl<T: Seek + Read> Archive<T> {
 		}
 	}
 
-	/// Returns a reference to the underlying `HashMap`. This hashmap stores `RegistryEntry` values and uses `String` keys.
+	/// Returns a reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
