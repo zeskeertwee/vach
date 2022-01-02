@@ -23,7 +23,7 @@ use ed25519_dalek as esdalek;
 /// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
 /// It can be customized with the `HeaderConfig` struct.
 /// > **A word of advice:**
-/// > Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the [`stream_position`](https://doc.rust-lang.org/stable/std/io/trait.Seek.html#method.stream_position) is at the right location to avoid hair-splitting bugs.
+/// > Since [`Archive`] takes in a `impl io::Seek` (Seekable), handle. Make sure the [`stream_position`](https://doc.rust-lang.org/stable/std/io/trait.Seek.html#method.stream_position) is at the right location to avoid hair-splitting bugs.
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 #[derive(Debug)]
 pub struct Archive<T> {
@@ -36,7 +36,7 @@ pub struct Archive<T> {
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
-	/// Load an `Archive` with the default settings from a source.
+	/// Load an [`Archive`] with the default settings from a source.
 	/// The same as doing:
 	/// ```ignore
 	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
@@ -48,7 +48,7 @@ impl<T: Seek + Read> Archive<T> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
-	/// Given a read handle, this will read and parse the data into an `Archive` struct.
+	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
 	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
 	/// ### Errors
 	///  - If parsing fails, an `Err(-)` is returned.
@@ -89,7 +89,7 @@ impl<T: Seek + Read> Archive<T> {
 		})
 	}
 
-	/// Fetch a `Resource` with the given `ID`.
+	/// Fetch a [`Resource`] with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	/// ### Errors:
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
@@ -173,7 +173,7 @@ impl<T: Seek + Read> Archive<T> {
 			};
 
 			// 3: Deref layer, dereferences link leafs
-			// NOTE: This may break the upcoming cache functionality in `vf`. So `vf` must check for linked `Leaf`s
+			// NOTE: This may break the upcoming cache functionality in `vf`. So `vf` must check for linked [`Leaf`]s
 			if entry.flags.contains(Flags::LINK_FLAG) {
 				let mut target_id = String::new();
 				raw.as_slice().read_to_string(&mut target_id)?;
@@ -208,7 +208,7 @@ impl<T: Seek + Read> Archive<T> {
 		}
 	}
 
-	/// Fetch a `RegistryEntry` from this `Archive`.
+	/// Fetch a `RegistryEntry` from this [`Archive`].
 	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
 	/// ### `None` case:
 	/// If no entry with the given ID exists then `None` is returned.

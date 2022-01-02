@@ -14,7 +14,7 @@ pub struct BuilderConfig {
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
-	/// An optional callback that is called every time a `Leaf` finishes processing.
+	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
 	/// The type signature is:
 	/// ```ignore
 	/// type OptionalCallback = Option<Box<dyn Fn(id: &str, glob_size: usize, reg_entry: &RegistryEntry)>>;
@@ -24,10 +24,7 @@ pub struct BuilderConfig {
 	/// ```ignore
 	/// let builder_config = BuilderConfig::new()
 	/// ```
-	pub progress_callback: OptionalCallback,
-	/// Reserve some space in the registry section of an archive, allowing entries to be added later in the archives lifetime.
-	/// Thus making the archive mutable. Passing `None` or `Some(x) (where x < RegistryEntry::SIZE)`, results in an immutable archive
-	pub reserved_reg_space: bool
+	pub progress_callback: OptionalCallback
 }
 
 impl Debug for BuilderConfig {
@@ -103,8 +100,7 @@ impl Default for BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
 			magic: crate::DEFAULT_MAGIC.clone(),
-			progress_callback: None,
-			reserved_reg_space: false
+			progress_callback: None
 		}
 	}
 }

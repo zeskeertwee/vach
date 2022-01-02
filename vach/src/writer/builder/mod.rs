@@ -32,14 +32,14 @@ impl<'a> Default for Builder<'a> {
 }
 
 impl<'a> Builder<'a> {
-	/// Instantiates a new `Builder` with an empty processing queue.
+	/// Instantiates a new [`Builder`] with an empty processing queue.
 	#[inline(always)]
 	pub fn new() -> Builder<'a> {
 		Builder::default()
 	}
 
-	/// Appends a read handle wrapped in a `Leaf` into the processing queue.
-	/// The `data` is wrapped in the default `Leaf`.
+	/// Appends a read handle wrapped in a [`Leaf`] into the processing queue.
+	/// The `data` is wrapped in the default [`Leaf`].
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
@@ -49,15 +49,15 @@ impl<'a> Builder<'a> {
 		Ok(())
 	}
 
-	/// Removes all the `Leaf`s from the `Builder`. Leaves the `template` intact. Use this to re-use `Builder`s instead of instantiating new ones
+	/// Removes all the [`Leaf`]s from the [`Builder`]. Leaves the `template` intact. Use this to re-use [`Builder`]s instead of instantiating new ones
 	pub fn clear(&mut self) {
 		self.id_set.clear();
 		self.leafs.clear();
 	}
 
-	/// Loads all files from a directory, parses them into `Leaf`s and appends them into the processing queue.
-	/// An optional `Leaf` is passed as a template from which the new `Leaf`s shall implement, pass `None` to use the `Builder` internal default template.
-	/// Appended `Leaf`s have an `ID` in the form of of: `directory_name/file_name`. For example: "sounds/footstep.wav", "sample/script.data"
+	/// Loads all files from a directory, parses them into [`Leaf`]s and appends them into the processing queue.
+	/// An optional [`Leaf`] is passed as a template from which the new [`Leaf`]s shall implement, pass `None` to use the [`Builder`] internal default template.
+	/// Appended [`Leaf`]s have an `ID` in the form of of: `directory_name/file_name`. For example: "sounds/footstep.wav", "sample/script.data"
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
@@ -91,10 +91,10 @@ impl<'a> Builder<'a> {
 		Ok(())
 	}
 
-	/// Append a preconstructed `Leaf` into the processing queue.
-	/// `Leaf`s added directly do not implement data from the `Builder`s internal template.
+	/// Append a preconstructed [`Leaf`] into the processing queue.
+	/// [`Leaf`]s added directly do not implement data from the [`Builder`]s internal template.
 	/// ### Errors
-	/// - Returns an error if a `Leaf` with the specified `ID` exists.
+	/// - Returns an error if a [`Leaf`] with the specified `ID` exists.
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult<()> {
 		// Make sure no two leaves are written with the same ID
 		if !self.id_set.insert(leaf.id.clone()) {
@@ -105,7 +105,7 @@ impl<'a> Builder<'a> {
 		Ok(())
 	}
 
-	/// Avoid unnecessary boilerplate by auto-templating all `Leaf`s added with `Builder::add(--)` with the given template
+	/// Avoid unnecessary boilerplate by auto-templating all [`Leaf`]s added with `Builder::add(--)` with the given template
 	/// ```
 	/// use vach::builder::{Builder, Leaf, CompressMode};
 	///
@@ -120,12 +120,12 @@ impl<'a> Builder<'a> {
 		self
 	}
 
-	/// This iterates over all `Leaf`s in the processing queue, parses them and writes the bytes out into a the target.
-	/// Configure the custom *`MAGIC`*, Header flags and a `Keypair` using the `BuilderConfig` struct.
+	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
+	/// Configure the custom *`MAGIC`*, Header flags and a `Keypair` using the [`BuilderConfig`] struct.
 	/// ### Errors
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
-	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a `Leaf` is to be encrypted.
+	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a [`Leaf`] is to be encrypted.
 	pub fn dump<W: Write + Seek>(
 		&mut self, mut target: W, config: &BuilderConfig,
 	) -> InternalResult<usize> {
@@ -133,7 +133,7 @@ impl<'a> Builder<'a> {
 		let mut size = 0usize;
 		let mut reg_buffer = Vec::new();
 
-		// Calculate the size of the registry and check for `Leaf`s that request for encryption
+		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
 		let mut leaf_offset =
 			self.leafs
 				.iter()
@@ -192,7 +192,7 @@ impl<'a> Builder<'a> {
 			let mut entry = leaf.to_registry_entry();
 			let mut leaf_bytes = Vec::new();
 
-			// Check if this is a linked `Leaf`
+			// Check if this is a linked [`Leaf`]
 			if let Some(id) = &leaf.link_mode {
 				if self.id_set.contains(id) {
 					use std::io::Cursor;
@@ -290,7 +290,7 @@ impl<'a> Builder<'a> {
 			// Write to the registry
 			reg_buffer.write_all(&entry_bytes)?;
 
-			// Call the progress callback bound within the `BuilderConfig`
+			// Call the progress callback bound within the [`BuilderConfig`]
 			if let Some(callback) = &config.progress_callback {
 				callback(&leaf.id, glob_length, &entry);
 			}

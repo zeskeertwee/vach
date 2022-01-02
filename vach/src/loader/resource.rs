@@ -14,8 +14,8 @@ pub struct Resource {
 	pub flags: Flags,
 	/// The content version of the extracted archive entry
 	pub content_version: u8,
-	/// If a `Resource` has been validated against tampering, corruption or obsolescence, then this value becomes false.
-	/// By default a `Resource` is invalid
+	/// If a [`Resource`] has been validated against tampering, corruption or obsolescence, then this value becomes false.
+	/// By default a [`Resource`] is invalid
 	pub secured: bool,
 }
 

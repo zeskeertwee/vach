@@ -3,7 +3,7 @@ use crate::{
 };
 use std::{io::Read, fmt};
 
-/// Configures how `Leaf`s should be compressed.
+/// Configures how [`Leaf`]s should be compressed.
 /// Default is `CompressMode::Never`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompressMode {
@@ -25,14 +25,14 @@ impl Default for CompressMode {
 /// Allows for multiple types of data implementing `io::Read` to be used under one structure.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
-	// The lifetime simply reflects to the `Builder`'s lifetime, meaning the handle must live longer than or the same as the Builder
+	// The lifetime simply reflects to the [`Builder`]'s lifetime, meaning the handle must live longer than or the same as the Builder
 	pub(crate) handle: Box<dyn Read + 'a>,
 
 	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
-	/// How a `Leaf` should be compressed
+	/// How a [`Leaf`] should be compressed
 	pub compress: CompressMode,
 	/// The specific compression algorithm to use
 	pub compression_algo: CompressionAlgorithm,
@@ -40,11 +40,11 @@ pub struct Leaf<'a> {
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
 	pub encrypt: bool,
-	/// Whether to include a signature with this `Leaf`, defaults to false.
+	/// Whether to include a signature with this [`Leaf`], defaults to false.
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts performance for making `Archive::fetch(---)`**.
 	pub sign: bool,
-	/// If a `Leaf` has a link_mode of `Some("dw")`, then the leaf simply points to the Leaf with the ID "dw".
+	/// If a [`Leaf`] has a link_mode of `Some("dw")`, then the leaf simply points to the Leaf with the ID "dw".
 	/// Use this if you want to have multiple entries aliasing the same data.
 	pub link_mode: Option<String>,
 }
@@ -85,7 +85,7 @@ impl<'a> Default for Leaf<'a> {
 
 impl<'a> Leaf<'a> {
 	#[inline(always)]
-	/// Wrap a `Leaf` around the given handle.
+	/// Wrap a [`Leaf`] around the given handle.
 	/// Using the `Default` configuration.
 	///```
 	/// use vach::prelude::Leaf;
@@ -106,7 +106,7 @@ impl<'a> Leaf<'a> {
 		entry
 	}
 
-	/// Copy all fields from another `Leaf`, except for `handle`, `link_mode` and `id`
+	/// Copy all fields from another [`Leaf`], except for `handle`, `link_mode` and `id`
 	/// Meant to be used like a setter:
 	/// ```rust
 	/// use std::io::Cursor;
@@ -129,7 +129,7 @@ impl<'a> Leaf<'a> {
 	}
 
 	// Setters
-	/// Setter used to set the `CompressMode` of a `Leaf`
+	/// Setter used to set the [`CompressMode`] of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf, CompressMode};
 	///
@@ -139,7 +139,7 @@ impl<'a> Leaf<'a> {
 		self.compress = compress;
 		self
 	}
-	/// Setter used to set the `content_version` of a `Leaf`
+	/// Setter used to set the `content_version` of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf};
 	///
@@ -149,7 +149,7 @@ impl<'a> Leaf<'a> {
 		self.content_version = content_version;
 		self
 	}
-	/// Setter used to set the `id` field of a `Leaf`
+	/// Setter used to set the `id` field of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf};
 	///
@@ -159,7 +159,7 @@ impl<'a> Leaf<'a> {
 		self.id = id.to_string();
 		self
 	}
-	/// Setter used to set the `Flags` field of a `Leaf`
+	/// Setter used to set the `Flags` field of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf, Flags};
 	///

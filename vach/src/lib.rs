@@ -26,7 +26,7 @@
 
 - **Archive:** Any source of data, for example a file or TCP stream, that is a valid `vach` data source.
 - **Leaf:** Any actual data endpoint within an archive, what `tar` calls archive members, for example `footstep1.wav` in `sounds.vach`.
-- **Entry:** Some data in the registry section of a `vach` source on an corresponding `leaf`. For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
+- **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
 ## 🀄 Show me some code _dang it!_
 
@@ -146,7 +146,7 @@ pub(crate) mod writer;
 // Re-exports
 pub use rand;
 
-/// Current file spec version, both `Loader` and `Builder`
+/// Current file spec version, both `Loader` and [`Builder`](crate::builder::Builder)
 pub const VERSION: u16 = 30;
 
 /// Size of a keypair: (secret + public)
@@ -182,7 +182,7 @@ pub mod crypto {
 	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
 }
 
-/// `Builder` related data structures and logic
+/// [`Builder`] related data structures and logic
 pub mod builder {
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},

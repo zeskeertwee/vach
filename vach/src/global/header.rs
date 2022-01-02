@@ -6,7 +6,7 @@ use ed25519_dalek as esdalek;
 
 use super::{error::InternalError, result::InternalResult};
 
-/// Used to configure and give extra information to the `Archive` loader.
+/// Used to configure and give extra information to the [`Archive`](crate::archive::Archive) loader.
 /// Used exclusively in archive source and integrity validation.
 #[derive(Debug, Clone)]
 pub struct HeaderConfig {
@@ -19,7 +19,7 @@ pub struct HeaderConfig {
 }
 
 impl HeaderConfig {
-	/// Construct a new `HeaderConfig` struct.
+	/// Construct a new [`HeaderConfig`] struct.
 	/// ```
 	/// use vach::prelude::HeaderConfig;
 	/// let config = HeaderConfig::new(*b"_TEST",  None);

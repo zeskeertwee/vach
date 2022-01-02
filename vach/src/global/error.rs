@@ -24,9 +24,9 @@ pub enum InternalError {
 	CryptoError(String),
 	/// Thrown when a link leaf aliases another link leaf, potentially causing a cyclic link error
 	CyclicLinkReferenceError(String, String),
-	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a `Flag` instance
+	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a [`Flags`](crate::prelude::Flags) instance
 	RestrictedFlagAccessError,
-	/// When a `Leaf` has an ID that is longer than `crate::MAX_ID_LENGTH`
+	/// When a [`Leaf`](crate::builder::Leaf) has an ID that is longer than `crate::MAX_ID_LENGTH`
 	IDSizeOverflowError(String),
 	/// Errors thrown during compression or decompression
 	DeCompressionError(String),

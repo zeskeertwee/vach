@@ -62,7 +62,7 @@ impl Flags {
 	/// Set a flag into the underlying structure.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
 	///
-	/// As the `Flag` struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
+	/// As the [`Flags`] struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
 	/// are reserved for internal use (ie the first 16 half bits). The good thing is that because of endianness, one can use the remaining 16 bits
 	/// just fine, as seen below. Just using the `0b0000_0000_0000_0000` literal works because `vach` is little endian.
 	/// ```
