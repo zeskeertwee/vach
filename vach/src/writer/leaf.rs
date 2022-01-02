@@ -22,7 +22,7 @@ impl Default for CompressMode {
 }
 
 /// A wrapper around an `io::Read` handle.
-/// Allows for multiple types of data implementing `io::Read` to be used under one structure.
+/// Allows for multiple types of data implementing `io::Read` to be used under one struct.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
 	// The lifetime simply reflects to the [`Builder`]'s lifetime, meaning the handle must live longer than or the same as the Builder
