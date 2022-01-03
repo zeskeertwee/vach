@@ -172,7 +172,6 @@ impl<T: Seek + Read> Archive<T> {
 			};
 
 			// 3: Deref layer, dereferences link leafs
-			// NOTE: This may break the upcoming cache functionality in `vf`. So `vf` must check for linked `Leaf`s
 			if entry.flags.contains(Flags::LINK_FLAG) {
 				let mut target_id = String::new();
 				raw.as_slice().read_to_string(&mut target_id)?;
