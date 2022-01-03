@@ -8,7 +8,7 @@ authors = [
 ]
 description = "A command-line tool to work with .vach files"
 license = "MIT"
-repository = "https://github.com/zeskeertwee/virtfs-rs"
+repository = "https://github.com/zeskeertwee/vach"
 categories = ["command-line-utilities", "encoding", "game-development"]
 keywords = ["archive", "command-line", "vach", "assets", "game"]
 readme = "README.md"
