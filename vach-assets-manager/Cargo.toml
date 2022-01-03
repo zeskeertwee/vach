@@ -10,3 +10,11 @@ homepage = "https://github.com/zeskeertwee/vach"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+assets_manager = "0.7.1"
+vach = "0.2.3"
+parking_lot = "0.11.2"
+ahash = "0.7.6"
+walkdir = "2.3.2"
+pathdiff = "0.2.1"
+log = "0.4.14"
+env_logger = "0.9.0"
