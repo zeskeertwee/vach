@@ -22,4 +22,6 @@ jobs:
     - name: Build
       run: cargo build
     - name: Run tests
-      run: RUST_LOG=trace cargo test --verbose -- --test-threads=1 --nocapture
+      run: cargo test --verbose -- --test-threads=1 --nocapture
+      env:
+        RUST_LOG=trace
