@@ -111,7 +111,7 @@ impl ArchiveSource {
 #[test]
 fn test() {
     env_logger::init();
-    let source = ArchiveSource::new("/home/jasper/code/vach/vach-assets-manager", &["pak", "pkg"]).unwrap();
+    let source = ArchiveSource::new("./", &["pak", "pkg"]).unwrap();
     let cache = assets_manager::AssetCache::with_source(source);
     let song_1 = cache.load::<String>("test-data.music.song").unwrap();
     let song_2 = cache.load::<String>("test-data.music.data.song").unwrap();
