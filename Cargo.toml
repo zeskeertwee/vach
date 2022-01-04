@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "vach",
-    "vf",
+    "vach-assets-manager",
     "vach-cli",
     "vach-benchmarks"
 ]

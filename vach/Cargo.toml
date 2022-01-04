@@ -8,7 +8,7 @@ edition = "2021"
 authors = ["Jasper Fortuin <zeskeertwee@gmail.com>", "Newton Toto <nyachiengatoto@gmail.com>"]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
 license = "MIT"
-repository = "https://github.com/zeskeertwee/virtfs-rs"
+repository = "https://github.com/zeskeertwee/vach"
 categories = [
 	"games",
 	"compression"
