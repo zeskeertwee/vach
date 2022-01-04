@@ -168,7 +168,7 @@ impl<T: Seek + Read> Archive<T> {
 					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy)?
 				} else {
 					return InternalResult::Err(InternalError::DeCompressionError(
-						"Unspecified compression algorithm bit".to_string(),
+						"Unspecified compression algorithm bits".to_string(),
 					));
 				};
 			};

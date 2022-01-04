@@ -84,7 +84,6 @@ pub enum CompressionAlgorithm {
 	LZ4,
 	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
 	/// Allows one to specify the quality of the compression, from 1-11. (9 Recommended, 11 for extra compression)
-	/// The higher the compression level, the smaller the file (and the more computationally expensive the compression is)
 	Brotli(u32),
 }
 
