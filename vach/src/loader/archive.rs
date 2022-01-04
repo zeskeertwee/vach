@@ -62,21 +62,19 @@ impl<T: Seek + Read> Archive<T> {
 		Header::validate(&header, config)?;
 
 		// Generate and store Registry Entries
-		let mut use_decryption = false;
 		let mut entries = HashMap::new();
 
+		// Construct entries map
 		for _ in 0..header.capacity {
 			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
-			if entry.flags.contains(Flags::ENCRYPTED_FLAG) && !use_decryption {
-				use_decryption = true;
-			};
-
 			entries.insert(id, entry);
 		}
 
 		// Build decryptor
+		let use_decryption =  entries.iter().any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
 		let mut decryptor = None;
 
+		// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
 		if use_decryption {
 			if let Some(pk) = config.public_key {
 				decryptor = Some(Encryptor::new(&pk, config.magic))
@@ -156,7 +154,7 @@ impl<T: Seek + Read> Archive<T> {
 						}
 					};
 				} else {
-					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id)));
+					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Resource: {} but no decryption key(public key) was provided", id)));
 				}
 			}
 
@@ -192,7 +190,7 @@ impl<T: Seek + Read> Archive<T> {
 					Some(_) => return self.fetch_write(&target_id, target),
 					None => {
 						return Err(InternalError::MissingResourceError(format!(
-						"The linking Leaf: {} exists. However the Leaf it links to: {}, does not exist",
+						"The linking Resource: {} exists. However the Resource it links to: {}, does not",
 						id, target_id
 					)))
 					}
