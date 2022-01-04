@@ -151,9 +151,9 @@ impl Header {
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: [buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]],
-			// Read flags, u16 from [u8;2]
-			flags: Flags::from_bits(u32::from_le_bytes([buffer[5], buffer[6], buffer[7], buffer[8]])),
+			magic: buffer[0..5].try_into().unwrap(),
+			// Read flags, u32 from [u8;4]
+			flags: Flags::from_bits(u32::from_le_bytes(buffer[5..9].try_into().unwrap())),
 			// Read version, u16 from [u8;2]
 			arch_version: u16::from_le_bytes([buffer[9], buffer[10]]),
 			// Read the capacity of the archive, u16 from [u8;2]

@@ -46,24 +46,19 @@ impl RegistryEntry {
 		handle.read_exact(&mut buffer)?;
 
 		// Construct entry
-		let mut entry = RegistryEntry::empty();
-		entry.flags = Flags::from_bits(u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]));
-		entry.content_version = buffer[4];
+		let flags = Flags::from_bits(u32::from_le_bytes(buffer[0..4].try_into().unwrap()));
+		let content_version = buffer[4];
 
-		entry.location = u64::from_le_bytes([
-			buffer[5], buffer[6], buffer[7], buffer[8], buffer[9], buffer[10], buffer[11], buffer[12],
-		]);
-
-		entry.offset = u64::from_le_bytes([
-			buffer[13], buffer[14], buffer[15], buffer[16], buffer[17], buffer[18], buffer[19], buffer[20],
-		]);
+		let location = u64::from_le_bytes(buffer[5..13].try_into().unwrap());
+		let offset = u64::from_le_bytes(buffer[13..21].try_into().unwrap());
 
 		let id_length = u16::from_le_bytes([buffer[21], buffer[22]]);
+		let mut signature = None;
 
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
-		if entry.flags.contains(Flags::SIGNED_FLAG) {
-			let mut sig_bytes = [0u8; crate::SIGNATURE_LENGTH];
+		if flags.contains(Flags::SIGNED_FLAG) {
+			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] = unsafe { MaybeUninit::uninit().assume_init() };
 			handle.read_exact(&mut sig_bytes)?;
 
 			let sig: esdalek::Signature = match sig_bytes.try_into() {
@@ -71,12 +66,15 @@ impl RegistryEntry {
 				Err(err) => return Err(InternalError::ParseError(err.to_string())),
 			};
 
-			entry.signature = Some(sig);
+			signature = Some(sig);
 		};
 
 		// Construct ID
 		let mut id = String::new();
 		handle.take(id_length as u64).read_to_string(&mut id)?;
+
+		// Build entry step manually, to prevent unnecessary `Default::default()` call, then changing fields individually
+		let entry = RegistryEntry { flags, content_version, signature, location, offset };
 
 		Ok((entry, id))
 	}
