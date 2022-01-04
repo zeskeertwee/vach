@@ -83,7 +83,7 @@ impl fmt::Display for HeaderConfig {
 impl Default for HeaderConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		HeaderConfig::new(crate::DEFAULT_MAGIC.clone(), None)
+		HeaderConfig::new(*crate::DEFAULT_MAGIC, None)
 	}
 }
 
@@ -99,7 +99,7 @@ impl Default for Header {
 	#[inline(always)]
 	fn default() -> Header {
 		Header {
-			magic: crate::DEFAULT_MAGIC.clone(),
+			magic: *crate::DEFAULT_MAGIC,
 			flags: Flags::default(),
 			arch_version: crate::VERSION,
 			capacity: 0,
@@ -140,7 +140,12 @@ impl Header {
 	/// ### Errors
 	///  - `io` errors
 	pub fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
-		let mut buffer = [0x69; Header::BASE_SIZE];
+		#![allow(clippy::uninit_assumed_init)]
+		// We are never reading from `buffer`, so it's safe to use uninitialized memory. We initialize it instantly after
+
+		use std::mem::MaybeUninit;
+		let mut buffer: [u8; Header::BASE_SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
+
 		handle.read_exact(&mut buffer)?;
 
 		// Construct header

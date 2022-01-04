@@ -99,7 +99,7 @@ impl Default for BuilderConfig {
 		BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
-			magic: crate::DEFAULT_MAGIC.clone(),
+			magic: *crate::DEFAULT_MAGIC,
 			progress_callback: None
 		}
 	}

@@ -14,21 +14,11 @@ use crate::{
 use ed25519_dalek::Signer;
 
 /// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
+#[derive(Default)]
 pub struct Builder<'a> {
 	pub(crate) leafs: Vec<Leaf<'a>>,
 	pub(crate) id_set: HashSet<String>,
 	leaf_template: Leaf<'a>,
-}
-
-impl<'a> Default for Builder<'a> {
-	#[inline(always)]
-	fn default() -> Builder<'a> {
-		Builder {
-			leafs: Vec::new(),
-			id_set: HashSet::new(),
-			leaf_template: Leaf::default(),
-		}
-	}
 }
 
 impl<'a> Builder<'a> {

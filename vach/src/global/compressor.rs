@@ -18,7 +18,7 @@ pub struct Compressor<T: Read> {
 
 impl<'a, T: Read> Compressor<T> {
 	pub(crate) fn new(data: T) -> Compressor<T> {
-		Compressor { data: data }
+		Compressor { data }
 	}
 	pub(crate) fn compress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
 		match algo {

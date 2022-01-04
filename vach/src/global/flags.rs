@@ -3,7 +3,7 @@ use super::{error::InternalError, result::InternalResult};
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct Flags {
 	pub(crate) bits: u32,
 }
@@ -116,13 +116,6 @@ impl Flags {
 	// Auxillary function
 	fn _contains(first: u32, other: u32) -> bool {
 		(first & other) != 0
-	}
-}
-
-impl Default for Flags {
-	#[inline(always)]
-	fn default() -> Self {
-		Flags { bits: 0 }
 	}
 }
 
