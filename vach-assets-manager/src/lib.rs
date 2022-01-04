@@ -91,7 +91,7 @@ impl ArchiveSource {
                     let relative_path_string = relative_path.to_string_lossy().to_string();
                     let relative_path_without_extension = split_collect_all_except_last(&relative_path_string, '.');
 
-                    archives.insert(relative_path_without_extension.replace("/", "."), Mutex::new(archive));
+                    archives.insert(relative_path_without_extension.replace("/", ".").replace(r#"\"#, "."), Mutex::new(archive));
                 },
                 Err(e) => log::warn!("Unable to read folder/file: {}", e),
             }
