@@ -181,7 +181,7 @@ impl<'a> Builder<'a> {
 		// Populate the archive glob
 		for leaf in self.leafs.iter_mut() {
 			let mut entry = leaf.to_registry_entry();
-			let mut leaf_bytes = Vec::new();
+			let mut raw = Vec::new();
 
 			// Check if this is a linked [`Leaf`]
 			if let Some(id) = &leaf.link_mode {
@@ -201,10 +201,10 @@ impl<'a> Builder<'a> {
 			// Compression comes first
 			match leaf.compress {
 				CompressMode::Never => {
-					leaf.handle.read_to_end(&mut leaf_bytes)?;
+					leaf.handle.read_to_end(&mut raw)?;
 				}
 				CompressMode::Always => {
-					leaf_bytes = Compressor::new(&mut leaf.handle).compress(leaf.compression_algo)?;
+					raw = Compressor::new(&mut leaf.handle).compress(leaf.compression_algo)?;
 
 					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 					entry.flags.force_set(leaf.compression_algo.into(), true);
@@ -220,9 +220,9 @@ impl<'a> Builder<'a> {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 						entry.flags.force_set(leaf.compression_algo.into(), true);
 
-						leaf_bytes = compressed_data;
+						raw = compressed_data;
 					} else {
-						buffer.as_slice().read_to_end(&mut leaf_bytes)?;
+						buffer.as_slice().read_to_end(&mut raw)?;
 					};
 				}
 			}
@@ -230,7 +230,7 @@ impl<'a> Builder<'a> {
 			// Encryption comes after
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
-					leaf_bytes = match ex.encrypt(&leaf_bytes) {
+					raw = match ex.encrypt(&raw) {
 						Ok(bytes) => bytes,
 						Err(err) => {
 							return Err(InternalError::CryptoError(format!(
@@ -246,8 +246,8 @@ impl<'a> Builder<'a> {
 
 			// Buffer the contents of the leaf, to be written later
 			wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
-			let glob_length = leaf_bytes.len();
-			wtr.write_all(&leaf_bytes)?;
+			let glob_length = raw.len();
+			wtr.write_all(&raw)?;
 			size += glob_length;
 
 			entry.location = leaf_offset as u64;
@@ -256,13 +256,15 @@ impl<'a> Builder<'a> {
 
 			if leaf.sign {
 				if let Some(keypair) = &config.keypair {
+					raw.extend(leaf.id.as_bytes());
+
 					// The reason we include the path in the signature is to prevent mangling in the registry,
 					// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
 					// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
-					leaf_bytes.extend(leaf.id.as_bytes());
-					entry.signature = Some(keypair.sign(&leaf_bytes));
+					entry.signature = Some(keypair.sign(&raw));
 					entry.flags.force_set(Flags::SIGNED_FLAG, true);
-					drop(leaf_bytes);
+
+					drop(raw);
 				};
 			}
 
