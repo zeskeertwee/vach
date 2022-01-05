@@ -3,11 +3,9 @@ use std::io;
 use ed25519_dalek as esdalek;
 use std::fmt::Debug;
 
-type OptionalCallback = Option<Box<dyn Fn(&str, usize, &RegistryEntry)>>;
-
 /// Allows for the customization of valid `vach` archives during their construction.
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
-pub struct BuilderConfig {
+pub struct BuilderConfig<'a> {
 	/// Used to write a unique magic sequence into the write target.
 	pub magic: [u8; crate::MAGIC_LENGTH],
 	/// Flags to be written into the `Header` section of the write target.
@@ -24,10 +22,10 @@ pub struct BuilderConfig {
 	/// ```ignore
 	/// let builder_config = BuilderConfig::new()
 	/// ```
-	pub progress_callback: OptionalCallback
+	pub progress_callback: Option<&'a dyn Fn(&str, usize, &RegistryEntry)>
 }
 
-impl Debug for BuilderConfig {
+impl<'a> Debug for BuilderConfig<'a> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("BuilderConfig")
 			.field("magic", &self.magic)
@@ -45,7 +43,7 @@ impl Debug for BuilderConfig {
 	}
 }
 
-impl BuilderConfig {
+impl<'a> BuilderConfig<'a> {
 	// Helper functions
 	/// Setter for the `keypair` field
 	pub fn keypair(mut self, keypair: esdalek::Keypair) -> Self {
@@ -62,12 +60,13 @@ impl BuilderConfig {
 		self.flags = flags;
 		self
 	}
+
 	/// Setter for the `magic` field
 	///```
 	/// use vach::prelude::BuilderConfig;
 	/// let config = BuilderConfig::default().magic(*b"DbAfh");
 	///```
-	pub fn magic(mut self, magic: [u8; 5]) -> BuilderConfig {
+	pub fn magic(mut self, magic: [u8; 5]) -> BuilderConfig<'a> {
 		self.magic = magic;
 		self
 	}
@@ -75,12 +74,12 @@ impl BuilderConfig {
 	/// Setter for the `progress_callback` field
 	///```
 	/// use vach::prelude::BuilderConfig;
-	/// let config = BuilderConfig::default().callback(|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) });
+	/// let config = BuilderConfig::default().callback(&|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) });
 	///```
 	pub fn callback(
-		mut self, callback: impl Fn(&str, usize, &RegistryEntry) + 'static,
-	) -> BuilderConfig {
-		self.progress_callback = Some(Box::new(callback));
+		mut self, callback: &'a dyn Fn(&str, usize, &RegistryEntry),
+	) -> BuilderConfig<'a> {
+		self.progress_callback = Some(callback);
 		self
 	}
 
@@ -94,8 +93,8 @@ impl BuilderConfig {
 	}
 }
 
-impl Default for BuilderConfig {
-	fn default() -> BuilderConfig {
+impl<'a> Default for BuilderConfig<'a> {
+	fn default() -> BuilderConfig<'a> {
 		BuilderConfig {
 			flags: Flags::default(),
 			keypair: None,
