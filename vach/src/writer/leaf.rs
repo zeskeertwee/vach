@@ -171,7 +171,7 @@ impl<'a> Leaf<'a> {
 	}
 	/// Setter for the `encrypt` field
 	///```
-	///use vach::prelude::Leaf;
+	/// use vach::prelude::Leaf;
 	/// let config = Leaf::default().encrypt(true);
 	///```
 	pub fn encrypt(mut self, encrypt: bool) -> Self {
@@ -181,7 +181,7 @@ impl<'a> Leaf<'a> {
 
 	/// Setter for the `sign` field
 	///```
-	///use vach::prelude::Leaf;
+	/// use vach::prelude::Leaf;
 	/// let config = Leaf::default().sign(true);
 	///```
 	pub fn sign(mut self, sign: bool) -> Self {
@@ -191,7 +191,7 @@ impl<'a> Leaf<'a> {
 
 	/// Setter for the `link_mode` field
 	///```
-	///use vach::prelude::Leaf;
+	/// use vach::prelude::Leaf;
 	/// let config = Leaf::default().link_mode(Some("default.tx".to_string()));
 	///```
 	pub fn link_mode(mut self, link_mode: Option<String>) -> Self {
