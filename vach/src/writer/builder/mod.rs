@@ -132,7 +132,7 @@ impl<'a> Builder<'a> {
 					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
 					leaf.id.len()
 						+ RegistryEntry::MIN_SIZE
-						+ (if config.keypair.is_some() { crate::SIGNATURE_LENGTH } else { 0 })
+						+ (if config.keypair.is_some() && leaf.sign { crate::SIGNATURE_LENGTH } else { 0 })
 				})
 				.reduce(|l1, l2| l1 + l2)
 				.unwrap_or(0) + Header::BASE_SIZE;
