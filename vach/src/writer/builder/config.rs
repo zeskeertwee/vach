@@ -13,10 +13,8 @@ pub struct BuilderConfig<'a> {
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
 	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
-	/// The type signature is:
-	/// ```ignore
-	/// type OptionalCallback = Option<Box<dyn Fn(id: &str, glob_size: usize, reg_entry: &RegistryEntry)>>;
-	/// ```
+	/// The callback get passed to it: the leaf's id, the number of bytes written and the generated registry entry. Respectively.
+	/// > **To avoid** the `implementation of "FnOnce" is not general enough` error consider adding types to the closure's parameters, as this is a type inference error. Rust somehow cannot infer enough information, [link](https://www.reddit.com/r/rust/comments/ntqu68/implementation_of_fnonce_is_not_general_enough/).
 	///
 	/// Usage:
 	/// ```ignore
@@ -73,8 +71,10 @@ impl<'a> BuilderConfig<'a> {
 
 	/// Setter for the `progress_callback` field
 	///```
-	/// use vach::prelude::BuilderConfig;
-	/// let config = BuilderConfig::default().callback(&|_, byte_len, _| { println!("Number of bytes written: {}", byte_len) });
+	/// use vach::prelude::{BuilderConfig, RegistryEntry};
+	///
+	/// let callback = |_: &str, byte_len: usize, _: &RegistryEntry| { println!("Number of bytes written: {}", byte_len) };
+	/// let config = BuilderConfig::default().callback(&callback);
 	///```
 	pub fn callback(
 		mut self, callback: &'a dyn Fn(&str, usize, &RegistryEntry),

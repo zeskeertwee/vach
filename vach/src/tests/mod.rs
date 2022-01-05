@@ -194,9 +194,9 @@ fn gen_keypair() -> InternalResult<()> {
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
-	let mut build_config = BuilderConfig::default().callback(&|_, _, d| {
-		dbg!(&d);
-	});
+	let cb = |_: &str, _: usize, entry: &RegistryEntry| { dbg!(entry); };
+	let mut build_config = BuilderConfig::default().callback(&cb);
+
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
 	builder.add_dir(
