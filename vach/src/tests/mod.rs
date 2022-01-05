@@ -110,9 +110,7 @@ fn header_config() -> InternalResult<()> {
 #[test]
 fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
-	let build_config = BuilderConfig::default().callback(&|id, _, entry| {
-		dbg!(id, entry);
-	});
+	let build_config = BuilderConfig::default();
 
 	builder.add(File::open("test_data/song.txt")?, "song")?;
 	builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
@@ -240,7 +238,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.secured);
 
-	// Check identity of retrieved data
+	// Check authenticity of retrieved data
 	println!("{}", song);
 
 	// Windows bullshit
