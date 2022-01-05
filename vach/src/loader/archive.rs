@@ -208,7 +208,7 @@ impl<T: Seek + Read> Archive<T> {
 		}
 	}
 
-	/// Fetch a [RegistryEntry] from this [`Archive`].
+	/// Fetch a [`RegistryEntry`] from this [`Archive`].
 	/// This can be used for debugging, as the [`RegistryEntry`] holds information about some data within a source.
 	/// ### `None` case:
 	/// If no entry with the given ID exists then `None` is returned.
