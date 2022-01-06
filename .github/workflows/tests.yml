@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  single-threaded-tests:
 
     runs-on: ${{ matrix.os }}
     strategy:
@@ -23,5 +23,20 @@ jobs:
       run: cargo build
     - name: Run tests
       run: cargo test --verbose -- --test-threads=1 --nocapture
+      env:
+        RUST_LOG: trace
+  multithreaded-tests:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: cargo build
+    - name: Run tests
+      run: cargo test --verbose --features multithreaded -- --test-threads=1 --nocapture
       env:
         RUST_LOG: trace
