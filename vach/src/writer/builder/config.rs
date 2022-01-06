@@ -3,6 +3,18 @@ use std::io;
 use ed25519_dalek as esdalek;
 use std::fmt::Debug;
 
+#[cfg(feature = "multithreaded")]
+/// A toggle blanket-trait that allows for seamless switching between single and multithreaded execution
+pub trait CallbackTrait: Fn(&str, &RegistryEntry) + Send + Sync {}
+#[cfg(feature = "multithreaded")]
+impl<T: Fn(&str, &RegistryEntry) + Send + Sync> CallbackTrait  for T {}
+
+#[cfg(not(feature = "multithreaded"))]
+/// A toggle blanket-trait that allows for seamless switching between single and multithreaded execution
+pub trait CallbackTrait: Fn(&str, &RegistryEntry) {}
+#[cfg(not(feature = "multithreaded"))]
+impl<T: Fn(&str, &RegistryEntry)> CallbackTrait for T {}
+
 /// Allows for the customization of valid `vach` archives during their construction.
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
 pub struct BuilderConfig<'a> {
@@ -20,7 +32,7 @@ pub struct BuilderConfig<'a> {
 	/// ```ignore
 	/// let builder_config = BuilderConfig::new()
 	/// ```
-	pub progress_callback: Option<&'a dyn Fn(&str, usize, &RegistryEntry)>
+	pub progress_callback: Option<&'a dyn CallbackTrait>
 }
 
 impl<'a> Debug for BuilderConfig<'a> {
@@ -32,7 +44,7 @@ impl<'a> Debug for BuilderConfig<'a> {
 			.field(
 				"progress_callback",
 				if self.progress_callback.is_some() {
-					&"dyn Fn(id: &str, glob_size: usize, reg_entry: &RegistryEntry)"
+					&"dyn Fn(id: &str, reg_entry: &RegistryEntry)"
 				} else {
 					&"None"
 				},
@@ -73,11 +85,11 @@ impl<'a> BuilderConfig<'a> {
 	///```
 	/// use vach::prelude::{BuilderConfig, RegistryEntry};
 	///
-	/// let callback = |_: &str, byte_len: usize, _: &RegistryEntry| { println!("Number of bytes written: {}", byte_len) };
+	/// let callback = |_: &str,  entry: &RegistryEntry| { println!("Number of bytes written: {}", entry.offset) };
 	/// let config = BuilderConfig::default().callback(&callback);
 	///```
 	pub fn callback(
-		mut self, callback: &'a dyn Fn(&str, usize, &RegistryEntry),
+		mut self, callback: &'a dyn CallbackTrait,
 	) -> BuilderConfig<'a> {
 		self.progress_callback = Some(callback);
 		self

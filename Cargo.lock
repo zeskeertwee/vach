@@ -1129,6 +1129,7 @@ dependencies = [
  "ed25519-dalek",
  "lz4_flex",
  "rand",
+ "rayon",
  "snap",
 ]
 

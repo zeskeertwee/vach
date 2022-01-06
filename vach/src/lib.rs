@@ -28,7 +28,11 @@
 - **Leaf:** Any actual data endpoint within an archive, what `tar` calls archive members, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
-## 🀄 Show me some code _dang it!_
+### 🔫 Extra Features
+Turning on the `multithreaded` feature pulls [rayon] as a dependency and adds `Send + Sync` as a trait bound to many generic types.
+This allows for the parallelization of the `Builder::dump(---)` function, with more functions getting parallelization on the way.
+
+### 🀄 Show me some code _dang it!_
 
 ##### > Building a basic unsigned `.vach` file
 

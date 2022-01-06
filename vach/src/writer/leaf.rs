@@ -21,12 +21,24 @@ impl Default for CompressMode {
 	}
 }
 
+#[cfg(feature = "multithreaded")]
+/// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
+pub trait HandleTrait: Read + Send + Sync {}
+#[cfg(feature = "multithreaded")]
+impl<T: Read + Send + Sync> HandleTrait  for T {}
+
+#[cfg(not(feature = "multithreaded"))]
+/// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
+pub trait HandleTrait: Read {}
+#[cfg(not(feature = "multithreaded"))]
+impl<T: Read> HandleTrait for T {}
+
 /// A wrapper around an `io::Read` handle.
 /// Allows for multiple types of data implementing `io::Read` to be used under one struct.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
 	// The lifetime simply reflects to the [`Builder`]'s lifetime, meaning the handle must live longer than or the same as the Builder
-	pub(crate) handle: Box<dyn Read + 'a>,
+	pub(crate) handle: Box<dyn HandleTrait + 'a>,
 
 	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
@@ -93,7 +105,7 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![]));
 	///```
-	pub fn from_handle<H: Read + 'a>(handle: H) -> Leaf<'a> {
+	pub fn from_handle<H: HandleTrait + 'a>(handle: H) -> Leaf<'a> {
 		Leaf {
 			handle: Box::new(handle),
 			..Default::default()

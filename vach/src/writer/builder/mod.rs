@@ -1,9 +1,12 @@
 use std::io::{BufWriter, Write, Read, Seek, SeekFrom};
 use std::collections::HashSet;
 
+#[cfg(feature = "multithreaded")]
+use std::sync::{Arc, Mutex};
+
 mod config;
 pub use config::BuilderConfig;
-use super::leaf::{Leaf, CompressMode};
+use super::leaf::{Leaf, CompressMode, HandleTrait};
 use crate::global::compressor::Compressor;
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
@@ -13,7 +16,19 @@ use crate::{
 
 use ed25519_dalek::Signer;
 
-/// The archive builder. Provides an interface with which one can configure and build out valid `vach` archives.
+/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single or multithreaded execution
+#[cfg(feature = "multithreaded")]
+pub trait DumpTrait: Write + Seek + Send + Sync {}
+#[cfg(feature = "multithreaded")]
+impl<T: Write + Seek + Send + Sync> DumpTrait for T {}
+
+#[cfg(not(feature = "multithreaded"))]
+/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single or multithreaded execution
+pub trait DumpTrait: Write + Seek {}
+#[cfg(not(feature = "multithreaded"))]
+impl<T: Write + Seek> DumpTrait for T {}
+
+/// The archive builder. Provides an interface with which one can configure and build valid `vach` archives.
 #[derive(Default)]
 pub struct Builder<'a> {
 	pub(crate) leafs: Vec<Leaf<'a>>,
@@ -33,7 +48,7 @@ impl<'a> Builder<'a> {
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
-	pub fn add<D: Read + 'a>(&mut self, data: D, id: &str) -> InternalResult<()> {
+	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: &str) -> InternalResult<()> {
 		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
 		self.add_leaf(leaf)?;
 		Ok(())
@@ -117,14 +132,21 @@ impl<'a> Builder<'a> {
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
 	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a [`Leaf`] is to be encrypted.
-	pub fn dump<W: Write + Seek>(
+	pub fn dump<W: DumpTrait>(
 		&mut self, mut target: W, config: &BuilderConfig,
 	) -> InternalResult<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
-		let mut size = 0usize;
+		#[cfg(feature = "multithreaded")]
+		use rayon::prelude::*;
+
+		// The total amount of bytes written
+		let mut total = 0usize;
+
+		#[allow(unused_mut)]
 		let mut reg_buffer = Vec::new();
 
 		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
+		#[allow(unused_mut)]
 		let mut leaf_offset =
 			self.leafs
 				.iter()
@@ -132,7 +154,11 @@ impl<'a> Builder<'a> {
 					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
 					leaf.id.len()
 						+ RegistryEntry::MIN_SIZE
-						+ (if config.keypair.is_some() && leaf.sign { crate::SIGNATURE_LENGTH } else { 0 })
+						+ (if config.keypair.is_some() && leaf.sign {
+							crate::SIGNATURE_LENGTH
+						} else {
+							0
+						})
 				})
 				.reduce(|l1, l2| l1 + l2)
 				.unwrap_or(0) + Header::BASE_SIZE;
@@ -157,7 +183,7 @@ impl<'a> Builder<'a> {
 		wtr.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
 		// Update how many bytes have been written
-		size += Header::BASE_SIZE;
+		total += Header::BASE_SIZE;
 
 		// Configure encryption
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
@@ -178,8 +204,37 @@ impl<'a> Builder<'a> {
 			None
 		};
 
+		#[allow(unused_mut)]
+		let mut iter_mut;
+
+		// All these arc-mutexes are used only during multithreaded execution
+		#[cfg(feature = "multithreaded")]
+		let leaf_offset_arc;
+		#[cfg(feature = "multithreaded")]
+		let total_arc;
+		#[cfg(feature = "multithreaded")]
+		let wtr_arc;
+		#[cfg(feature = "multithreaded")]
+		let reg_buffer_arc;
+
+		#[cfg(feature = "multithreaded")]
+		{
+			iter_mut = self.leafs.as_mut_slice().par_iter_mut();
+
+			// Define all arc-mutexes
+			leaf_offset_arc = Arc::new(Mutex::new(leaf_offset));
+			total_arc = Arc::new(Mutex::new(total));
+			wtr_arc = Arc::new(Mutex::new(wtr));
+			reg_buffer_arc = Arc::new(Mutex::new(reg_buffer));
+		}
+
+		#[cfg(not(feature = "multithreaded"))]
+		{
+			iter_mut = self.leafs.iter_mut();
+		}
+
 		// Populate the archive glob
-		for leaf in self.leafs.iter_mut() {
+		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult<()> {
 			let mut entry = leaf.to_registry_entry();
 			let mut raw = Vec::new();
 
@@ -213,7 +268,8 @@ impl<'a> Builder<'a> {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
 
-					let compressed_data = Compressor::new(buffer.as_slice()).compress(leaf.compression_algo)?;
+					let compressed_data =
+						Compressor::new(buffer.as_slice()).compress(leaf.compression_algo)?;
 					let ratio = compressed_data.len() as f32 / buffer.len() as f32;
 
 					if ratio < 1f32 {
@@ -244,14 +300,42 @@ impl<'a> Builder<'a> {
 				}
 			}
 
-			// Buffer the contents of the leaf, to be written later
-			wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+			// Write leaf-contents accordingly
 			let glob_length = raw.len();
-			wtr.write_all(&raw)?;
-			size += glob_length;
+			#[cfg(feature = "multithreaded")] {
+				let arc = Arc::clone(&wtr_arc);
+				let mut wtr = arc.lock().unwrap();
+
+				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+				wtr.write_all(&raw)?;
+			};
+			#[cfg(not(feature = "multithreaded"))] {
+				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+				wtr.write_all(&raw)?;
+			}
+
+			#[cfg(feature = "multithreaded")] {
+				let arc = Arc::clone(&total_arc);
+				let mut size = arc.lock().unwrap();
+
+				*size += glob_length;
+			};
+			#[cfg(not(feature = "multithreaded"))] {
+				total += glob_length;
+			}
 
 			entry.location = leaf_offset as u64;
-			leaf_offset += glob_length;
+
+			#[cfg(feature = "multithreaded")] {
+				let arc = Arc::clone(&leaf_offset_arc);
+				let mut leaf_offset = arc.lock().unwrap();
+
+				*leaf_offset += glob_length;
+			};
+			#[cfg(not(feature = "multithreaded"))] {
+				leaf_offset += glob_length;
+			}
+
 			entry.offset = glob_length as u64;
 
 			if leaf.sign {
@@ -280,21 +364,53 @@ impl<'a> Builder<'a> {
 			let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
 			entry_bytes.extend(leaf.id.as_bytes());
 
-			// Write to the registry
-			reg_buffer.write_all(&entry_bytes)?;
+			// Write to the registry-buffer
+			#[cfg(feature = "multithreaded")] {
+				let arc = Arc::clone(&reg_buffer_arc);
+				let mut reg_buffer = arc.lock().unwrap();
+
+				reg_buffer.write_all(&entry_bytes)?;
+			};
+			#[cfg(not(feature = "multithreaded"))] {
+				reg_buffer.write_all(&entry_bytes)?;
+			}
 
 			// Call the progress callback bound within the [`BuilderConfig`]
-			if let Some(callback) = &config.progress_callback {
-				callback(&leaf.id, glob_length, &entry);
+			if let Some(callback) = config.progress_callback {
+				callback(&leaf.id, &entry);
 			}
 
 			// Update offsets
-			size += entry_bytes.len();
+			#[cfg(feature = "multithreaded")] {
+				let arc = Arc::clone(&total_arc);
+				let mut size = arc.lock().unwrap();
+
+				*size += entry_bytes.len();
+			};
+			#[cfg(not(feature = "multithreaded"))] {
+				total += entry_bytes.len();
+			}
+
+			Ok(())
+		})?;
+
+		// Write out the contents of the registry
+		#[cfg(feature = "multithreaded")] {
+			let arc = Arc::clone(&wtr_arc);
+			let mut wtr = arc.lock().unwrap();
+
+			let reg_arc = Arc::clone(&reg_buffer_arc);
+			let reg_buffer = reg_arc.lock().unwrap();
+
+			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
+			wtr.write_all(reg_buffer.as_slice())?;
+		};
+		#[cfg(not(feature = "multithreaded"))] {
+			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
+			wtr.write_all(reg_buffer.as_slice())?;
 		}
 
-		wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
-		wtr.write_all(reg_buffer.as_slice())?;
 
-		Ok(size)
+		Ok(total)
 	}
 }
