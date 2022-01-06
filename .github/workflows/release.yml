@@ -5,7 +5,7 @@ permissions:
   contents: write
 
 on:
-  push:
+  release:
     branches: [ main ]
     tags:
       - r[0-9]+.*
