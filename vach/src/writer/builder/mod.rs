@@ -140,14 +140,14 @@ impl<'a> Builder<'a> {
 		use rayon::prelude::*;
 
 		// The total amount of bytes written
-		let mut total = 0usize;
+		let mut total_sync = 0usize;
 
 		#[allow(unused_mut)]
-		let mut reg_buffer = Vec::new();
+		let mut reg_buffer_sync = Vec::new();
 
 		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
 		#[allow(unused_mut)]
-		let mut leaf_offset =
+		let mut leaf_offset_sync =
 			self.leafs
 				.iter()
 				.map(|leaf| {
@@ -167,8 +167,8 @@ impl<'a> Builder<'a> {
 		target.seek(SeekFrom::Start(0))?;
 
 		// Write header in order defined in the spec document
-		let mut wtr = BufWriter::new(target);
-		wtr.write_all(&config.magic)?;
+		let mut wtr_sync = BufWriter::new(target);
+		wtr_sync.write_all(&config.magic)?;
 
 		// INSERT flags
 		let mut temp = config.flags;
@@ -176,14 +176,14 @@ impl<'a> Builder<'a> {
 			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
 
-		wtr.write_all(&temp.bits().to_le_bytes())?;
+		wtr_sync.write_all(&temp.bits().to_le_bytes())?;
 
 		// Write the version of the Archive Format|Builder|Loader
-		wtr.write_all(&crate::VERSION.to_le_bytes())?;
-		wtr.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
+		wtr_sync.write_all(&crate::VERSION.to_le_bytes())?;
+		wtr_sync.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
 		// Update how many bytes have been written
-		total += Header::BASE_SIZE;
+		total_sync += Header::BASE_SIZE;
 
 		// Configure encryption
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
@@ -222,16 +222,20 @@ impl<'a> Builder<'a> {
 			iter_mut = self.leafs.as_mut_slice().par_iter_mut();
 
 			// Define all arc-mutexes
-			leaf_offset_arc = Arc::new(Mutex::new(leaf_offset));
-			total_arc = Arc::new(Mutex::new(total));
-			wtr_arc = Arc::new(Mutex::new(wtr));
-			reg_buffer_arc = Arc::new(Mutex::new(reg_buffer));
+			leaf_offset_arc = Arc::new(Mutex::new(&mut leaf_offset_sync));
+			total_arc = Arc::new(Mutex::new(&mut total_sync));
+			wtr_arc = Arc::new(Mutex::new(wtr_sync));
+			reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
 		}
 
 		#[cfg(not(feature = "multithreaded"))]
 		{
 			iter_mut = self.leafs.iter_mut();
 		}
+
+		/* ========== MULTI-THREADED EXECUTION STARTS HERE ================= */
+		// NOTE: Variables with *_sync cannot be accessed in the multithreaded context only the single threaded context
+		// NOTE: In the multithreaded context they have been wrapped in arc-mutexes for thread safety
 
 		// Populate the archive glob
 		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult<()> {
@@ -302,38 +306,50 @@ impl<'a> Builder<'a> {
 
 			// Write leaf-contents accordingly
 			let glob_length = raw.len();
-			#[cfg(feature = "multithreaded")] {
+			#[cfg(feature = "multithreaded")]
+			{
 				let arc = Arc::clone(&wtr_arc);
 				let mut wtr = arc.lock().unwrap();
 
-				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+				{
+					let arc = Arc::clone(&leaf_offset_arc);
+					let leaf_offset = arc.lock().unwrap();
+
+					wtr.seek(SeekFrom::Start(**leaf_offset as u64))?;
+				}
+
 				wtr.write_all(&raw)?;
 			};
-			#[cfg(not(feature = "multithreaded"))] {
-				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
-				wtr.write_all(&raw)?;
+			#[cfg(not(feature = "multithreaded"))]
+			{
+				wtr_sync.seek(SeekFrom::Start(leaf_offset_sync as u64))?;
+				wtr_sync.write_all(&raw)?;
 			}
 
-			#[cfg(feature = "multithreaded")] {
+			#[cfg(feature = "multithreaded")]
+			{
 				let arc = Arc::clone(&total_arc);
-				let mut size = arc.lock().unwrap();
+				let mut total = arc.lock().unwrap();
 
-				*size += glob_length;
+				**total += glob_length;
 			};
-			#[cfg(not(feature = "multithreaded"))] {
+			#[cfg(not(feature = "multithreaded"))]
+			{
 				total += glob_length;
 			}
 
-			entry.location = leaf_offset as u64;
-
-			#[cfg(feature = "multithreaded")] {
+			#[cfg(feature = "multithreaded")]
+			{
 				let arc = Arc::clone(&leaf_offset_arc);
 				let mut leaf_offset = arc.lock().unwrap();
 
-				*leaf_offset += glob_length;
+				entry.location = **leaf_offset as u64;
+				**leaf_offset += glob_length;
 			};
-			#[cfg(not(feature = "multithreaded"))] {
-				leaf_offset += glob_length;
+			#[cfg(not(feature = "multithreaded"))]
+			{
+				entry.location = leaf_offset_sync as u64;
+				leaf_offset_sync += glob_length;
 			}
 
 			entry.offset = glob_length as u64;
@@ -365,14 +381,16 @@ impl<'a> Builder<'a> {
 			entry_bytes.extend(leaf.id.as_bytes());
 
 			// Write to the registry-buffer
-			#[cfg(feature = "multithreaded")] {
+			#[cfg(feature = "multithreaded")]
+			{
 				let arc = Arc::clone(&reg_buffer_arc);
 				let mut reg_buffer = arc.lock().unwrap();
 
 				reg_buffer.write_all(&entry_bytes)?;
 			};
-			#[cfg(not(feature = "multithreaded"))] {
-				reg_buffer.write_all(&entry_bytes)?;
+			#[cfg(not(feature = "multithreaded"))]
+			{
+				reg_buffer_sync.write_all(&entry_bytes)?;
 			}
 
 			// Call the progress callback bound within the [`BuilderConfig`]
@@ -381,13 +399,15 @@ impl<'a> Builder<'a> {
 			}
 
 			// Update offsets
-			#[cfg(feature = "multithreaded")] {
+			#[cfg(feature = "multithreaded")]
+			{
 				let arc = Arc::clone(&total_arc);
-				let mut size = arc.lock().unwrap();
+				let mut total = arc.lock().unwrap();
 
-				*size += entry_bytes.len();
+				**total += entry_bytes.len();
 			};
-			#[cfg(not(feature = "multithreaded"))] {
+			#[cfg(not(feature = "multithreaded"))]
+			{
 				total += entry_bytes.len();
 			}
 
@@ -395,22 +415,23 @@ impl<'a> Builder<'a> {
 		})?;
 
 		// Write out the contents of the registry
-		#[cfg(feature = "multithreaded")] {
+		#[cfg(feature = "multithreaded")]
+		{
 			let arc = Arc::clone(&wtr_arc);
 			let mut wtr = arc.lock().unwrap();
 
-			let reg_arc = Arc::clone(&reg_buffer_arc);
-			let reg_buffer = reg_arc.lock().unwrap();
+			let reg_buffer_arc = Arc::clone(&reg_buffer_arc);
+			let reg_buffer = reg_buffer_arc.lock().unwrap();
 
 			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
 			wtr.write_all(reg_buffer.as_slice())?;
 		};
-		#[cfg(not(feature = "multithreaded"))] {
-			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
-			wtr.write_all(reg_buffer.as_slice())?;
+		#[cfg(not(feature = "multithreaded"))]
+		{
+			wtr_sync.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
+			wtr_sync.write_all(reg_buffer_sync.as_slice())?;
 		}
 
-
-		Ok(total)
+		Ok(total_sync)
 	}
 }

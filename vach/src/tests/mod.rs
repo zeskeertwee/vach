@@ -459,6 +459,7 @@ fn consolidated_example() -> InternalResult<()> {
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let mut archive = Archive::with_config(target, &config)?;
+	dbg!(archive.entries());
 
 	// Quick assertions
 	let then = Instant::now();
