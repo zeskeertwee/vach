@@ -31,7 +31,7 @@ pub enum InternalError {
 	/// Errors thrown during compression or decompression
 	DeCompressionError(String),
 	/// An error that is thrown when the current loader attempts to load an incompatible version
-	IncompatibleArchiveVersionError(u16)
+	IncompatibleArchiveVersionError(u16),
 }
 
 impl fmt::Display for InternalError {

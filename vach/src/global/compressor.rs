@@ -35,17 +35,18 @@ impl<'a, T: Read> Compressor<T> {
 
 				compressor.read_to_end(&mut buffer);
 				Ok(buffer)
-			},
+			}
 			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
 				let mut buffer = vec![];
-				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
+				let mut compressor =
+					brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
 				compressor.read_to_end(&mut buffer)?;
 
 				Ok(buffer)
-			},
-			CompressionAlgorithm::Brotli(quality) => {
-				Err(InternalError::DeCompressionError("Maximum Brotli compression level is 11 and minimum is 1".to_string()))
 			}
+			CompressionAlgorithm::Brotli(quality) => Err(InternalError::DeCompressionError(
+				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
+			)),
 		}
 	}
 	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
@@ -63,14 +64,14 @@ impl<'a, T: Read> Compressor<T> {
 
 				rdr.read_to_end(&mut buffer)?;
 				Ok(buffer)
-			},
+			}
 			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
 				let mut buffer = vec![];
 
 				rdr.read_to_end(&mut buffer)?;
 				Ok(buffer)
-			},
+			}
 		}
 	}
 }

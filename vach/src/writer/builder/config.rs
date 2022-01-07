@@ -7,7 +7,7 @@ use std::fmt::Debug;
 /// A toggle blanket-trait that allows for seamless switching between single and multithreaded execution
 pub trait CallbackTrait: Fn(&str, &RegistryEntry) + Send + Sync {}
 #[cfg(feature = "multithreaded")]
-impl<T: Fn(&str, &RegistryEntry) + Send + Sync> CallbackTrait  for T {}
+impl<T: Fn(&str, &RegistryEntry) + Send + Sync> CallbackTrait for T {}
 
 #[cfg(not(feature = "multithreaded"))]
 /// A toggle blanket-trait that allows for seamless switching between single and multithreaded execution
@@ -32,7 +32,7 @@ pub struct BuilderConfig<'a> {
 	/// ```ignore
 	/// let builder_config = BuilderConfig::new()
 	/// ```
-	pub progress_callback: Option<&'a dyn CallbackTrait>
+	pub progress_callback: Option<&'a dyn CallbackTrait>,
 }
 
 impl<'a> Debug for BuilderConfig<'a> {
@@ -88,9 +88,7 @@ impl<'a> BuilderConfig<'a> {
 	/// let callback = |_: &str,  entry: &RegistryEntry| { println!("Number of bytes written: {}", entry.offset) };
 	/// let config = BuilderConfig::default().callback(&callback);
 	///```
-	pub fn callback(
-		mut self, callback: &'a dyn CallbackTrait,
-	) -> BuilderConfig<'a> {
+	pub fn callback(mut self, callback: &'a dyn CallbackTrait) -> BuilderConfig<'a> {
 		self.progress_callback = Some(callback);
 		self
 	}
@@ -111,7 +109,7 @@ impl<'a> Default for BuilderConfig<'a> {
 			flags: Flags::default(),
 			keypair: None,
 			magic: *crate::DEFAULT_MAGIC,
-			progress_callback: None
+			progress_callback: None,
 		}
 	}
 }

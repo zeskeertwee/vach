@@ -128,7 +128,9 @@ impl Header {
 
 		// Validate version
 		if crate::VERSION != header.arch_version {
-			return Err(InternalError::IncompatibleArchiveVersionError(header.arch_version));
+			return Err(InternalError::IncompatibleArchiveVersionError(
+				header.arch_version,
+			));
 		};
 
 		Ok(())
