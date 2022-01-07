@@ -335,7 +335,7 @@ impl<'a> Builder<'a> {
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
-				total += glob_length;
+				total_sync += glob_length;
 			}
 
 			#[cfg(feature = "multithreaded")]
@@ -408,7 +408,7 @@ impl<'a> Builder<'a> {
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
-				total += entry_bytes.len();
+				total_sync += entry_bytes.len();
 			}
 
 			Ok(())
