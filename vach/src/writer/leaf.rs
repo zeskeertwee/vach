@@ -25,7 +25,7 @@ impl Default for CompressMode {
 /// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
 pub trait HandleTrait: Read + Send + Sync {}
 #[cfg(feature = "multithreaded")]
-impl<T: Read + Send + Sync> HandleTrait  for T {}
+impl<T: Read + Send + Sync> HandleTrait for T {}
 
 #[cfg(not(feature = "multithreaded"))]
 /// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
@@ -110,6 +110,10 @@ impl<'a> Leaf<'a> {
 			handle: Box::new(handle),
 			..Default::default()
 		}
+	}
+	/// Consume the [Leaf] and return the underlying Boxed handle
+	pub fn into_inner(self) -> Box<dyn HandleTrait + 'a> {
+		self.handle
 	}
 	pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
 		let mut entry = RegistryEntry::empty();

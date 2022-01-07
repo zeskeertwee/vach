@@ -33,6 +33,13 @@ pub struct Archive<T> {
 	decryptor: Option<Encryptor>,
 }
 
+impl<T> Archive<T> {
+	/// Consume the [Archive] and return the underlying handle
+    pub fn into_inner(self) -> T {
+		 self.handle
+	 }
+}
+
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
 	/// Load an [`Archive`] with the default settings from a source.
