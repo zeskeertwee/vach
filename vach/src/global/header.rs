@@ -127,11 +127,8 @@ impl Header {
 		};
 
 		// Validate version
-		if crate::VERSION > header.arch_version {
-			return Err(InternalError::ValidationError(format!(
-                "The provided archive source has version: {}. While the loader has a version: {}. The current loader is likely out of date!",
-                header.arch_version, crate::VERSION
-            )));
+		if crate::VERSION != header.arch_version {
+			return Err(InternalError::IncompatibleArchiveVersionError(header.arch_version));
 		};
 
 		Ok(())
