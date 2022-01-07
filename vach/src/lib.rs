@@ -31,6 +31,7 @@
 ### 🔫 Extra Features
 Turning on the `multithreaded` feature pulls [rayon] as a dependency and adds `Send + Sync` as a trait bound to many generic types.
 This allows for the parallelization of the `Builder::dump(---)` function, with more functions getting parallelization on the way.
+ > Turning on parallelization adds a lot of overhead that would be completely unnecessary for much smaller archives, it only benefits where the **singular data** is very large and the `Arc<Mutex<Y>>` overhead is _relatively minimal_
 
 ### 🀄 Show me some code _dang it!_
 
