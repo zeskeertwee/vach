@@ -1,5 +1,5 @@
 use std::{
-	fmt::{self, Debug},
+	fmt::Debug,
 	io::{self, Read, Write},
 };
 use crate::prelude::Flags;
@@ -32,7 +32,7 @@ impl<'a, T: Read> Compressor<T> {
 				let mut buffer = vec![];
 				let mut compressor = snap::read::FrameEncoder::new(&mut self.data);
 
-				compressor.read_to_end(&mut buffer);
+				compressor.read_to_end(&mut buffer)?;
 				Ok(buffer)
 			}
 			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
