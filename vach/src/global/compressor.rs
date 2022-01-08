@@ -1,4 +1,3 @@
-#![allow(unused)]
 use std::{
 	fmt::{self, Debug},
 	io::{self, Read, Write},
@@ -44,7 +43,7 @@ impl<'a, T: Read> Compressor<T> {
 
 				Ok(buffer)
 			}
-			CompressionAlgorithm::Brotli(quality) => Err(InternalError::DeCompressionError(
+			CompressionAlgorithm::Brotli(_) => Err(InternalError::DeCompressionError(
 				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
 			)),
 		}
