@@ -21,7 +21,7 @@ impl<'a> From<PathBuf> for InputSource<'a> {
 	}
 }
 
-pub const VERSION: &str = "0.0.2";
+pub const VERSION: &str = "0.0.3";
 
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
