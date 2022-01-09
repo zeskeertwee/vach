@@ -44,7 +44,7 @@ impl<'a> Debug for BuilderConfig<'a> {
 			.field(
 				"progress_callback",
 				if self.progress_callback.is_some() {
-					&"dyn Fn(id: &str, reg_entry: &RegistryEntry)"
+					&"Some(&dyn Fn(id: &str, reg_entry: &RegistryEntry))"
 				} else {
 					&"None"
 				},
@@ -60,6 +60,7 @@ impl<'a> BuilderConfig<'a> {
 		self.keypair = Some(keypair);
 		self
 	}
+
 	/// Setter for the `flags` field
 	///```
 	/// use vach::prelude::{Flags, BuilderConfig};
