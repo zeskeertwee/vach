@@ -29,8 +29,10 @@ pub struct BuilderConfig<'a> {
 	/// > **To avoid** the `implementation of "FnOnce" is not general enough` error consider adding types to the closure's parameters, as this is a type inference error. Rust somehow cannot infer enough information, [link](https://www.reddit.com/r/rust/comments/ntqu68/implementation_of_fnonce_is_not_general_enough/).
 	///
 	/// Usage:
-	/// ```ignore
-	/// let builder_config = BuilderConfig::new()
+	/// ```
+	/// use vach::builder::BuilderConfig;
+	///
+	/// let builder_config = BuilderConfig::default();
 	/// ```
 	pub progress_callback: Option<&'a dyn CallbackTrait>,
 }
