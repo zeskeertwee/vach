@@ -93,7 +93,7 @@ vach pack -s secret_key.sk -o hello.vach -i hello.txt goodbye.txt
 # Compression: "-c always", "-c never" or "-c detect"
 vach pack -c always -o hello.vach -i hello.txt goodbye.txt
 
-# Hash: "-h" or "--hash"
+# Hash: "-a" or "--hash"
 # Whether to include signatures in the archive
 # This help to detect if the archive has been tampered with
 # But there are very computationaly intensive so use them sparingly
@@ -102,7 +102,7 @@ vach pack -s -o hello.vach -i hello.txt goodbye.txt
 # Encrypt: "-e" or "--encrypt"
 # Whether to encrypt your archive
 # If no pre-existing keypair|secret_key is provided then a new one is written: `${OUTPUT_ARCHIVE}.kp`
-# EG hello.vach -> hello.vach.kp, same applies for "-h"
+# EG hello.vach -> hello.vach.kp, same applies for "-a"
 vach pack -e -o hello.vach -i hello.txt goodbye.txt
 
 # Flags: "-f" or "--flags"

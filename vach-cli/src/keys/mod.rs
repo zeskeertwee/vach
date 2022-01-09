@@ -27,7 +27,7 @@ pub mod key_names {
 	pub(crate) const QUIET: &str = "QUIET";
 }
 
-pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
+pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 	/* please only use this function once during the lifecycle of the program */
 	let mut map = HashMap::new();
 
@@ -35,8 +35,8 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// A general output target
 	map.insert(
 		key_names::OUTPUT,
-		Arg::with_name(key_names::OUTPUT)
-			.short("o")
+		Arg::new(key_names::OUTPUT)
+			.short('o')
 			.long("output")
 			.value_name(key_names::OUTPUT)
 			.help("A general output target, for example a file to write to")
@@ -48,60 +48,60 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// A general input source
 	map.insert(
 		key_names::INPUT,
-		Arg::with_name(key_names::INPUT)
+		Arg::new(key_names::INPUT)
 			.long("input")
-			.short("i")
+			.short('i')
 			.value_name(key_names::INPUT)
 			.help("A general list of input sources, like paths to files")
 			.required(false)
 			.takes_value(true)
-			.multiple(true),
+			.multiple_values(true),
 	);
 
 	// add all files in a directory into the input queue
 	map.insert(
 		key_names::DIR_INPUT,
-		Arg::with_name(key_names::DIR_INPUT)
+		Arg::new(key_names::DIR_INPUT)
 			.long("directory")
-			.short("d")
+			.short('d')
 			.value_name(key_names::DIR_INPUT)
 			.help("Add all files in a directory into the input queue")
 			.required(false)
 			.takes_value(true)
-			.multiple(true),
+			.multiple_values(true),
 	);
 
 	// same as above, only that it adds files from the directory recursively
 	map.insert(
 		key_names::DIR_INPUT_REC,
-		Arg::with_name(key_names::DIR_INPUT_REC)
+		Arg::new(key_names::DIR_INPUT_REC)
 			.long("directory-r")
-			.short("r")
+			.short('r')
 			.value_name(key_names::DIR_INPUT_REC)
 			.help("Recursively add all files in a directory into the input queue")
 			.required(false)
 			.takes_value(true)
-			.multiple(true),
+			.multiple_values(true),
 	);
 
 	// exclude the given files from the write queue
 	map.insert(
 		key_names::EXCLUDE,
-		Arg::with_name(key_names::EXCLUDE)
+		Arg::new(key_names::EXCLUDE)
 			.long("exclude")
-			.short("x")
+			.short('x')
 			.value_name(key_names::EXCLUDE)
 			.help("Exclude the given paths from the input queue")
 			.required(false)
 			.takes_value(true)
-			.multiple(true),
+			.multiple_values(true),
 	);
 
 	// Deletes the original files after they have been processed successfully
 	map.insert(
 		key_names::TRUNCATE,
-		Arg::with_name(key_names::TRUNCATE)
-			.short("t")
+		Arg::new(key_names::TRUNCATE)
+			.short('t')
 			.long("truncate")
 			.value_name(key_names::TRUNCATE)
 			.help("Exclude the given paths from the input queue")
@@ -112,9 +112,9 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// treats the entries in a .vach file like regular files, but with metadata from the archive
 	map.insert(
 		key_names::SOURCE,
-		Arg::with_name(key_names::SOURCE)
+		Arg::new(key_names::SOURCE)
 			.long("source")
-			.short("z")
+			.short('z')
 			.value_name(key_names::SOURCE)
 			.help("Treats the entries in a .vach file like regular files and adds them to the input queue")
 			.required(false)
@@ -125,9 +125,9 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// treats the entries in a .vach file like regular files, but with metadata from the archive
 	map.insert(
 		key_names::MAGIC,
-		Arg::with_name(key_names::MAGIC)
+		Arg::new(key_names::MAGIC)
 			.long("magic")
-			.short("m")
+			.short('m')
 			.value_name(key_names::MAGIC)
 			.help("The magic used to generate the archive")
 			.required(false)
@@ -150,17 +150,17 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// The compress mode of the adjacent leafs
 	map.insert(
 		key_names::COMPRESS_MODE,
-		Arg::with_name(key_names::COMPRESS_MODE)
+		Arg::new(key_names::COMPRESS_MODE)
 			.long("compress-mode")
-			.short("c")
+			.short('c')
 			.value_name(key_names::COMPRESS_MODE)
-			.help("The compress mode of the adjacent leafs, Can be 'Always', 'Detect' or 'Never'. If none is set, it defaults to 'Detect'")
+			.help("The compress mode of the adjacent leafs, Can be 'Always', 'Detect' or 'Never' (case insensitive). Defaults to 'Detect'")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1)
 			.validator(|c_mode| {
 				if c_mode != "always" && c_mode != "never" && c_mode != "detect" {
-					return Err(format!("Please provide a valid Compress Mode, either \"always\", \"detect\" or \"never\". Not: {}", c_mode));
+					return Err(format!("Please provide a valid Compress Mode, either 'Always', 'Detect' or 'Never' (case insensitive). Not: {}", c_mode));
 				};
 
 				Ok(())
@@ -170,8 +170,8 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// To sign the entries and include the signatures in the target, an sk or kp must be provided
 	map.insert(
 		key_names::HASH,
-		Arg::with_name(key_names::HASH)
-			.short("h")
+		Arg::new(key_names::HASH)
+			.short('a')
 			.long("hash")
 			.value_name(key_names::HASH)
 			.help("To sign the entries and include the signatures in the target, an sk or kp must be provided")
@@ -182,11 +182,11 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// Encrypt the data, an sk or kp must be provided
 	map.insert(
 		key_names::ENCRYPT,
-		Arg::with_name(key_names::ENCRYPT)
-			.short("e")
+		Arg::new(key_names::ENCRYPT)
+			.short('e')
 			.long("encrypt")
 			.value_name(key_names::ENCRYPT)
-			.help("Encrypt the data, an sk or kp must be provided")
+			.help("Encrypt the data, a secret key or keypair must be provided with either -s or -k")
 			.required(false)
 			.takes_value(false),
 	);
@@ -194,8 +194,8 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// Used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts
 	map.insert(
 		key_names::SPLIT_KEY,
-		Arg::with_name(key_names::SPLIT_KEY)
-			.short("s")
+		Arg::new(key_names::SPLIT_KEY)
+			.short('s')
 			.long("split")
 			.value_name(key_names::SPLIT_KEY)
 			.help("Used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts")
@@ -206,8 +206,8 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// The secret key to be used in signing of signatures
 	map.insert(
 		key_names::SECRET_KEY,
-		Arg::with_name(key_names::SECRET_KEY)
-			.short("s")
+		Arg::new(key_names::SECRET_KEY)
+			.short('s')
 			.long("secret-key")
 			.value_name(key_names::SECRET_KEY)
 			.help("The secret key to be used in signing of signatures")
@@ -219,8 +219,8 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// The public key to be used in decryption and validation of signatures
 	map.insert(
 		key_names::PUBLIC_KEY,
-		Arg::with_name(key_names::PUBLIC_KEY)
-			.short("p")
+		Arg::new(key_names::PUBLIC_KEY)
+			.short('p')
 			.long("public-key")
 			.value_name(key_names::PUBLIC_KEY)
 			.help("The public key to be used in decryption and validation of signatures")
@@ -232,9 +232,9 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// A keypair is just a pair of the above two, but when set will be chosen over the above
 	map.insert(
 		key_names::KEYPAIR,
-		Arg::with_name(key_names::KEYPAIR)
+		Arg::new(key_names::KEYPAIR)
 			.long("keypair")
-			.short("k")
+			.short('k')
 			.value_name(key_names::KEYPAIR)
 			.help("A keypair is just a pair of the above two, but when set will be chosen over the above")
 			.required(false)
@@ -245,8 +245,8 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// Tells the CLI to not log any messages to the console
 	map.insert(
 		key_names::QUIET,
-		Arg::with_name(key_names::QUIET)
-			.short("q")
+		Arg::new(key_names::QUIET)
+			.short('q')
 			.long("quiet")
 			.value_name(key_names::QUIET)
 			.help("Tells the CLI to not log any messages to the console")
@@ -257,9 +257,9 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// The flags that go into the .vach file header section
 	map.insert(
 		key_names::FLAGS,
-		Arg::with_name("f")
+		Arg::new("f")
 			.long("flags")
-			.short("f")
+			.short('f')
 			.value_name(key_names::FLAGS)
 			.help("The flags that go into the .vach file header section")
 			.required(false)
@@ -270,9 +270,9 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a, 'a>> {
 	// the version of the leafs being read or to be written
 	map.insert(
 		key_names::VERSION,
-		Arg::with_name(key_names::VERSION)
+		Arg::new(key_names::VERSION)
 			.long("version")
-			.short("v")
+			.short('v')
 			.value_name(key_names::VERSION)
 			.help("the version of the leafs being read or to be written")
 			.required(false)

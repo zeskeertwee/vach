@@ -57,7 +57,7 @@ impl<T: Seek + Read> Archive<T> {
 	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
 	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
 	/// ### Errors
-	///  - If parsing fails, an `Err(-)` is returned.
+	///  - If parsing fails, an `Err(---)` is returned.
 	///  - The archive fails to validate
 	///  - `io` errors
 	///  - If any `ID`s are not valid UTF-8
