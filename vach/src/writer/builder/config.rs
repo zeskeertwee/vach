@@ -25,9 +25,8 @@ pub struct BuilderConfig<'a> {
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
 	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
-	/// The callback get passed to it: the leaf's id, the number of bytes written and the generated registry entry. Respectively.
+	/// The callback get passed to it: the leaf's id and the generated registry entry. Respectively.
 	/// > **To avoid** the `implementation of "FnOnce" is not general enough` error consider adding types to the closure's parameters, as this is a type inference error. Rust somehow cannot infer enough information, [link](https://www.reddit.com/r/rust/comments/ntqu68/implementation_of_fnonce_is_not_general_enough/).
-	///
 	/// Usage:
 	/// ```
 	/// use vach::builder::BuilderConfig;

@@ -151,8 +151,7 @@ pub(crate) mod writer;
 // Re-exports
 pub use rand;
 
-/// Current file spec version, both `Loader` and [`Builder`](crate::builder::Builder)
-/// Increments by ten with every spec change
+/// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;
 
 /// Size of a keypair: (secret + public)
