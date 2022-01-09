@@ -47,7 +47,9 @@ impl CommandTrait for Evaluator {
 				"always" => CompressMode::Always,
 				"detect" => CompressMode::Detect,
 				"never" => CompressMode::Never,
-				invalid_value => anyhow::bail!("{} is an invalid value for COMPRESS_MODE", invalid_value),
+				invalid_value => {
+					anyhow::bail!("{} is an invalid value for COMPRESS_MODE", invalid_value)
+				}
 			}
 		};
 
@@ -58,11 +60,15 @@ impl CommandTrait for Evaluator {
 					let path = PathBuf::from(f);
 
 					match path.canonicalize() {
-						 Ok(path) => Some(path),
-						 Err(err) => {
-							 println!("Failed to evaluate: {}. Skipping due to error: {}", path.to_string_lossy(), err);
-							 None
-						 },
+						Ok(path) => Some(path),
+						Err(err) => {
+							println!(
+								"Failed to evaluate: {}. Skipping due to error: {}",
+								path.to_string_lossy(),
+								err
+							);
+							None
+						}
 					}
 				})
 				.filter(|v| v.is_file())
@@ -74,14 +80,16 @@ impl CommandTrait for Evaluator {
 		let mut inputs: Vec<InputSource> = vec![];
 
 		// Used to filter invalid inputs and excluded inputs
-		let path_filter = |path: &PathBuf| {
-			match path.canonicalize() {
-				Ok(canonical) => !excludes.contains(&canonical) && canonical.is_file(),
-				Err(err) => {
-					println!("Failed to evaluate: {}. Skipping due to error: {}", path.to_string_lossy(), err);
-					false
-				},
-		  }
+		let path_filter = |path: &PathBuf| match path.canonicalize() {
+			Ok(canonical) => !excludes.contains(&canonical) && canonical.is_file(),
+			Err(err) => {
+				println!(
+					"Failed to evaluate: {}. Skipping due to error: {}",
+					path.to_string_lossy(),
+					err
+				);
+				false
+			}
 		};
 
 		if let Some(val) = args.values_of(key_names::INPUT) {
@@ -207,7 +215,8 @@ impl CommandTrait for Evaluator {
 				InputSource::VachResource(res, id) => {
 					builder.add(res.data.as_slice(), id)?;
 
-					let message = format!("Packaging entry from archive: {} @ {}", id, archive_path);
+					let message =
+						format!("Packaging entry from archive: {} @ {}", id, archive_path);
 					pbar.println(message);
 				}
 				InputSource::PathBuf(path) => {
@@ -222,7 +231,11 @@ impl CommandTrait for Evaluator {
 						continue;
 					}
 
-					let id = path.to_string_lossy().trim_start_matches("./").trim_start_matches(".\\").to_string();
+					let id = path
+						.to_string_lossy()
+						.trim_start_matches("./")
+						.trim_start_matches(".\\")
+						.to_string();
 					pbar.println(format!("Packaging {}", id));
 
 					match File::open(&path) {

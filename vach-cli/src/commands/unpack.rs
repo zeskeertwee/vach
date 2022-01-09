@@ -89,7 +89,9 @@ impl CommandTrait for Evaluator {
 	}
 }
 
-fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBuf) -> anyhow::Result<()> {
+fn extract_archive<T: Read + Seek>(
+	archive: &mut Archive<T>, save_folder: PathBuf,
+) -> anyhow::Result<()> {
 	// For measuring the time difference
 	let time = Instant::now();
 	fs::create_dir_all(&save_folder)?;
