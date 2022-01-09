@@ -18,7 +18,7 @@ pub struct Compressor<T: Read> {
 
 impl<'a, T: Read> Compressor<T> {
 	pub(crate) fn new(data: T) -> Compressor<T> {
-		Compressor { data: data }
+		Compressor { data }
 	}
 	pub(crate) fn compress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
 		match algo {
@@ -35,17 +35,18 @@ impl<'a, T: Read> Compressor<T> {
 
 				compressor.read_to_end(&mut buffer);
 				Ok(buffer)
-			},
+			}
 			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
 				let mut buffer = vec![];
-				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
+				let mut compressor =
+					brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
 				compressor.read_to_end(&mut buffer)?;
 
 				Ok(buffer)
-			},
-			CompressionAlgorithm::Brotli(quality) => {
-				Err(InternalError::DeCompressionError("Maximum Brotli compression level is 11 and minimum is 1".to_string()))
 			}
+			CompressionAlgorithm::Brotli(quality) => Err(InternalError::DeCompressionError(
+				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
+			)),
 		}
 	}
 	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
@@ -63,14 +64,14 @@ impl<'a, T: Read> Compressor<T> {
 
 				rdr.read_to_end(&mut buffer)?;
 				Ok(buffer)
-			},
+			}
 			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
 				let mut buffer = vec![];
 
 				rdr.read_to_end(&mut buffer)?;
 				Ok(buffer)
-			},
+			}
 		}
 	}
 }
@@ -84,7 +85,6 @@ pub enum CompressionAlgorithm {
 	LZ4,
 	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
 	/// Allows one to specify the quality of the compression, from 1-11. (9 Recommended, 11 for extra compression)
-	/// The higher the compression level, the smaller the file (and the more computationally expensive the compression is)
 	Brotli(u32),
 }
 

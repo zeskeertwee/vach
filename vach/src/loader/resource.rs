@@ -6,7 +6,7 @@ use crate::{
 /// Basically decompressed data obtained from an archive.
 /// Contains `data`, `flags` and `content_version` fields.
 /// Is returned by `archive.fetch(...)`
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Resource {
 	/// The decompressed data, stored in a vector of bytes.
 	pub data: Vec<u8>,
@@ -14,8 +14,8 @@ pub struct Resource {
 	pub flags: Flags,
 	/// The content version of the extracted archive entry
 	pub content_version: u8,
-	/// If a `Resource` has been validated against tampering, corruption or obsolescence, then this value becomes false.
-	/// By default a `Resource` is invalid
+	/// If a [`Resource`] signature has checked for authenticity, corruption or obsolescence, then this value becomes false.
+	/// By default a [`Resource`] is insecure
 	pub secured: bool,
 }
 
@@ -28,17 +28,5 @@ impl fmt::Display for Resource {
 			flags = &self.flags.bits(),
 			version = &self.content_version
 		)
-	}
-}
-
-impl Default for Resource {
-	#[inline(always)]
-	fn default() -> Resource {
-		Resource {
-			data: Vec::new(),
-			flags: Flags::default(),
-			content_version: 0,
-			secured: false,
-		}
 	}
 }

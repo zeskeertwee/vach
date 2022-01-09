@@ -110,9 +110,7 @@ fn header_config() -> InternalResult<()> {
 #[test]
 fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
-	let build_config = BuilderConfig::default().callback(|id, _, entry| {
-		dbg!(id, entry);
-	});
+	let build_config = BuilderConfig::default();
 
 	builder.add(File::open("test_data/song.txt")?, "song")?;
 	builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
@@ -194,9 +192,11 @@ fn gen_keypair() -> InternalResult<()> {
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
-	let mut build_config = BuilderConfig::default().callback(|_, _, d| {
-		dbg!(&d);
-	});
+	let cb = |_: &str, entry: &RegistryEntry| {
+		dbg!(entry);
+	};
+	let mut build_config = BuilderConfig::default().callback(&cb);
+
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
 
 	builder.add_dir(
@@ -240,7 +240,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.secured);
 
-	// Check identity of retrieved data
+	// Check authenticity of retrieved data
 	println!("{}", song);
 
 	// Windows bullshit
@@ -295,11 +295,11 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 #[test]
 fn edcryptor_test() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
-	use crate::global::edcryptor::EDCryptor;
+	use crate::global::edcryptor::Encryptor;
 
 	let pk = gen_keypair().public;
 
-	let crypt = EDCryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
+	let crypt = Encryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
 
 	let data = vec![12, 12, 12, 12];
 
@@ -396,7 +396,6 @@ fn cyclic_linked_leafs() {
 		.dump(&mut target, &BuilderConfig::default())
 		.unwrap();
 
-	target.seek(SeekFrom::Start(0)).unwrap();
 	let mut archive = Archive::from_handle(target).unwrap();
 
 	// Assert that this causes an error, [Cyclic Linked Leafs]
@@ -457,14 +456,12 @@ fn consolidated_example() -> InternalResult<()> {
 	// Just because
 	println!("Building took: {}us", then.elapsed().as_micros());
 
-	// Ensure your stream_position is where you want it to be, so here at the start of the Cursor (0)
-	target.seek(SeekFrom::Start(0))?;
-
 	// Load data
 	let mut config = HeaderConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let mut archive = Archive::with_config(target, &config)?;
+	dbg!(archive.entries());
 
 	// Quick assertions
 	let then = Instant::now();
@@ -507,8 +504,6 @@ fn test_compression() -> InternalResult<()> {
 	)?;
 
 	builder.dump(&mut target, &BuilderConfig::default())?;
-
-	target.seek(SeekFrom::Start(0))?;
 
 	let mut archive = Archive::from_handle(&mut target)?;
 

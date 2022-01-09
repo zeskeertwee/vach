@@ -24,12 +24,14 @@ pub enum InternalError {
 	CryptoError(String),
 	/// Thrown when a link leaf aliases another link leaf, potentially causing a cyclic link error
 	CyclicLinkReferenceError(String, String),
-	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a `Flag` instance
+	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a [`Flags`](crate::prelude::Flags) instance
 	RestrictedFlagAccessError,
-	/// When a `Leaf` has an ID that is longer than `crate::MAX_ID_LENGTH`
+	/// When a [`Leaf`](crate::builder::Leaf) has an ID that is longer than `crate::MAX_ID_LENGTH`
 	IDSizeOverflowError(String),
 	/// Errors thrown during compression or decompression
 	DeCompressionError(String),
+	/// An error that is thrown when the current loader attempts to load an incompatible version
+	IncompatibleArchiveVersionError(u16),
 }
 
 impl fmt::Display for InternalError {
@@ -50,6 +52,7 @@ impl fmt::Display for InternalError {
 			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
 			Self::LeafAppendError(id) => write!(f, "[VachError::LeafAppendError] A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", id),
 			Self::DeCompressionError(err) => write!(f, "[VachError::DeCompressionError] Encountered an error during compression or decompression: {}", err),
+			Self::IncompatibleArchiveVersionError(version) => write!(f, "The provided archive source has version: {}. While the loader has a spec-version: {}. The current loader is incompatible!", version, crate::VERSION)
 		}
 	}
 }

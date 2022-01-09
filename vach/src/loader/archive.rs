@@ -7,7 +7,7 @@ use std::{
 use super::resource::Resource;
 use crate::{
 	global::{
-		edcryptor::EDCryptor,
+		edcryptor::Encryptor,
 		error::InternalError,
 		flags::Flags,
 		header::{Header, HeaderConfig},
@@ -20,22 +20,29 @@ use crate::{
 use ed25519_dalek as esdalek;
 
 /// A wrapper for loading data from archive sources.
-/// It also provides query functions for fetching `Resources` and `RegistryEntry`s.
+/// It also provides query functions for fetching `Resources` and [`RegistryEntry`]s.
 /// It can be customized with the `HeaderConfig` struct.
-/// > **A word of advice:** Since `Archive` takes in a `impl io::Seek` (Seekable), handle. Make sure the `stream_position` is at the right location to avoid hair-splitting bugs.
-/// > Does not buffer any sys-calls to the underlying handle, so consider wrapping `handle` in a `BufReader`
+/// > **A word of advice:**
+/// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
 	handle: T,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
-	decryptor: Option<EDCryptor>,
+	decryptor: Option<Encryptor>,
+}
+
+impl<T> Archive<T> {
+	/// Consume the [Archive] and return the underlying handle
+	pub fn into_inner(self) -> T {
+		self.handle
+	}
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
 impl<T: Seek + Read> Archive<T> {
-	/// Load an `Archive` with the default settings from a source.
+	/// Load an [`Archive`] with the default settings from a source.
 	/// The same as doing:
 	/// ```ignore
 	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
@@ -47,7 +54,7 @@ impl<T: Seek + Read> Archive<T> {
 		Archive::with_config(handle, &HeaderConfig::default())
 	}
 
-	/// Given a read handle, this will read and parse the data into an `Archive` struct.
+	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
 	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
 	/// ### Errors
 	///  - If parsing fails, an `Err(-)` is returned.
@@ -55,27 +62,31 @@ impl<T: Seek + Read> Archive<T> {
 	///  - `io` errors
 	///  - If any `ID`s are not valid UTF-8
 	pub fn with_config(mut handle: T, config: &HeaderConfig) -> InternalResult<Archive<T>> {
+		// Start reading from the start of the input
+		handle.seek(SeekFrom::Start(0))?;
+
 		let header = Header::from_handle(&mut handle)?;
 		Header::validate(&header, config)?;
 
 		// Generate and store Registry Entries
-		let mut use_decryption = false;
 		let mut entries = HashMap::new();
 
+		// Construct entries map
 		for _ in 0..header.capacity {
 			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
-			if entry.flags.contains(Flags::ENCRYPTED_FLAG) && !use_decryption {
-				use_decryption = true;
-			};
 			entries.insert(id, entry);
 		}
 
 		// Build decryptor
+		let use_decryption = entries
+			.iter()
+			.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
 		let mut decryptor = None;
 
+		// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
 		if use_decryption {
 			if let Some(pk) = config.public_key {
-				decryptor = Some(EDCryptor::new(&pk, config.magic))
+				decryptor = Some(Encryptor::new(&pk, config.magic))
 			}
 		}
 
@@ -88,7 +99,7 @@ impl<T: Seek + Read> Archive<T> {
 		})
 	}
 
-	/// Fetch a `Resource` with the given `ID`.
+	/// Fetch a [`Resource`] with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	/// ### Errors:
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
@@ -152,7 +163,7 @@ impl<T: Seek + Read> Archive<T> {
 						}
 					};
 				} else {
-					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Leaf: {} but no decryption key(public key) was provided", id)));
+					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Resource: {} but no decryption key(public key) was provided", id)));
 				}
 			}
 
@@ -166,7 +177,7 @@ impl<T: Seek + Read> Archive<T> {
 					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy)?
 				} else {
 					return InternalResult::Err(InternalError::DeCompressionError(
-						"Unspecified compression algorithm bit".to_string(),
+						"Unspecified compression algorithm bits".to_string(),
 					));
 				};
 			};
@@ -188,7 +199,7 @@ impl<T: Seek + Read> Archive<T> {
 					Some(_) => return self.fetch_write(&target_id, target),
 					None => {
 						return Err(InternalError::MissingResourceError(format!(
-						"The linking Leaf: {} exists. However the Leaf it links to: {}, does not exist",
+						"The linking Resource: {} exists. However the Resource it links to: {}, does not",
 						id, target_id
 					)))
 					}
@@ -206,8 +217,8 @@ impl<T: Seek + Read> Archive<T> {
 		}
 	}
 
-	/// Fetch a `RegistryEntry` from this `Archive`.
-	/// This can be used for debugging, as the `RegistryEntry` holds information about some data within a source.
+	/// Fetch a [`RegistryEntry`] from this [`Archive`].
+	/// This can be used for debugging, as the [`RegistryEntry`] holds information about some data within a source.
 	/// ### `None` case:
 	/// If no entry with the given ID exists then `None` is returned.
 	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
@@ -217,7 +228,7 @@ impl<T: Seek + Read> Archive<T> {
 		}
 	}
 
-	/// Returns a reference to the underlying `HashMap`. This hashmap stores `RegistryEntry` values and uses `String` keys.
+	/// Returns a reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries

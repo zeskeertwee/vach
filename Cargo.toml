@@ -6,8 +6,5 @@ members = [
     "vach-benchmarks"
 ]
 
-[profile.release]
-lto = true
-
 [profile.bench]
 debug = true

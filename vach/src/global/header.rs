@@ -6,7 +6,7 @@ use ed25519_dalek as esdalek;
 
 use super::{error::InternalError, result::InternalResult};
 
-/// Used to configure and give extra information to the `Archive` loader.
+/// Used to configure and give extra information to the [`Archive`](crate::archive::Archive) loader.
 /// Used exclusively in archive source and integrity validation.
 #[derive(Debug, Clone)]
 pub struct HeaderConfig {
@@ -19,7 +19,7 @@ pub struct HeaderConfig {
 }
 
 impl HeaderConfig {
-	/// Construct a new `HeaderConfig` struct.
+	/// Construct a new [`HeaderConfig`] struct.
 	/// ```
 	/// use vach::prelude::HeaderConfig;
 	/// let config = HeaderConfig::new(*b"_TEST",  None);
@@ -83,7 +83,7 @@ impl fmt::Display for HeaderConfig {
 impl Default for HeaderConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		HeaderConfig::new(crate::DEFAULT_MAGIC.clone(), None)
+		HeaderConfig::new(*crate::DEFAULT_MAGIC, None)
 	}
 }
 
@@ -99,7 +99,7 @@ impl Default for Header {
 	#[inline(always)]
 	fn default() -> Header {
 		Header {
-			magic: crate::DEFAULT_MAGIC.clone(),
+			magic: *crate::DEFAULT_MAGIC,
 			flags: Flags::default(),
 			arch_version: crate::VERSION,
 			capacity: 0,
@@ -127,11 +127,10 @@ impl Header {
 		};
 
 		// Validate version
-		if crate::VERSION > header.arch_version {
-			return Err(InternalError::ValidationError(format!(
-                "The provided archive source has version: {}. While the loader has a version: {}. The current loader is likely out of date!",
-                header.arch_version, crate::VERSION
-            )));
+		if crate::VERSION != header.arch_version {
+			return Err(InternalError::IncompatibleArchiveVersionError(
+				header.arch_version,
+			));
 		};
 
 		Ok(())
@@ -140,15 +139,20 @@ impl Header {
 	/// ### Errors
 	///  - `io` errors
 	pub fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
-		let mut buffer = [0x69; Header::BASE_SIZE];
+		#![allow(clippy::uninit_assumed_init)]
+		// We are never reading from `buffer`, so it's safe to use uninitialized memory. We initialize it instantly after
+
+		use std::mem::MaybeUninit;
+		let mut buffer: [u8; Header::BASE_SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
+
 		handle.read_exact(&mut buffer)?;
 
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: [buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]],
-			// Read flags, u16 from [u8;2]
-			flags: Flags::from_bits(u32::from_le_bytes([buffer[5], buffer[6], buffer[7], buffer[8]])),
+			magic: buffer[0..5].try_into().unwrap(),
+			// Read flags, u32 from [u8;4]
+			flags: Flags::from_bits(u32::from_le_bytes(buffer[5..9].try_into().unwrap())),
 			// Read version, u16 from [u8;2]
 			arch_version: u16::from_le_bytes([buffer[9], buffer[10]]),
 			// Read the capacity of the archive, u16 from [u8;2]

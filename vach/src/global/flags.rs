@@ -3,7 +3,7 @@ use super::{error::InternalError, result::InternalResult};
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub struct Flags {
 	pub(crate) bits: u32,
 }
@@ -62,7 +62,7 @@ impl Flags {
 	/// Set a flag into the underlying structure.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
 	///
-	/// As the `Flag` struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
+	/// As the [`Flags`] struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
 	/// are reserved for internal use (ie the first 16 half bits). The good thing is that because of endianness, one can use the remaining 16 bits
 	/// just fine, as seen below. Just using the `0b0000_0000_0000_0000` literal works because `vach` is little endian.
 	/// ```
@@ -119,13 +119,7 @@ impl Flags {
 	}
 }
 
-impl Default for Flags {
-	#[inline(always)]
-	fn default() -> Self {
-		Flags { bits: 0 }
-	}
-}
-
+#[rustfmt::skip]
 impl fmt::Display for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
@@ -136,23 +130,12 @@ impl fmt::Display for Flags {
 	}
 }
 
+#[rustfmt::skip]
 impl fmt::Debug for Flags {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let compressed = if self.contains(Flags::COMPRESSED_FLAG) {
-			'C'
-		} else {
-			'-'
-		};
-		let signed = if self.contains(Flags::SIGNED_FLAG) {
-			'S'
-		} else {
-			'-'
-		};
-		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) {
-			'E'
-		} else {
-			'-'
-		};
+		let compressed = if self.contains(Flags::COMPRESSED_FLAG) { 'C' } else { '-' };
+		let signed = if self.contains(Flags::SIGNED_FLAG) { 'S' } else { '-' };
+		let encrypted = if self.contains(Flags::ENCRYPTED_FLAG) { 'E' } else { '-' };
 
 		write!(
 			f,

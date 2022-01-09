@@ -16,7 +16,7 @@ pub struct RegistryEntry {
 	pub signature: Option<esdalek::Signature>,
 	/// The location of the file in the archive, as bytes from the beginning of the file
 	pub location: u64,
-	/// The offset|size of the `Leaf`, in bytes. This does not always correspond to the actual size of the file when read from the archive! ie when compressed
+	/// The offset|size of the [`Leaf`](crate::builder::Leaf), in bytes. This does not always correspond to the actual size of the file when read from the archive! ie when compressed
 	pub offset: u64,
 }
 
@@ -35,32 +35,32 @@ impl RegistryEntry {
 		}
 	}
 
-	/// Given a read handle, will proceed to read and parse bytes into a `RegistryEntry` struct. (de-serialization)
+	/// Given a read handle, will proceed to read and parse bytes into a [`RegistryEntry`] struct. (de-serialization)
 	/// ### Errors
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(Self, String)> {
-		let mut buffer = [0; RegistryEntry::MIN_SIZE];
+		#![allow(clippy::uninit_assumed_init)]
+		use std::mem::MaybeUninit;
+
+		let mut buffer: [u8; RegistryEntry::MIN_SIZE] =
+			unsafe { MaybeUninit::uninit().assume_init() };
 		handle.read_exact(&mut buffer)?;
 
 		// Construct entry
-		let mut entry = RegistryEntry::empty();
-		entry.flags = Flags::from_bits(u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]));
-		entry.content_version = buffer[4];
+		let flags = Flags::from_bits(u32::from_le_bytes(buffer[0..4].try_into().unwrap()));
+		let content_version = buffer[4];
 
-		entry.location = u64::from_le_bytes([
-			buffer[5], buffer[6], buffer[7], buffer[8], buffer[9], buffer[10], buffer[11], buffer[12],
-		]);
-
-		entry.offset = u64::from_le_bytes([
-			buffer[13], buffer[14], buffer[15], buffer[16], buffer[17], buffer[18], buffer[19], buffer[20],
-		]);
+		let location = u64::from_le_bytes(buffer[5..13].try_into().unwrap());
+		let offset = u64::from_le_bytes(buffer[13..21].try_into().unwrap());
 
 		let id_length = u16::from_le_bytes([buffer[21], buffer[22]]);
+		let mut signature = None;
 
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
-		if entry.flags.contains(Flags::SIGNED_FLAG) {
-			let mut sig_bytes = [0u8; crate::SIGNATURE_LENGTH];
+		if flags.contains(Flags::SIGNED_FLAG) {
+			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] =
+				unsafe { MaybeUninit::uninit().assume_init() };
 			handle.read_exact(&mut sig_bytes)?;
 
 			let sig: esdalek::Signature = match sig_bytes.try_into() {
@@ -68,17 +68,26 @@ impl RegistryEntry {
 				Err(err) => return Err(InternalError::ParseError(err.to_string())),
 			};
 
-			entry.signature = Some(sig);
+			signature = Some(sig);
 		};
 
 		// Construct ID
 		let mut id = String::new();
 		handle.take(id_length as u64).read_to_string(&mut id)?;
 
+		// Build entry step manually, to prevent unnecessary `Default::default()` call, then changing fields individually
+		let entry = RegistryEntry {
+			flags,
+			content_version,
+			signature,
+			location,
+			offset,
+		};
+
 		Ok((entry, id))
 	}
 
-	/// Serializes a `RegistryEntry` struct into an array of bytes
+	/// Serializes a [`RegistryEntry`] struct into an array of bytes
 	pub(crate) fn bytes(&self, id_length: &u16) -> Vec<u8> {
 		let mut buffer = Vec::new();
 		buffer.extend_from_slice(&self.flags.bits().to_le_bytes());

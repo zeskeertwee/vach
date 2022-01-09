@@ -19,7 +19,7 @@
 </p>
 
 
-## 👔 The official `vach` and `vf` crates' repo
+## 👔 The official `vach` crates' repo
 
 `vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for [compression](https://github.com/PSeitz/lz4_flex), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
@@ -28,7 +28,7 @@
 ### 🤷 Who is what, when where?
 
 - **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
-- **vf:** An asset management system utilizing **vach** for transmission and adds features like hot reloading, caching and archive management. **WIP 🚧**
+- **vach-assets-manager:** Work in progress `asset-manager` integration for `vach`. **WIP 🚧**
 - **vach-cli:** A CLI tool for dealing with `.vach` files.
 
 ---
@@ -187,7 +187,6 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 ### 🛠 Yet to be implemented
 
-- [ ] `vf` as a whole
 - [ ] Skynet, (coming _very_ soon).
 - [ ] Some proper benchmarking code. (Call for participation)
 - [ ] `Some(examples)` directory instead of `None`
