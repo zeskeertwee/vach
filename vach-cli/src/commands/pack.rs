@@ -28,13 +28,6 @@ pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
-		let output_path = match args.value_of(key_names::OUTPUT) {
-			Some(path) => path,
-			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
-		};
-
-		let output_file = File::create(&output_path)?;
-
 		// The archives magic
 		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
@@ -230,7 +223,6 @@ impl CommandTrait for Evaluator {
 					}
 
 					let id = path.to_string_lossy().trim_start_matches("./").trim_start_matches(".\\").to_string();
-
 					pbar.println(format!("Packaging {}", id));
 
 					match File::open(&path) {
@@ -259,7 +251,14 @@ impl CommandTrait for Evaluator {
 		pbar.inc(2);
 
 		// Dumping processed data
+		let output_path = match args.value_of(key_names::OUTPUT) {
+			Some(path) => path,
+			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
+		};
+
+		let output_file = File::create(&output_path)?;
 		pbar.println(format!("Generated a new archive @ {}", output_path));
+
 		builder.dump(output_file, &builder_config)?;
 
 		// Truncate original files
