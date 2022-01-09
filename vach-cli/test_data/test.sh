@@ -1,3 +1,5 @@
+#! /usr/bin/sh
+
 # # Variables
 EXCLUDE=test.sh
 ARTIFACTS="keypair.sk keypair.pk keypair.kp signed.vach custom.vach encrypted.vach"
