@@ -428,20 +428,24 @@ fn consolidated_example() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
+	let template = Leaf::default().encrypt(true).version(59).compression_algo(CompressionAlgorithm::Snappy);
 	builder.add_leaf(
 		Leaf::from_handle(data_1)
 			.id("d1")
-			.compress(CompressMode::Always),
+			.compress(CompressMode::Always)
+			.template(&template),
 	)?;
 	builder.add_leaf(
 		Leaf::from_handle(data_2)
 			.id("d2")
-			.compress(CompressMode::Never),
+			.compress(CompressMode::Never)
+			.template(&template),
 	)?;
 	builder.add_leaf(
 		Leaf::from_handle(data_3)
 			.id("d3")
-			.compress(CompressMode::Detect),
+			.compress(CompressMode::Detect)
+			.template(&template),
 	)?;
 	builder.add_leaf(
 		Leaf::default()
@@ -460,8 +464,10 @@ fn consolidated_example() -> InternalResult<()> {
 	let mut config = HeaderConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
+	let then = Instant::now();
 	let mut archive = Archive::with_config(target, &config)?;
-	dbg!(archive.entries());
+
+	println!("Archive initialization took: {}us", then.elapsed().as_micros());
 
 	// Quick assertions
 	let then = Instant::now();
@@ -470,7 +476,7 @@ fn consolidated_example() -> InternalResult<()> {
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 	assert_eq!(archive.fetch("d3_link")?.data.as_slice(), data_3);
 
-	println!("Fetching took: {}us", then.elapsed().as_micros());
+	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 
 	// All seems ok
 	Ok(())
@@ -524,6 +530,11 @@ fn test_compression() -> InternalResult<()> {
 	assert!(archive.fetch_entry("LZ4").unwrap().offset < INPUT_LEN as u64);
 	assert!(archive.fetch_entry("BROTLI").unwrap().offset < INPUT_LEN as u64);
 	assert!(archive.fetch_entry("SNAPPY").unwrap().offset < INPUT_LEN as u64);
+
+	// A simple test to show that these are somehow not the same data
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
+	assert!(archive.fetch_entry("BROTLI").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("BROTLI").unwrap().offset);
 
 	Ok(())
 }

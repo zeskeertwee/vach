@@ -54,7 +54,7 @@ pub struct Leaf<'a> {
 	pub encrypt: bool,
 	/// Whether to include a signature with this [`Leaf`], defaults to false.
 	/// If set to true then a hash generated and validated when loaded.
-	/// > *NOTE:* **Turning `sign` on severely hurts performance for making `Archive::fetch(---)`**.
+	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
 	pub sign: bool,
 	/// If a [`Leaf`] has a link_mode of `Some("dw")`, then the leaf simply points to the Leaf with the ID "dw".
 	/// Use this if you want to have multiple entries aliasing the same data.

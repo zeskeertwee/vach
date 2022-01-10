@@ -13,11 +13,9 @@ pub(crate) struct Encryptor {
 
 impl fmt::Debug for Encryptor {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let nonce = self.nonce.to_ascii_lowercase();
 		write!(
 			f,
-			"[Vach::Encryptor] cipher: Aes256GcmSiv, nonce: {}",
-			String::from_utf8_lossy(nonce.as_slice())
+			"[Vach::Encryptor] cipher: Aes256GcmSiv, nonce: Nonce",
 		)
 	}
 }

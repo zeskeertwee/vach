@@ -83,9 +83,9 @@ impl<T: Seek + Read> Archive<T> {
 		let use_decryption = entries
 			.iter()
 			.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
-		let mut decryptor = None;
 
 		// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
+		let mut decryptor = None;
 		if use_decryption {
 			if let Some(pk) = config.public_key {
 				decryptor = Some(Encryptor::new(&pk, config.magic))
@@ -118,7 +118,7 @@ impl<T: Seek + Read> Archive<T> {
 	}
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
-	/// Returns a tuple containing the `Flags`, `content_version` and `secure`, ie validity, of the data.
+	/// Returns a tuple containing the `Flags`, `content_version` and `authenticity` (boolean) of the data.
 	/// ### Errors
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
@@ -186,7 +186,7 @@ impl<T: Seek + Read> Archive<T> {
 
 			// 3: Deref layer, dereferences link leafs
 			if entry.flags.contains(Flags::LINK_FLAG) {
-				let mut target_id = String::new();
+				let mut target_id = String::with_capacity(raw.len());
 				raw.as_slice().read_to_string(&mut target_id)?;
 
 				match self.fetch_entry(target_id.as_str()) {
