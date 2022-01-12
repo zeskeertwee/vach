@@ -210,7 +210,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.short('s')
 			.long("secret-key")
 			.value_name(key_names::SECRET_KEY)
-			.help("The secret key to be used in signing of signatures")
+			.help("The secret key used to signing data, do not distribute your secret key")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),
@@ -223,7 +223,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.short('p')
 			.long("public-key")
 			.value_name(key_names::PUBLIC_KEY)
-			.help("The public key to be used in decryption and validation of signatures")
+			.help("The public key used in decryption and authentication of signatures")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),
@@ -236,7 +236,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.long("keypair")
 			.short('k')
 			.value_name(key_names::KEYPAIR)
-			.help("A keypair is just a pair of the above two, but when set will be chosen over the above")
+			.help("A pair of cryptographic keys, note only ever distribute the public key. Use the keypair during development")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),

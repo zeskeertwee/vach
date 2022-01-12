@@ -4,7 +4,7 @@ use clap::{App, Arg};
 use crate::keys::key_names;
 use crate::commands;
 
-const VERSION: &str = "VACH VERSION 20 LTS";
+const VERSION: &str = "VACH VERSION 20 LTS, please use a 0.3.5+ version for future archive versions (30+)";
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> App<'a> {
