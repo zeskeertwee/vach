@@ -22,11 +22,10 @@ path = "src/main.rs"
 indicatif = "0.16.2"
 clap = "3.0.5"
 anyhow = "1.0.44"
-lazy_static = "1.4.0"
 tabled = "0.4.0"
 log = "0.4.14"
-pretty_env_logger = "0.4.0"
-vach = "0.2.3"
+vach2 = { package = "vach", version = "0.2" }
+# vach3 = { package = "vach", version = "0.3" }
 walkdir = "2.3.2"
 bytesize = "1.1.0"
 
