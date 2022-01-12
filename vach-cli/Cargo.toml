@@ -4,7 +4,7 @@ version = "0.3.3"
 edition = "2021"
 authors = [
 	"Jasper Fortuin <zeskeertwee@gmail.com>",
-	"Newton Toto <nyachiengatoto@gmail.com>",
+	" Newton Toto <nyachiengatoto@gmail.com>",
 ]
 description = "A command-line tool to work with .vach files"
 license = "MIT"
