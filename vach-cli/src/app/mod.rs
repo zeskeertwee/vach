@@ -4,13 +4,13 @@ use clap::{App, Arg};
 use crate::keys::key_names;
 use crate::commands;
 
-const VERSION: &str = "VACH VERSION 20 LTS, please use a 0.3.5+ version for future archive versions (30+)";
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 
 pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> App<'a> {
 	App::new("vach-cli")
 		.author(self::AUTHORS)
-		.about("A command-line interface for unpacking and packing .vach (version 20) files")
+		.about("A command-line interface for unpacking and packing .vach files")
 		.version(self::VERSION)
 		.subcommand(
 			App::new("keypair")

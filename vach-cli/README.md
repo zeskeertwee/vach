@@ -2,7 +2,7 @@
 
 `vach-cli` is a simple CLI for packing, unpacking and handling `.vach` files.
 
-> NOTE: This is the last stable CLI version that supports vach version 20, any version after `0.3.5` will be fully backwards compatible with vach 30 onwards due to a small change in the core `vach` crate
+> For the `vach version 20 LTS` old CLI use [this version](https://crates.io/crates/vach-cli/0.3.3) instead, this CLI version only works with `vach version 30` onwards
 
 ---
 
