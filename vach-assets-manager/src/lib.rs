@@ -17,7 +17,7 @@ pub struct ArchiveSource {
 impl ArchiveSource {
     /// path: the base path to start looking for archives
     /// ext: the extensions that archives have,
-    /// if left empty the '.vach' extension is the only one assumed to be used, and archives without the '.vach' extension will be ignored
+    /// if left empty the '.vach' extension is the only one assumed to be used, and archives without the `.vach` extension will be ignored
     /// multiple extensions can be used here:
     /// ```rust
     /// use vach_assets_manager::ArchiveSource;

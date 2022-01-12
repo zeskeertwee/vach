@@ -233,7 +233,7 @@ impl<'a> Builder<'a> {
 			iter_mut = self.leafs.iter_mut();
 		}
 
-		/* ========== MULTI-THREADED EXECUTION STARTS HERE ================= */
+		/* ========== MULTI-THREADED EXECUTION MAY START HERE ================= */
 		// NOTE: Variables with *_sync cannot be accessed in the multithreaded context only the single threaded context
 		// NOTE: In the multithreaded context they have been wrapped in arc-mutexes for thread safety
 
