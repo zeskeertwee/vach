@@ -72,12 +72,10 @@ impl<T: Seek + Read> Archive<T> {
 		let mut entries = HashMap::new();
 
 		// Construct entries map
-		(0..header.capacity).try_for_each(|_| -> InternalResult<()> {
+		for _ in 0..header.capacity {
 			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
 			entries.insert(id, entry);
-
-			Ok(())
-		})?;
+		};
 
 		// Build decryptor
 		let use_decryption = entries
