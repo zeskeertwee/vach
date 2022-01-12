@@ -1,6 +1,6 @@
 [package]
 name = "vach-cli"
-version = "0.3.3"
+version = "0.4.0"
 edition = "2021"
 authors = [
 	"Jasper Fortuin <zeskeertwee@gmail.com>",
@@ -26,7 +26,6 @@ tabled = "0.4.0"
 log = "0.4.14"
 vach2 = { package = "vach", version = "0.2" }
 walkdir = "2.3.2"
-bytesize = "1.1.0"
 
 [profile.release]
 lto = true
