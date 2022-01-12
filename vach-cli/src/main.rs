@@ -8,8 +8,12 @@ mod utils;
 fn main() {
 	use keys::key_names;
 
+	// Build CLI
 	let keys = keys::build_keys();
 	let app = app::build_app(keys);
+	let commands = commands::build_commands();
+
+	// Start CLI
 	let matches = app.get_matches();
 
 	if matches.is_present(key_names::QUIET) {
@@ -17,15 +21,9 @@ fn main() {
 	};
 
 	let res = match matches.subcommand() {
-		Some(("keypair", mtx)) => commands::KEYPAIR_COMMAND.evaluate(mtx),
-		Some(("split", mtx)) => commands::SPLIT_COMMAND.evaluate(mtx),
-		Some(("verify", mtx)) => commands::VERIFY_COMMAND.evaluate(mtx),
-		Some(("list", mtx)) => commands::LIST_COMMAND.evaluate(mtx),
-		Some(("pack", mtx)) => commands::PACK_COMMAND.evaluate(mtx),
-		Some(("unpack", mtx)) => commands::UNPACK_COMMAND.evaluate(mtx),
-		Some((_, _)) => Ok(()),
+		Some((key, mtx)) => commands.get(key).unwrap().evaluate(mtx),
 		None => {
-			println!("vach-cli: Run `vach --help` for usage");
+			log::info!("vach-cli: Run `vach --help` for usage");
 			Ok(())
 		}
 	};

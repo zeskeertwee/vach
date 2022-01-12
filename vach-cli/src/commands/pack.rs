@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use std::convert::TryInto;
 use std::collections::HashSet;
 
-use vach::{self, prelude::*};
+use vach2::prelude::{
+	Resource, Flags, CompressMode, Archive, Builder, BuilderConfig, PublicKey, Keypair, Leaf,
+};
 use indicatif::{ProgressBar, ProgressStyle};
 use walkdir;
 
@@ -22,16 +24,15 @@ impl<'a> From<PathBuf> for InputSource<'a> {
 }
 
 pub const VERSION: &str = "0.0.3";
-
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		// The archives magic
-		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
+		let magic: [u8; vach2::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach::DEFAULT_MAGIC,
+			None => *vach2::DEFAULT_MAGIC,
 		};
 
 		// Flags that go into the header section of the archive
@@ -155,12 +156,12 @@ impl CommandTrait for Evaluator {
 		let secret_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = File::open(path)?;
-				Some(vach::utils::read_keypair(file)?.secret)
+				Some(vach2::utils::read_keypair(file)?.secret)
 			}
 			None => match args.value_of(key_names::SECRET_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(vach::utils::read_secret_key(file)?)
+					Some(vach2::utils::read_secret_key(file)?)
 				}
 				None => None,
 			},
@@ -180,7 +181,7 @@ impl CommandTrait for Evaluator {
 
 		// If encrypt is true, and no keypair was found: Generate and write a new keypair to a file
 		if (encrypt || hash) && kp.is_none() {
-			let generated = vach::utils::gen_keypair();
+			let generated = vach2::utils::gen_keypair();
 
 			let mut file = File::create("keypair.kp")?;
 			file.write_all(&generated.to_bytes())?;
@@ -216,7 +217,7 @@ impl CommandTrait for Evaluator {
 					builder.add(res.data.as_slice(), id)?;
 
 					let message =
-						format!("Packaging entry from archive: {} @ {}", id, archive_path);
+						format!("Preparing entry from archive: {} @ {}", id, archive_path);
 					pbar.println(message);
 				}
 				InputSource::PathBuf(path) => {
@@ -236,7 +237,7 @@ impl CommandTrait for Evaluator {
 						.trim_start_matches("./")
 						.trim_start_matches(".\\")
 						.to_string();
-					pbar.println(format!("Packaging {}", id));
+					pbar.println(format!("Preparing {} for packaging", id));
 
 					match File::open(&path) {
 						Ok(file) => {
@@ -256,8 +257,6 @@ impl CommandTrait for Evaluator {
 					}
 				}
 			}
-
-			pbar.inc(1);
 		}
 
 		// Inform of success in input queue

@@ -5,7 +5,7 @@ use std::io::{Read, Seek};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vach::prelude::*;
+use vach2::prelude::{HeaderConfig, Archive, InternalError};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use super::CommandTrait;
@@ -32,9 +32,9 @@ impl CommandTrait for Evaluator {
 			anyhow::bail!("Please provide a directory|folder path as the value of -o | --output")
 		};
 
-		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
+		let magic: [u8; vach2::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach::DEFAULT_MAGIC,
+			None => *vach2::DEFAULT_MAGIC,
 		};
 
 		// Attempting to extract a public key from a -p or -k input
@@ -45,12 +45,12 @@ impl CommandTrait for Evaluator {
 					Err(err) => anyhow::bail!("IOError: {} @ {}", err, path),
 				};
 
-				Some(vach::utils::read_keypair(file)?.public)
+				Some(vach2::utils::read_keypair(file)?.public)
 			}
 			None => match args.value_of(key_names::PUBLIC_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(vach::utils::read_public_key(file)?)
+					Some(vach2::utils::read_public_key(file)?)
 				}
 				None => None,
 			},

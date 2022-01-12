@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use vach::utils::read_keypair;
+use vach2::utils::read_keypair;
 use super::CommandTrait;
 use crate::{keys::key_names, utils};
 

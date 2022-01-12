@@ -1,7 +1,7 @@
 use std::{convert::TryInto, fs::File};
 
 use tabled::{Style, Table, Tabled};
-use vach::prelude::*;
+use vach2::prelude::{HeaderConfig, Archive, Flags};
 use bytesize::ByteSize;
 
 use super::CommandTrait;
@@ -21,9 +21,9 @@ impl CommandTrait for Evaluator {
 			}
 		};
 
-		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
+		let magic: [u8; vach2::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach::DEFAULT_MAGIC,
+			None => *vach2::DEFAULT_MAGIC,
 		};
 
 		let file = File::open(archive_path)?;
