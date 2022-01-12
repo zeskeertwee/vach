@@ -1111,7 +1111,7 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "aes-gcm-siv",
  "brotli",
@@ -1141,7 +1141,7 @@ name = "vach-benchmarks"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "vach 0.3.2",
+ "vach 0.3.3",
 ]
 
 [[package]]
