@@ -2,7 +2,7 @@ use std::{convert::TryInto, fs::File};
 
 use tabled::{Style, Table, Tabled};
 use vach2::prelude::{HeaderConfig, Archive, Flags};
-use bytesize::ByteSize;
+use indicatif::HumanBytes;
 
 use super::CommandTrait;
 use crate::keys::key_names;
@@ -35,7 +35,7 @@ impl CommandTrait for Evaluator {
 				.iter()
 				.map(|(id, entry)| FileTableEntry {
 					id,
-					size: ByteSize(entry.offset).to_string(),
+					size: HumanBytes(entry.offset).to_string(),
 					flags: entry.flags,
 				})
 				.collect();
