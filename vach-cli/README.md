@@ -68,7 +68,7 @@ vach list -i textures.vach
 # This builds only an empty archive
 vach pack -o hello.vach
 
-# You can add files as inputs using the "-i" or --input" keys
+# You can add files as inputs using the "-i" or "--input" keys
 vach pack -o hello.vach -i hello.txt goodbye.txt
 
 # Or add a directory using "-d" or "--directory"
