@@ -1153,7 +1153,7 @@ dependencies = [
  "indicatif",
  "log",
  "tabled",
- "vach 0.2.3",
+ "vach 0.3.3",
  "walkdir",
 ]
 
