@@ -279,10 +279,11 @@ impl CommandTrait for Evaluator {
 		pbar.println(format!("Generated a new archive @ {}", output_path));
 
 		builder.dump(output_file, &builder_config)?;
+		drop(builder);
 
 		// Truncate original files
 		if truncate {
-			for entry in &inputs {
+			for entry in inputs {
 				if let InputSource::PathBuf(buf) = entry {
 					std::fs::remove_file(&buf)?;
 
