@@ -29,6 +29,6 @@ fn main() {
 	};
 
 	if let Err(err) = res {
-		println!("Error: {}", err)
+		println!("[VACH-CLI ERROR]: {}", err)
 	};
 }
