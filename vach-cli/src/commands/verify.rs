@@ -1,6 +1,6 @@
 use std::{convert::TryInto, fs::File};
 
-use vach2::archive::{Archive, HeaderConfig};
+use vach::archive::{Archive, HeaderConfig};
 
 use super::CommandTrait;
 use crate::keys::key_names;
@@ -17,9 +17,9 @@ impl CommandTrait for Evaluator {
 			None => anyhow::bail!("Please provide an input path using the -i or --input key"),
 		};
 
-		let magic: [u8; vach2::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
+		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach2::DEFAULT_MAGIC,
+			None => *vach::DEFAULT_MAGIC,
 		};
 
 		let input_file = File::open(input_path)?;

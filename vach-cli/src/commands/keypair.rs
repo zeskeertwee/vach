@@ -1,4 +1,4 @@
-use vach2::utils::gen_keypair;
+use vach::utils::gen_keypair;
 
 use crate::utils;
 use crate::keys::key_names;

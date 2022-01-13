@@ -134,10 +134,10 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.takes_value(true)
 			.number_of_values(1)
 			.validator(|magic| {
-				if magic.len() != vach2::MAGIC_LENGTH {
+				if magic.len() != vach::MAGIC_LENGTH {
 					return Err(format!(
 						"Please provide a magic of the right length: {}. Magic: {} has length: {}",
-						vach2::MAGIC_LENGTH,
+						vach::MAGIC_LENGTH,
 						&magic,
 						magic.len()
 					));
