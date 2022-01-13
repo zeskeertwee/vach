@@ -4,7 +4,7 @@ use clap::ArgMatches;
 use anyhow::Result;
 
 // A common progress bar style for all commands
-const PROGRESS_BAR_STYLE: &str = "{wide_bar} {pos:>7}/{len:7} ETA {eta_precise}";
+const PROGRESS_BAR_STYLE: &str = "{msg:10.orange} {wide_bar} {pos:>7}/{len:7} ETA {eta_precise}";
 
 // Trait that must be implemented by all subcommands
 pub trait CommandTrait: Sync {
