@@ -393,11 +393,6 @@ impl<'a> Builder<'a> {
 				reg_buffer_sync.write_all(&entry_bytes)?;
 			}
 
-			// Call the progress callback bound within the [`BuilderConfig`]
-			if let Some(callback) = config.progress_callback {
-				callback(&leaf.id, &entry);
-			}
-
 			// Update offsets
 			#[cfg(feature = "multithreaded")]
 			{
@@ -409,6 +404,11 @@ impl<'a> Builder<'a> {
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				total_sync += entry_bytes.len();
+			}
+
+			// Call the progress callback bound within the [`BuilderConfig`]
+			if let Some(callback) = config.progress_callback {
+				callback(&leaf.id, &entry);
 			}
 
 			Ok(())
