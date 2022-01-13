@@ -1,11 +1,11 @@
+use std::fs::OpenOptions;
 use std::{fs::File, io::Write};
 use std::path::PathBuf;
 use std::convert::TryInto;
 use std::collections::HashSet;
 
-use vach2::prelude::{
-	Resource, Flags, CompressMode, Archive, Builder, BuilderConfig, PublicKey, Keypair, Leaf,
-};
+use vach::prelude::*;
+use vach::utils;
 use indicatif::{ProgressBar, ProgressStyle};
 use walkdir;
 
@@ -23,21 +23,21 @@ impl<'a> From<PathBuf> for InputSource<'a> {
 	}
 }
 
-pub const VERSION: &str = "0.0.3";
+pub const VERSION: &str = "0.0.5";
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		// The archives magic
-		let magic: [u8; vach2::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
+		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach2::DEFAULT_MAGIC,
+			None => *vach::DEFAULT_MAGIC,
 		};
 
 		// Flags that go into the header section of the archive
 		let flags = match args.value_of(key_names::FLAGS) {
-			Some(magic) => Flags::from_bits(magic.parse::<u16>()?),
+			Some(magic) => Flags::from_bits(magic.parse::<u32>()?),
 			None => Flags::default(),
 		};
 
@@ -156,12 +156,12 @@ impl CommandTrait for Evaluator {
 		let secret_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = File::open(path)?;
-				Some(vach2::utils::read_keypair(file)?.secret)
+				Some(utils::read_keypair(file)?.secret)
 			}
 			None => match args.value_of(key_names::SECRET_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(vach2::utils::read_secret_key(file)?)
+					Some(utils::read_secret_key(file)?)
 				}
 				None => None,
 			},
@@ -181,7 +181,7 @@ impl CommandTrait for Evaluator {
 
 		// If encrypt is true, and no keypair was found: Generate and write a new keypair to a file
 		if (encrypt || hash) && kp.is_none() {
-			let generated = vach2::utils::gen_keypair();
+			let generated = utils::gen_keypair();
 
 			let mut file = File::create("keypair.kp")?;
 			file.write_all(&generated.to_bytes())?;
@@ -193,11 +193,18 @@ impl CommandTrait for Evaluator {
 		let pbar = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
 		pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
 
+		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
+		let callback = |msg: &str, _: &RegistryEntry| {
+			pbar.inc(1);
+			pbar.set_message(msg.to_string())
+		};
+
 		// Build a builder-config using the above extracted data
 		let builder_config = BuilderConfig {
 			flags,
 			magic,
 			keypair: kp,
+			progress_callback: Some(&callback),
 			..Default::default()
 		};
 
@@ -268,7 +275,7 @@ impl CommandTrait for Evaluator {
 			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
 		};
 
-		let output_file = File::create(&output_path)?;
+		let output_file = OpenOptions::new().write(true).create_new(true).open(output_path)?;
 		pbar.println(format!("Generated a new archive @ {}", output_path));
 
 		builder.dump(output_file, &builder_config)?;
