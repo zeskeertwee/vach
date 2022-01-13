@@ -217,7 +217,23 @@ impl CommandTrait for Evaluator {
 				.version(version),
 		);
 
-		// Process the files
+		// Prepare output file
+		let output_path = match args.value_of(key_names::OUTPUT) {
+			Some(path) => path,
+			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
+		};
+
+		let output_file;
+
+		match OpenOptions::new()
+					.write(true)
+					.create_new(true)
+					.open(output_path) {
+			 Ok(file) => output_file = file,
+			 Err(err) => return Err(anyhow::anyhow!("Unable to generate archive @ {}: [IO::Error] {}", output_path, err)),
+		};
+
+			// Process the files
 		for entry in &inputs {
 			match entry {
 				InputSource::VachResource(res, id) => {
@@ -269,16 +285,8 @@ impl CommandTrait for Evaluator {
 		// Inform of success in input queue
 		pbar.inc(2);
 
-		// Dumping processed data
-		let output_path = match args.value_of(key_names::OUTPUT) {
-			Some(path) => path,
-			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
-		};
-
-		let output_file = OpenOptions::new().write(true).create_new(true).open(output_path)?;
-		pbar.println(format!("Generated a new archive @ {}", output_path));
-
 		builder.dump(output_file, &builder_config)?;
+		pbar.println(format!("Generated a new archive @ {}", output_path));
 		drop(builder);
 
 		// Truncate original files
