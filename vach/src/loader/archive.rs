@@ -240,16 +240,3 @@ impl<T: Seek + Read> Archive<T> {
 		&self.header.flags
 	}
 }
-
-impl Default for Archive<&[u8]> {
-	#[inline(always)]
-	fn default() -> Archive<&'static [u8]> {
-		Archive {
-			header: Header::default(),
-			handle: &[],
-			key: None,
-			entries: HashMap::new(),
-			decryptor: None,
-		}
-	}
-}
