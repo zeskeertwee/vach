@@ -48,34 +48,31 @@ impl<'a, T: Read> Compressor<T> {
 			)),
 		}
 	}
-	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
+	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut rdr = lz4::frame::FrameDecoder::new(&mut self.data);
-				let mut buffer = vec![];
+				io::copy(&mut rdr, output)?;
 
-				rdr.read_to_end(&mut buffer)?;
-				Ok(buffer)
+				Ok(())
 			}
 			CompressionAlgorithm::Snappy => {
 				let mut rdr = snap::read::FrameDecoder::new(&mut self.data);
-				let mut buffer = vec![];
+				io::copy(&mut rdr, output)?;
 
-				rdr.read_to_end(&mut buffer)?;
-				Ok(buffer)
+				Ok(())
 			}
 			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
-				let mut buffer = vec![];
+				io::copy(&mut rdr, output)?;
 
-				rdr.read_to_end(&mut buffer)?;
-				Ok(buffer)
+				Ok(())
 			}
 		}
 	}
 }
 
-/// Allows a user to specify one of three `Compression Algorithm`s to use. Each with a specific use case
+/// Allows the user to specify which of three `Compression Algorithms` to use.
 #[derive(Clone, Copy, Debug)]
 pub enum CompressionAlgorithm {
 	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced

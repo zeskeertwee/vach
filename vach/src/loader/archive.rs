@@ -86,17 +86,21 @@ impl<T> Archive<T> {
 
 		// 2: Decompression layer
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-			raw = if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4)?
+			let mut buffer = vec![];
+
+			if entry.flags.contains(Flags::LZ4_COMPRESSED) {
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
 			} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0))?
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
 			} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy)?
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
 			} else {
 				return InternalResult::Err(InternalError::DeCompressionError(
 					"Unspecified compression algorithm bits".to_string(),
 				));
 			};
+
+			raw = buffer
 		};
 
 		let mut buffer = vec![];
