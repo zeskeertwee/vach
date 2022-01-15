@@ -248,7 +248,7 @@ impl<'a> Builder<'a> {
 					leaf.handle.read_to_end(&mut raw)?;
 				}
 				CompressMode::Always => {
-					raw = Compressor::new(&mut leaf.handle).compress(leaf.compression_algo)?;
+					Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
 
 					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 					entry.flags.force_set(leaf.compression_algo.into(), true);
@@ -257,11 +257,10 @@ impl<'a> Builder<'a> {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
 
-					let compressed_data =
-						Compressor::new(buffer.as_slice()).compress(leaf.compression_algo)?;
-					let ratio = compressed_data.len() as f32 / buffer.len() as f32;
+					let mut compressed_data = vec![];
+					Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
 
-					if ratio < 1f32 {
+					if compressed_data.len() <= buffer.len() {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 						entry.flags.force_set(leaf.compression_algo.into(), true);
 
