@@ -41,7 +41,7 @@ impl CommandTrait for Evaluator {
 				.collect();
 
 			let table = Table::new(table_entries).with(Style::PSEUDO_CLEAN);
-			println!("{}", table.to_string());
+			println!("{}", table);
 		} else {
 			println!("<EMPTY ARCHIVE> @ {}", archive_path);
 		}

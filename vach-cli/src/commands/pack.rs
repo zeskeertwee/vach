@@ -205,7 +205,6 @@ impl CommandTrait for Evaluator {
 			magic,
 			keypair: kp,
 			progress_callback: Some(&callback),
-			..Default::default()
 		};
 
 		// Construct the builder
