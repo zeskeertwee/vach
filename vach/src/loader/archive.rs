@@ -38,6 +38,72 @@ impl<T> Archive<T> {
 	pub fn into_inner(self) -> T {
 		self.handle
 	}
+
+	/// Helps in parallelized `Resource` fetching
+	fn process_raw(
+		mut raw: Vec<u8>,
+		deps: (
+			&Option<Encryptor>,
+			&Option<esdalek::PublicKey>,
+			&RegistryEntry,
+			&str,
+		),
+	) -> InternalResult<(Vec<u8>, bool)> {
+		/* Literally the hottest function in the block (🕶) */
+
+		let (decryptor, key, entry, id) = deps;
+		let mut is_secure = false;
+
+		// Signature validation
+		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
+		if let Some(pub_key) = key {
+			let raw_size = raw.len();
+
+			// If there is an error the data is flagged as invalid
+			raw.extend(id.as_bytes());
+			if let Some(signature) = entry.signature {
+				is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
+			}
+
+			raw.truncate(raw_size);
+		}
+
+		// Add read layers
+		// 1: Decryption layer
+		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
+			if let Some(dx) = decryptor {
+				raw = match dx.decrypt(&raw) {
+					Ok(bytes) => bytes,
+					Err(err) => {
+						#[rustfmt::skip]
+						return Err(InternalError::CryptoError(format!( "Unable to decrypt resource: {}. Error: {}", id, err )));
+					}
+				};
+			} else {
+				return Err(InternalError::NoKeypairError(format!("Encountered encrypted Resource: {} but no decryption key(public key) was provided", id)));
+			}
+		}
+
+		// 2: Decompression layer
+		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+			raw = if entry.flags.contains(Flags::LZ4_COMPRESSED) {
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4)?
+			} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0))?
+			} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy)?
+			} else {
+				return InternalResult::Err(InternalError::DeCompressionError(
+					"Unspecified compression algorithm bits".to_string(),
+				));
+			};
+		};
+
+		let mut buffer = vec![];
+		raw.as_slice().read_to_end(&mut buffer)?;
+
+		Ok((buffer, is_secure))
+	}
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
@@ -75,7 +141,7 @@ impl<T: Seek + Read> Archive<T> {
 		for _ in 0..header.capacity {
 			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
 			entries.insert(id, entry);
-		};
+		}
 
 		// Build decryptor
 		let use_decryption = entries
@@ -99,20 +165,40 @@ impl<T: Seek + Read> Archive<T> {
 		})
 	}
 
+	fn fetch_raw(&mut self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+		let handle = &mut self.handle;
+		handle.seek(SeekFrom::Start(entry.location))?;
+
+		let mut raw = vec![];
+		handle.take(entry.offset).read_to_end(&mut raw)?;
+
+		Ok(raw)
+	}
+
 	/// Fetch a [`Resource`] with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	/// ### Errors:
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
 	pub fn fetch(&mut self, id: &str) -> InternalResult<Resource> {
 		let mut buffer = Vec::new();
-		let (flags, content_version, validated) = self.fetch_write(id, &mut buffer)?;
+		self.fetch_write(id, &mut buffer)?;
 
-		Ok(Resource {
-			content_version,
-			flags,
-			data: buffer,
-			secured: validated,
-		})
+		if let Some(entry) = self.fetch_entry(id) {
+			let raw = self.fetch_raw(&entry)?;
+
+			let deps = (&self.decryptor, &self.key, &entry, id);
+			let (buffer, is_secure) = Archive::<T>::process_raw(raw, deps)?;
+
+			Ok(Resource {
+				content_version: entry.content_version,
+				flags: entry.flags,
+				data: buffer,
+				secured: is_secure,
+			})
+		} else {
+			#[rustfmt::skip]
+			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id )));
+		}
 	}
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
@@ -124,71 +210,17 @@ impl<T: Seek + Read> Archive<T> {
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
 	) -> InternalResult<(Flags, u8, bool)> {
-		/* Literally the hottest function in the block (🕶) */
-
 		if let Some(entry) = self.fetch_entry(id) {
-			let handle = &mut self.handle;
-			let mut is_secure = false;
+			let raw = self.fetch_raw(&entry)?;
 
-			handle.seek(SeekFrom::Start(entry.location))?;
+			let deps = (&self.decryptor, &self.key, &entry, id);
+			let (buffer, is_secure) = Archive::<T>::process_raw(raw, deps)?;
 
-			let mut raw = vec![];
-			let raw_size = handle.take(entry.offset).read_to_end(&mut raw)?;
-
-			// Signature validation
-			// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
-			if let Some(pub_key) = &self.key {
-				// If there is an error the data is flagged as invalid
-				raw.extend(id.as_bytes());
-				if let Some(signature) = entry.signature {
-					is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
-				}
-
-				raw.truncate(raw_size);
-			}
-
-			// Add read layers
-			// 1: Decryption layer
-			if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
-				if let Some(dx) = &self.decryptor {
-					raw = match dx.decrypt(&raw) {
-						Ok(bytes) => bytes,
-						Err(err) => {
-							return Err(InternalError::CryptoError(format!(
-								"Unable to decrypt resource: {}. Error: {}",
-								id.to_string(),
-								err
-							)));
-						}
-					};
-				} else {
-					return Err(InternalError::NoKeypairError(format!("Encountered encrypted Resource: {} but no decryption key(public key) was provided", id)));
-				}
-			}
-
-			// 2: Decompression layer
-			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-				raw = if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4)?
-				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0))?
-				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy)?
-				} else {
-					return InternalResult::Err(InternalError::DeCompressionError(
-						"Unspecified compression algorithm bits".to_string(),
-					));
-				};
-			};
-
-			io::copy(&mut raw.as_slice(), &mut target)?;
-
+			io::copy(&mut buffer.as_slice(), &mut target)?;
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
-			return Err(InternalError::MissingResourceError(format!(
-				"Resource not found: {}",
-				id
-			)));
+			#[rustfmt::skip]
+			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id )));
 		}
 	}
 
