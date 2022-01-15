@@ -28,8 +28,6 @@ impl Flags {
 
 	/// The flag that denotes that the archive source has signatures
 	pub const SIGNED_FLAG: u32 = 0b_0000_1000_0000_0000_0000_0000_0000_0000;
-	/// The flag that marks registry entries as links rather than leaf pointers
-	pub const LINK_FLAG: u32 = 0b_0000_0100_0000_0000_0000_0000_0000_0000;
 	/// The flag that shows data in the leaf in encrypted
 	pub const ENCRYPTED_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
 	/// A flag that is set if the registry has space reserved for more entries

@@ -242,21 +242,6 @@ impl<'a> Builder<'a> {
 			let mut entry = leaf.to_registry_entry();
 			let mut raw = Vec::new();
 
-			// Check if this is a linked [`Leaf`]
-			if let Some(id) = &leaf.link_mode {
-				if self.id_set.contains(id) {
-					use std::io::Cursor;
-
-					leaf.handle = Box::new(Cursor::new(id.as_bytes().to_vec()));
-					entry.flags.force_set(Flags::LINK_FLAG, true);
-				} else {
-					return Err(InternalError::MissingResourceError(format!(
-						"Linked Leaf: {}, references a non-existent Leaf: {}",
-						leaf.id, id
-					)));
-				}
-			}
-
 			// Compression comes first
 			match leaf.compress {
 				CompressMode::Never => {

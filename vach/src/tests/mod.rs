@@ -369,45 +369,6 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 }
 
 #[test]
-fn cyclic_linked_leafs() {
-	use std::io::Cursor;
-
-	// init
-	let mut target = Cursor::new(Vec::<u8>::new());
-
-	// Builder stage
-	let mut builder = Builder::default();
-
-	builder
-		.add_leaf(
-			Leaf::default()
-				.id("d2_link")
-				.link_mode(Some("d1_link".to_string())),
-		)
-		.unwrap();
-	builder
-		.add_leaf(
-			Leaf::default()
-				.id("d1_link")
-				.link_mode(Some("d2_link".to_string())),
-		)
-		.unwrap();
-	builder
-		.dump(&mut target, &BuilderConfig::default())
-		.unwrap();
-
-	let mut archive = Archive::from_handle(target).unwrap();
-
-	// Assert that this causes an error, [Cyclic Linked Leafs]
-	if let Err(err) = archive.fetch("d1_link") {
-		match err {
-			InternalError::CyclicLinkReferenceError(_, _) => (),
-			_ => panic!("Unrecognized error. Expected cyclic linked leaf error"),
-		}
-	};
-}
-
-#[test]
 fn consolidated_example() -> InternalResult<()> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
@@ -447,11 +408,6 @@ fn consolidated_example() -> InternalResult<()> {
 			.compress(CompressMode::Detect)
 			.template(&template),
 	)?;
-	builder.add_leaf(
-		Leaf::default()
-			.id("d3_link")
-			.link_mode(Some("d3".to_string())),
-	)?;
 
 	// Dump data
 	let then = Instant::now();
@@ -474,7 +430,6 @@ fn consolidated_example() -> InternalResult<()> {
 	assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
 	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
-	assert_eq!(archive.fetch("d3_link")?.data.as_slice(), data_3);
 
 	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 

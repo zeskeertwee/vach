@@ -55,7 +55,7 @@ impl<T: Seek + Read> Archive<T> {
 	}
 
 	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
-	/// Provide a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
+	/// Pass a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
 	/// ### Errors
 	///  - If parsing fails, an `Err(---)` is returned.
 	///  - The archive fails to validate
@@ -121,7 +121,6 @@ impl<T: Seek + Read> Archive<T> {
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
 	///  - Other `io` related errors
-	///  - Cyclic linked leaf errors
 	pub fn fetch_write<W: Write>(
 		&mut self, id: &str, mut target: W,
 	) -> InternalResult<(Flags, u8, bool)> {
@@ -179,30 +178,6 @@ impl<T: Seek + Read> Archive<T> {
 					return InternalResult::Err(InternalError::DeCompressionError(
 						"Unspecified compression algorithm bits".to_string(),
 					));
-				};
-			};
-
-			// 3: Deref layer, dereferences link leafs
-			if entry.flags.contains(Flags::LINK_FLAG) {
-				let mut target_id = String::with_capacity(raw.len());
-				raw.as_slice().read_to_string(&mut target_id)?;
-
-				match self.fetch_entry(target_id.as_str()) {
-					// Prevents cyclic hell
-					Some(alias) if alias.flags.contains(Flags::LINK_FLAG) => {
-						return Err(InternalError::CyclicLinkReferenceError(
-							id.to_string(),
-							target_id.to_string(),
-						));
-					}
-
-					Some(_) => return self.fetch_write(&target_id, target),
-					None => {
-						return Err(InternalError::MissingResourceError(format!(
-						"The linking Resource: {} exists. However the Resource it links to: {}, does not",
-						id, target_id
-					)))
-					}
 				};
 			};
 

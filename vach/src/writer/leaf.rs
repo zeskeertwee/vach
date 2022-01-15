@@ -56,9 +56,6 @@ pub struct Leaf<'a> {
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
 	pub sign: bool,
-	/// If a [`Leaf`] has a link_mode of `Some("dw")`, then the leaf simply points to the Leaf with the ID "dw".
-	/// Use this if you want to have multiple entries aliasing the same data.
-	pub link_mode: Option<String>,
 }
 
 impl<'a> fmt::Debug for Leaf<'a> {
@@ -71,7 +68,6 @@ impl<'a> fmt::Debug for Leaf<'a> {
 			.field("flags", &self.flags)
 			.field("encrypt", &self.encrypt)
 			.field("sign", &self.sign)
-			.field("link_mode", &self.link_mode)
 			.field("compression_algo", &self.compression_algo)
 			.finish()
 	}
@@ -90,7 +86,6 @@ impl<'a> Default for Leaf<'a> {
 			compression_algo: CompressionAlgorithm::LZ4,
 			encrypt: false,
 			sign: false,
-			link_mode: None,
 		}
 	}
 }
@@ -122,7 +117,7 @@ impl<'a> Leaf<'a> {
 		entry
 	}
 
-	/// Copy all fields from another [`Leaf`], except for `handle`, `link_mode` and `id`
+	/// Copy all fields from another [`Leaf`], except for `handle` and `id`
 	/// Meant to be used like a setter:
 	/// ```rust
 	/// use std::io::Cursor;
@@ -139,7 +134,6 @@ impl<'a> Leaf<'a> {
 		Leaf {
 			handle: self.handle,
 			id: self.id,
-			link_mode: self.link_mode,
 			..*other
 		}
 	}
@@ -202,16 +196,6 @@ impl<'a> Leaf<'a> {
 	///```
 	pub fn sign(mut self, sign: bool) -> Self {
 		self.sign = sign;
-		self
-	}
-
-	/// Setter for the `link_mode` field
-	///```
-	/// use vach::prelude::Leaf;
-	/// let config = Leaf::default().link_mode(Some("default.tx".to_string()));
-	///```
-	pub fn link_mode(mut self, link_mode: Option<String>) -> Self {
-		self.link_mode = link_mode;
 		self
 	}
 

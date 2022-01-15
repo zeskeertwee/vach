@@ -22,8 +22,6 @@ pub enum InternalError {
 	NoKeypairError(String),
 	/// Thrown when decryption or encryption fails
 	CryptoError(String),
-	/// Thrown when a link leaf aliases another link leaf, potentially causing a cyclic link error
-	CyclicLinkReferenceError(String, String),
 	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a [`Flags`](crate::prelude::Flags) instance
 	RestrictedFlagAccessError,
 	/// When a [`Leaf`](crate::builder::Leaf) has an ID that is longer than `crate::MAX_ID_LENGTH`
@@ -44,10 +42,6 @@ impl fmt::Display for InternalError {
 			Self::CryptoError(err) => write!(f, "[VachError::CryptoError]	{}", err),
 			Self::NoKeypairError(err) => write!(f, "{}", err),
 			Self::IDSizeOverflowError(id_part) => write!(f, "[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID", crate::MAX_ID_LENGTH, id_part),
-			Self::CyclicLinkReferenceError(link, target) => {
-				let message = format!("[VachError::CyclicLinkReferenceError], link leafs can't point to other link leafs. Leaf: {} points to another link leaf: {}", link, target);
-				f.write_str(message.as_str())
-			},
 			Self::RestrictedFlagAccessError => write!(f, "[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!"),
 			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
 			Self::LeafAppendError(id) => write!(f, "[VachError::LeafAppendError] A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", id),
@@ -67,9 +61,6 @@ impl PartialEq for InternalError {
 			(Self::LeafAppendError(l0), Self::LeafAppendError(r0)) => l0 == r0,
 			(Self::NoKeypairError(l0), Self::NoKeypairError(r0)) => l0 == r0,
 			(Self::CryptoError(l0), Self::CryptoError(r0)) => l0 == r0,
-			(Self::CyclicLinkReferenceError(l0, l1), Self::CyclicLinkReferenceError(r0, r1)) => {
-				l0 == r0 && l1 == r1
-			}
 			(Self::IDSizeOverflowError(l0), Self::IDSizeOverflowError(r0)) => l0 == r0,
 			_ => core::mem::discriminant(self) == core::mem::discriminant(other),
 		}
