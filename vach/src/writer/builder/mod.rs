@@ -16,14 +16,14 @@ use crate::{
 
 use ed25519_dalek::Signer;
 
-/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
 #[cfg(feature = "multithreaded")]
 pub trait DumpTrait: Write + Seek + Send + Sync {}
 #[cfg(feature = "multithreaded")]
 impl<T: Write + Seek + Send + Sync> DumpTrait for T {}
 
 #[cfg(not(feature = "multithreaded"))]
-/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
 pub trait DumpTrait: Write + Seek {}
 #[cfg(not(feature = "multithreaded"))]
 impl<T: Write + Seek> DumpTrait for T {}
