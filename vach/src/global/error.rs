@@ -37,7 +37,7 @@ impl fmt::Display for InternalError {
 		match self {
 			Self::OtherError(err) => write!(f, "{}", err),
 			Self::ParseError(err) => write!(f, "[VachError::ParseError] {}", err),
-			Self::IOError(err) => write!(f, "[VachError::IOError] {}", err.to_string()),
+			Self::IOError(err) => write!(f, "[VachError::IOError] {}", err),
 			Self::ValidationError(err) => write!(f, "[VachError::ValidationError] {}", err),
 			Self::CryptoError(err) => write!(f, "[VachError::CryptoError]	{}", err),
 			Self::NoKeypairError(err) => write!(f, "{}", err),
