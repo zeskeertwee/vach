@@ -529,7 +529,7 @@ fn test_batch_fetching() -> InternalResult<()> {
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
 	let mut archive = Archive::from_handle(&mut target)?;
-	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].iter());
+	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter());
 
 	// Tests and checks
 	assert!(resources.get("NON_EXISTENT").is_some());
