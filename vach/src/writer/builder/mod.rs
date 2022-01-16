@@ -126,7 +126,7 @@ impl<'a> Builder<'a> {
 	}
 
 	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
-	/// Configure the custom *`MAGIC`*, [`Header`] flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
+	/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
 	/// Wraps the `target` in [BufWriter].
 	/// ### Errors
 	/// - Underlying `io` errors

@@ -512,7 +512,7 @@ fn test_compressors() -> InternalResult<()> {
 
 #[test]
 #[cfg(feature = "multithreaded")]
-fn test_batch_fethcing() -> InternalResult<()> {
+fn test_batch_fetching() -> InternalResult<()> {
 	// Define input constants
 	const INPUT_LEN: usize = 512;
 	let input = [12u8; INPUT_LEN];

@@ -8,7 +8,7 @@ use lz4_flex as lz4;
 pub enum InternalError {
 	/// Variant that wraps over all other errors, unknown and undocumented
 	OtherError(String),
-	/// An error that is returned when either a [Keypair](vach::crypto::Keypair), Signature, [PublicKey](vach::crypto::PublicKey) or [SecretKey](vach::crypto::SecretKey) fail to deserialize.
+	/// An error that is returned when either a [Keypair](crate::crypto::Keypair), Signature, [PublicKey](crate::crypto::PublicKey) or [SecretKey](crate::crypto::SecretKey) fail to deserialize.
 	ParseError(String),
 	/// A thin wrapper over [io::Error](std::io::Error), captures all IO errors
 	IOError(io::Error),
@@ -18,7 +18,7 @@ pub enum InternalError {
 	MissingResourceError(String),
 	/// Thrown when a leaf with an identical ID to a queued leaf is add with the `Builder::add(---)` functions
 	LeafAppendError(String),
-	/// Thrown when no `Keypair` is provided and an encrypted [Leaf](vach::builder::Leaf) is encountered
+	/// Thrown when no `Keypair` is provided and an encrypted [Leaf](crate::builder::Leaf) is encountered
 	NoKeypairError(String),
 	/// Thrown when decryption or encryption fails
 	CryptoError(String),

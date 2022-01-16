@@ -147,7 +147,10 @@ impl<T> Archive<T> {
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
-impl<T> Archive<T> where T: Seek + Read {
+impl<T> Archive<T>
+where
+	T: Seek + Read,
+{
 	/// Load an [`Archive`] with the default settings from a source.
 	/// The same as doing:
 	/// ```ignore
@@ -240,8 +243,10 @@ impl<T> Archive<T> where T: Seek + Read {
 	}
 }
 
-#[cfg(feature = "multithreaded")]
-impl<T> Archive<T> where T: Read + Seek {
+impl<T> Archive<T>
+where
+	T: Read + Seek,
+{
 	/// Fetch a [`Resource`] with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	/// ### Errors:
@@ -324,6 +329,9 @@ impl<T> Archive<T> where T: Read + Seek {
 
 	/// Retrieve a list of resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
+	#[cfg(feature = "multithreaded")]
+	#[cfg_attr(docsrs, feature(doc_cfg))]
+	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
 	pub fn fetch_batch<'a>(
 		&mut self, items: &[&'a str],
 	) -> HashMap<String, InternalResult<Resource>> {

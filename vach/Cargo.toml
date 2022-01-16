@@ -29,3 +29,7 @@ rayon = { version = "1.5.1", optional = true }
 
 [features]
 multithreaded = ["rayon"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
