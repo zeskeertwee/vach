@@ -51,6 +51,7 @@ impl<T> Archive<T> {
 	}
 
 	/// Helps in parallelized `Resource` fetching
+	#[inline(never)]
 	fn process_raw(
 		dependent: DependentVars, independent: (&RegistryEntry, &str, Vec<u8>),
 	) -> InternalResult<(Vec<u8>, bool)> {
@@ -204,7 +205,8 @@ impl<T: Seek + Read> Archive<T> {
 		})
 	}
 
-	fn fetch_raw(&mut self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+	#[inline(always)]
+	pub(crate) fn fetch_raw(&mut self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
 		let handle = &mut self.handle;
 		handle.seek(SeekFrom::Start(entry.location))?;
 
@@ -315,5 +317,68 @@ impl<T: Seek + Read> Archive<T> {
 	#[inline(always)]
 	pub fn flags(&self) -> &Flags {
 		&self.header.flags
+	}
+}
+
+#[cfg(feature = "multithreaded")]
+impl<T: Send + Sync + Read + Seek> Archive<T> {
+	/// Retrieve a list of resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
+	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
+	pub fn fetch_batch<'a>(
+		&mut self, items: &[&'a str],
+	) -> HashMap<String, InternalResult<Resource>> {
+		use rayon::prelude::*;
+
+		let mut processed = HashMap::new();
+		let independents: Vec<_> = items
+			.iter()
+			.filter_map(|id| match self.fetch_entry(id) {
+				Some(entry) => match self.fetch_raw(&entry) {
+					Ok(raw) => return Some((entry, *id, raw)),
+					Err(err) => {
+						processed.insert(id.to_string(), Err(err));
+						return None;
+					}
+				},
+				None => {
+					#[rustfmt::skip]
+				processed.insert(
+					id.to_string(),
+					Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id ))),
+				);
+
+					None
+				}
+			})
+			.collect();
+
+		// arc-mutex variables
+		let lock = Arc::new(Mutex::new(&mut processed));
+		let dependents = (
+			Arc::new(Mutex::new(&self.decryptor)),
+			Arc::new(Mutex::new(&self.key)),
+		);
+
+		independents.into_iter().par_bridge().for_each(|indeps| {
+			let id = indeps.1.to_string();
+
+			match Archive::<T>::process_raw(dependents.clone(), (&indeps.0, indeps.1, indeps.2)) {
+				Ok((data, is_secure)) => {
+					let resource = Resource {
+						data,
+						secured: is_secure,
+						flags: indeps.0.flags,
+						content_version: indeps.0.content_version,
+					};
+
+					lock.lock().unwrap().insert(id, Ok(resource));
+				}
+				Err(err) => {
+					lock.lock().unwrap().insert(id, Err(err));
+				}
+			};
+		});
+
+		processed
 	}
 }
