@@ -258,7 +258,8 @@ impl<'a> Builder<'a> {
 					leaf.handle.read_to_end(&mut buffer)?;
 
 					let mut compressed_data = vec![];
-					Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
+					Compressor::new(buffer.as_slice())
+						.compress(leaf.compression_algo, &mut compressed_data)?;
 
 					if compressed_data.len() <= buffer.len() {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);

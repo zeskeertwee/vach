@@ -13,10 +13,7 @@ pub(crate) struct Encryptor {
 
 impl fmt::Debug for Encryptor {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(
-			f,
-			"[Vach::Encryptor] cipher: Aes256GcmSiv, nonce: Nonce",
-		)
+		write!(f, "[Vach::Encryptor] cipher: Aes256GcmSiv, nonce: Nonce",)
 	}
 }
 
