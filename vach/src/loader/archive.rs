@@ -147,7 +147,7 @@ impl<T> Archive<T> {
 }
 
 // INFO: Record Based FileSystem: https://en.wikipedia.org/wiki/Record-oriented_filesystem
-impl<T: Seek + Read> Archive<T> {
+impl<T> Archive<T> where T: Seek + Read {
 	/// Load an [`Archive`] with the default settings from a source.
 	/// The same as doing:
 	/// ```ignore
@@ -216,6 +216,32 @@ impl<T: Seek + Read> Archive<T> {
 		Ok(raw)
 	}
 
+	/// Fetch a [`RegistryEntry`] from this [`Archive`].
+	/// This can be used for debugging, as the [`RegistryEntry`] holds information about some data within a source.
+	/// ### `None` case:
+	/// If no entry with the given ID exists then `None` is returned.
+	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
+		match self.entries.get(id) {
+			Some(entry) => Some(entry.clone()),
+			None => None,
+		}
+	}
+
+	/// Returns a reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
+	#[inline(always)]
+	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
+		&self.entries
+	}
+
+	/// Global flags extracted from the `Header` section of the source
+	#[inline(always)]
+	pub fn flags(&self) -> &Flags {
+		&self.header.flags
+	}
+}
+
+#[cfg(feature = "multithreaded")]
+impl<T> Archive<T> where T: Read + Seek {
 	/// Fetch a [`Resource`] with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	/// ### Errors:
@@ -296,32 +322,6 @@ impl<T: Seek + Read> Archive<T> {
 		}
 	}
 
-	/// Fetch a [`RegistryEntry`] from this [`Archive`].
-	/// This can be used for debugging, as the [`RegistryEntry`] holds information about some data within a source.
-	/// ### `None` case:
-	/// If no entry with the given ID exists then `None` is returned.
-	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
-		match self.entries.get(id) {
-			Some(entry) => Some(entry.clone()),
-			None => None,
-		}
-	}
-
-	/// Returns a reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
-	#[inline(always)]
-	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
-		&self.entries
-	}
-
-	/// Global flags extracted from the `Header` section of the source
-	#[inline(always)]
-	pub fn flags(&self) -> &Flags {
-		&self.header.flags
-	}
-}
-
-#[cfg(feature = "multithreaded")]
-impl<T: Read + Seek> Archive<T> {
 	/// Retrieve a list of resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
 	pub fn fetch_batch<'a>(
