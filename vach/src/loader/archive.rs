@@ -339,24 +339,26 @@ where
 
 		let mut processed = HashMap::new();
 		let independents: Vec<_> = items
-			.filter_map(|id| -> Option<(RegistryEntry, &str, Vec<u8>)> {match self.fetch_entry(id) {
-				Some(entry) => match self.fetch_raw(&entry) {
-					Ok(raw) => return Some((entry, id, raw)),
-					Err(err) => {
-						processed.insert(id.to_string(), Err(err));
-						return None;
-					}
-				},
-				None => {
-					#[rustfmt::skip]
+			.filter_map(|id| -> Option<(RegistryEntry, &str, Vec<u8>)> {
+				match self.fetch_entry(id) {
+					Some(entry) => match self.fetch_raw(&entry) {
+						Ok(raw) => return Some((entry, id, raw)),
+						Err(err) => {
+							processed.insert(id.to_string(), Err(err));
+							return None;
+						}
+					},
+					None => {
+						#[rustfmt::skip]
 				processed.insert(
 					id.to_string(),
 					Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id ))),
 				);
 
-					None
+						None
+					}
 				}
-			}})
+			})
 			.collect();
 
 		// arc-mutex variables
