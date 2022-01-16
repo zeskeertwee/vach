@@ -19,6 +19,17 @@ use crate::{
 
 use ed25519_dalek as esdalek;
 
+#[cfg(not(feature = "multithreaded"))]
+type DependentVars<'a> = (&'a Option<Encryptor>, &'a Option<esdalek::PublicKey>);
+
+#[cfg(feature = "multithreaded")]
+use std::sync::{Arc, Mutex};
+#[cfg(feature = "multithreaded")]
+type DependentVars<'a> = (
+	Arc<Mutex<&'a Option<Encryptor>>>,
+	Arc<Mutex<&'a Option<esdalek::PublicKey>>>,
+);
+
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching `Resources` and [`RegistryEntry`]s.
 /// It can be customized with the `HeaderConfig` struct.
@@ -41,37 +52,58 @@ impl<T> Archive<T> {
 
 	/// Helps in parallelized `Resource` fetching
 	fn process_raw(
-		mut raw: Vec<u8>,
-		deps: (
-			&Option<Encryptor>,
-			&Option<esdalek::PublicKey>,
-			&RegistryEntry,
-			&str,
-		),
+		dependent: DependentVars, independent: (&RegistryEntry, &str, Vec<u8>),
 	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
-		let (decryptor, key, entry, id) = deps;
+		let (entry, id, mut raw) = independent;
+		let (decryptor, key) = dependent;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
-		if let Some(pub_key) = key {
-			let raw_size = raw.len();
-
-			// If there is an error the data is flagged as invalid
-			raw.extend(id.as_bytes());
-			if let Some(signature) = entry.signature {
-				is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
+		{
+			let key_guard;
+			#[cfg(feature = "multithreaded")]
+			{
+				key_guard = key.lock().unwrap();
+			}
+			#[cfg(not(feature = "multithreaded"))]
+			{
+				key_guard = key
 			}
 
-			raw.truncate(raw_size);
+			if key_guard.is_some() {
+				let pub_key = key_guard.as_ref().unwrap();
+
+				let raw_size = raw.len();
+
+				// If there is an error the data is flagged as invalid
+				raw.extend(id.as_bytes());
+				if let Some(signature) = entry.signature {
+					is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
+				}
+
+				raw.truncate(raw_size);
+			}
 		}
 
 		// Add read layers
 		// 1: Decryption layer
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
-			if let Some(dx) = decryptor {
+			let decryptor_guard;
+			#[cfg(feature = "multithreaded")]
+			{
+				decryptor_guard = decryptor.lock().unwrap();
+			}
+			#[cfg(not(feature = "multithreaded"))]
+			{
+				decryptor_guard = decryptor
+			}
+
+			if decryptor_guard.is_some() {
+				let dx = decryptor_guard.as_ref().unwrap();
+
 				raw = match dx.decrypt(&raw) {
 					Ok(bytes) => bytes,
 					Err(err) => {
@@ -89,11 +121,14 @@ impl<T> Archive<T> {
 			let mut buffer = vec![];
 
 			if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
+				Compressor::new(raw.as_slice())
+					.decompress(CompressionAlgorithm::LZ4, &mut buffer)?
 			} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
+				Compressor::new(raw.as_slice())
+					.decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
 			} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
+				Compressor::new(raw.as_slice())
+					.decompress(CompressionAlgorithm::Snappy, &mut buffer)?
 			} else {
 				return InternalResult::Err(InternalError::DeCompressionError(
 					"Unspecified compression algorithm bits".to_string(),
@@ -184,14 +219,30 @@ impl<T: Seek + Read> Archive<T> {
 	/// ### Errors:
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
 	pub fn fetch(&mut self, id: &str) -> InternalResult<Resource> {
+		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an allocation [MAYBE TOO MUCH?]
 		let mut buffer = Vec::new();
 		self.fetch_write(id, &mut buffer)?;
 
 		if let Some(entry) = self.fetch_entry(id) {
 			let raw = self.fetch_raw(&entry)?;
 
-			let deps = (&self.decryptor, &self.key, &entry, id);
-			let (buffer, is_secure) = Archive::<T>::process_raw(raw, deps)?;
+			// Prepare contextual variables
+			let in_deps = (&entry, id, raw);
+			let dep;
+
+			#[cfg(feature = "multithreaded")]
+			{
+				dep = (
+					Arc::new(Mutex::new(&self.decryptor)),
+					Arc::new(Mutex::new(&self.key)),
+				);
+			}
+			#[cfg(not(feature = "multithreaded"))]
+			{
+				dep = (&self.decryptor, &self.key)
+			}
+
+			let (buffer, is_secure) = Archive::<T>::process_raw(dep, in_deps)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
@@ -217,8 +268,23 @@ impl<T: Seek + Read> Archive<T> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let raw = self.fetch_raw(&entry)?;
 
-			let deps = (&self.decryptor, &self.key, &entry, id);
-			let (buffer, is_secure) = Archive::<T>::process_raw(raw, deps)?;
+			// Prepare contextual variables
+			let in_deps = (&entry, id, raw);
+			let dep;
+
+			#[cfg(feature = "multithreaded")]
+			{
+				dep = (
+					Arc::new(Mutex::new(&self.decryptor)),
+					Arc::new(Mutex::new(&self.key)),
+				);
+			}
+			#[cfg(not(feature = "multithreaded"))]
+			{
+				dep = (&self.decryptor, &self.key)
+			}
+
+			let (buffer, is_secure) = Archive::<T>::process_raw(dep, in_deps)?;
 
 			io::copy(&mut buffer.as_slice(), &mut target)?;
 			Ok((entry.flags, entry.content_version, is_secure))
