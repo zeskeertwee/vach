@@ -327,22 +327,21 @@ where
 		}
 	}
 
-	/// Retrieve a list of resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
+	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
 	#[cfg(feature = "multithreaded")]
 	#[cfg_attr(docsrs, feature(doc_cfg))]
 	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-	pub fn fetch_batch<'a>(
-		&mut self, items: &[&'a str],
+	pub fn fetch_batch<'a, I: Iterator<Item = &'a str>>(
+		&mut self, items: I,
 	) -> HashMap<String, InternalResult<Resource>> {
 		use rayon::prelude::*;
 
 		let mut processed = HashMap::new();
 		let independents: Vec<_> = items
-			.iter()
-			.filter_map(|id| match self.fetch_entry(id) {
+			.filter_map(|id| -> Option<(RegistryEntry, &str, Vec<u8>)> {match self.fetch_entry(id) {
 				Some(entry) => match self.fetch_raw(&entry) {
-					Ok(raw) => return Some((entry, *id, raw)),
+					Ok(raw) => return Some((entry, id, raw)),
 					Err(err) => {
 						processed.insert(id.to_string(), Err(err));
 						return None;
@@ -357,7 +356,7 @@ where
 
 					None
 				}
-			})
+			}})
 			.collect();
 
 		// arc-mutex variables
