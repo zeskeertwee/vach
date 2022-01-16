@@ -389,7 +389,10 @@ fn consolidated_example() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
-	let template = Leaf::default().encrypt(true).version(59).compression_algo(CompressionAlgorithm::Snappy);
+	let template = Leaf::default()
+		.encrypt(true)
+		.version(59)
+		.compression_algo(CompressionAlgorithm::Snappy);
 	builder.add_leaf(
 		Leaf::from_handle(data_1)
 			.id("d1")
@@ -423,7 +426,10 @@ fn consolidated_example() -> InternalResult<()> {
 	let then = Instant::now();
 	let mut archive = Archive::with_config(target, &config)?;
 
-	println!("Archive initialization took: {}us", then.elapsed().as_micros());
+	println!(
+		"Archive initialization took: {}us",
+		then.elapsed().as_micros()
+	);
 
 	// Quick assertions
 	let then = Instant::now();
@@ -431,14 +437,17 @@ fn consolidated_example() -> InternalResult<()> {
 	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
-	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
+	println!(
+		"Fetching took: {}us on average",
+		then.elapsed().as_micros() / 4u128
+	);
 
 	// All seems ok
 	Ok(())
 }
 
 #[test]
-fn test_compression() -> InternalResult<()> {
+fn test_compressors() -> InternalResult<()> {
 	const INPUT_LEN: usize = 4096;
 
 	let input = [12u8; INPUT_LEN];
@@ -487,9 +496,71 @@ fn test_compression() -> InternalResult<()> {
 	assert!(archive.fetch_entry("SNAPPY").unwrap().offset < INPUT_LEN as u64);
 
 	// A simple test to show that these are somehow not the same data
-	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
-	assert!(archive.fetch_entry("BROTLI").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
-	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("BROTLI").unwrap().offset);
+	assert!(
+		archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset
+	);
+	assert!(
+		archive.fetch_entry("BROTLI").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset
+	);
+	assert!(
+		archive.fetch_entry("SNAPPY").unwrap().offset
+			!= archive.fetch_entry("BROTLI").unwrap().offset
+	);
+
+	Ok(())
+}
+
+#[test]
+#[cfg(feature = "multithreaded")]
+fn test_batch_fethcing() -> InternalResult<()> {
+	// Define input constants
+	const INPUT_LEN: usize = 512;
+	let input = [12u8; INPUT_LEN];
+
+	let mut target = Cursor::new(vec![]);
+	let mut builder = Builder::new();
+
+	// Define and queue data
+	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("LZ4"))?;
+	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("BROTLI"))?;
+	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("SNAPPY"))?;
+
+	// Process data
+	builder.dump(&mut target, &BuilderConfig::default())?;
+
+	let mut archive = Archive::from_handle(&mut target)?;
+	let mut resources = archive.fetch_batch(&["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"]);
+
+	// Tests and checks
+	assert!(resources.get("NON_EXISTENT").is_some());
+	match resources.get("NON_EXISTENT").unwrap() {
+		Ok(_) => {
+			return Err(InternalError::OtherError(
+				"This should be an error".to_string(),
+			))
+		}
+		Err(err) => match err {
+			&InternalError::MissingResourceError(_) => {}
+			specific => {
+				return Err(InternalError::OtherError(
+					format!("Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error", specific),
+				))
+			}
+		},
+	}
+
+	let d1 = resources.remove("LZ4").unwrap().unwrap();
+	let d2 = resources.remove("BROTLI").unwrap().unwrap();
+	let d3 = resources.remove("SNAPPY").unwrap().unwrap();
+
+	// Identity tests
+	assert_eq!(d1.data.len(), INPUT_LEN);
+	assert_eq!(d2.data.len(), INPUT_LEN);
+	assert_eq!(d3.data.len(), INPUT_LEN);
+
+	assert!(&d1.data[..] == &input);
+	assert!(&d2.data[..] == &input);
+	assert!(&d3.data[..] == &input);
 
 	Ok(())
 }
