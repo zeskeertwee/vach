@@ -225,14 +225,16 @@ impl CommandTrait for Evaluator {
 		let output_file;
 
 		match OpenOptions::new()
-					.write(true)
-					.create_new(true)
-					.open(output_path) {
-			 Ok(file) => output_file = file,
-			 Err(err) => return Err(anyhow::anyhow!("Unable to generate archive @ {}: [IO::Error] {}", output_path, err)),
+			.write(true)
+			.create_new(true)
+			.open(output_path)
+		{
+			Ok(file) => output_file = file,
+			#[rustfmt::skip]
+			Err(err) => anyhow::bail!( "Unable to generate archive @ {}: [IO::Error] {}", output_path, err ),
 		};
 
-			// Process the files
+		// Process the files
 		for entry in &inputs {
 			match entry {
 				InputSource::VachResource(res, id) => {
