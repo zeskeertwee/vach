@@ -515,7 +515,8 @@ fn test_compressors() -> InternalResult<()> {
 fn test_batch_fetching() -> InternalResult<()> {
 	// Define input constants
 	const INPUT_LEN: usize = 512;
-	let input = [12u8; INPUT_LEN];
+	let mut input = [12u8; INPUT_LEN];
+	input.iter_mut().for_each(|i| *i = rand::random::<u8>());
 
 	let mut target = Cursor::new(vec![]);
 	let mut builder = Builder::new();
