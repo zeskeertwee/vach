@@ -348,8 +348,8 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
-	// Check identity of retrieved data
-	println!("{}", song);
+	// Log archive to console
+	dbg!(&archive);
 
 	// Windows bullshit
 	#[cfg(target_os = "windows")]

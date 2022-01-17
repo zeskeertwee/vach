@@ -39,9 +39,9 @@ type DependentVars<'a> = (
 pub struct Archive<T> {
 	header: Header,
 	handle: T,
+	decryptor: Option<Encryptor>,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
-	decryptor: Option<Encryptor>,
 }
 
 impl<T> Archive<T> {

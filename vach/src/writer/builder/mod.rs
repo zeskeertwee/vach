@@ -2,7 +2,10 @@ use std::io::{BufWriter, Write, Read, Seek, SeekFrom};
 use std::collections::HashSet;
 
 #[cfg(feature = "multithreaded")]
-use std::sync::{Arc, Mutex};
+use std::sync::{
+	Arc, Mutex,
+	atomic::{Ordering, AtomicUsize},
+};
 
 mod config;
 pub use config::BuilderConfig;
@@ -223,7 +226,7 @@ impl<'a> Builder<'a> {
 
 			// Define all arc-mutexes
 			leaf_offset_arc = Arc::new(Mutex::new(&mut leaf_offset_sync));
-			total_arc = Arc::new(Mutex::new(&mut total_sync));
+			total_arc = Arc::new(AtomicUsize::new(total_sync));
 			wtr_arc = Arc::new(Mutex::new(wtr_sync));
 			reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
 		}
@@ -313,10 +316,7 @@ impl<'a> Builder<'a> {
 
 			#[cfg(feature = "multithreaded")]
 			{
-				let arc = Arc::clone(&total_arc);
-				let mut total = arc.lock().unwrap();
-
-				**total += glob_length;
+				total_arc.fetch_add(glob_length, Ordering::SeqCst)
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
@@ -381,10 +381,7 @@ impl<'a> Builder<'a> {
 			// Update offsets
 			#[cfg(feature = "multithreaded")]
 			{
-				let arc = Arc::clone(&total_arc);
-				let mut total = arc.lock().unwrap();
-
-				**total += entry_bytes.len();
+				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst)
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
@@ -417,6 +414,13 @@ impl<'a> Builder<'a> {
 			wtr_sync.write_all(reg_buffer_sync.as_slice())?;
 		}
 
-		Ok(total_sync)
+		#[cfg(feature = "multithreaded")]
+		{
+			Ok(total_arc.load(Ordering::SeqCst))
+		}
+		#[cfg(not(feature = "multithreaded"))]
+		{
+			Ok(total_sync)
+		}
 	}
 }
