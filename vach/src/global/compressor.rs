@@ -19,9 +19,7 @@ impl<'a, T: Read> Compressor<T> {
 	pub(crate) fn new(data: T) -> Compressor<T> {
 		Compressor { data }
 	}
-	pub(crate) fn compress(
-		&mut self, algo: CompressionAlgorithm, output: &mut dyn Write,
-	) -> InternalResult<()> {
+	pub(crate) fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut compressor = lz4::frame::FrameEncoder::new(output);
@@ -37,8 +35,7 @@ impl<'a, T: Read> Compressor<T> {
 				Ok(())
 			}
 			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
-				let mut compressor =
-					brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
+				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
 				io::copy(&mut compressor, output)?;
 
 				Ok(())
@@ -48,9 +45,7 @@ impl<'a, T: Read> Compressor<T> {
 			)),
 		}
 	}
-	pub(crate) fn decompress(
-		&mut self, algo: CompressionAlgorithm, output: &mut dyn Write,
-	) -> InternalResult<()> {
+	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut rdr = lz4::frame::FrameDecoder::new(&mut self.data);

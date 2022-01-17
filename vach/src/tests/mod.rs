@@ -118,10 +118,7 @@ fn builder_no_signature() -> InternalResult<()> {
 	builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
 
 	let mut poem_flags = Flags::default();
-	poem_flags.set(
-		CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4,
-		true,
-	)?;
+	poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)?;
 
 	builder.add_leaf(
 		Leaf::from_handle(File::open("test_data/poem.txt")?)
@@ -313,12 +310,7 @@ fn edcryptor_test() -> InternalResult<()> {
 
 #[test]
 fn builder_with_encryption() -> InternalResult<()> {
-	let mut builder = Builder::new().template(
-		Leaf::default()
-			.encrypt(true)
-			.compress(CompressMode::Never)
-			.sign(true),
-	);
+	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -426,10 +418,7 @@ fn consolidated_example() -> InternalResult<()> {
 	let then = Instant::now();
 	let mut archive = Archive::with_config(target, &config)?;
 
-	println!(
-		"Archive initialization took: {}us",
-		then.elapsed().as_micros()
-	);
+	println!("Archive initialization took: {}us", then.elapsed().as_micros());
 
 	// Quick assertions
 	let then = Instant::now();
@@ -437,10 +426,7 @@ fn consolidated_example() -> InternalResult<()> {
 	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
-	println!(
-		"Fetching took: {}us on average",
-		then.elapsed().as_micros() / 4u128
-	);
+	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 
 	// All seems ok
 	Ok(())
@@ -496,16 +482,9 @@ fn test_compressors() -> InternalResult<()> {
 	assert!(archive.fetch_entry("SNAPPY").unwrap().offset < INPUT_LEN as u64);
 
 	// A simple test to show that these are somehow not the same data
-	assert!(
-		archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset
-	);
-	assert!(
-		archive.fetch_entry("BROTLI").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset
-	);
-	assert!(
-		archive.fetch_entry("SNAPPY").unwrap().offset
-			!= archive.fetch_entry("BROTLI").unwrap().offset
-	);
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
+	assert!(archive.fetch_entry("BROTLI").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("BROTLI").unwrap().offset);
 
 	Ok(())
 }
@@ -530,23 +509,19 @@ fn test_batch_fetching() -> InternalResult<()> {
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
 	let mut archive = Archive::from_handle(&mut target)?;
-	let mut resources =
-		archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter());
+	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter());
 
 	// Tests and checks
 	assert!(resources.get("NON_EXISTENT").is_some());
 	match resources.get("NON_EXISTENT").unwrap() {
-		Ok(_) => {
-			return Err(InternalError::OtherError(
-				"This should be an error".to_string(),
-			))
-		}
+		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
 		Err(err) => match err {
 			&InternalError::MissingResourceError(_) => {}
 			specific => {
-				return Err(InternalError::OtherError(
-					format!("Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error", specific),
-				))
+				return Err(InternalError::OtherError(format!(
+					"Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error",
+					specific
+				)))
 			}
 		},
 	}

@@ -70,12 +70,14 @@ impl CommandTrait for Evaluator {
 
 		// Parse then extract archive
 		let mut archive = match Archive::with_config(input_file, &header_config) {
-			 Ok(archive) => archive,
-			 Err(err) => match err {
-				  InternalError::NoKeypairError(_) => anyhow::bail!("Please provide a public key or a keypair for use in decryption or signature verification"),
-				  InternalError::ValidationError(err) => anyhow::bail!("Unable to validate the archive: {}", err),
-				  err => anyhow::bail!("Encountered an error: {}", err.to_string())
-			 },
+			Ok(archive) => archive,
+			Err(err) => match err {
+				InternalError::NoKeypairError(_) => anyhow::bail!(
+					"Please provide a public key or a keypair for use in decryption or signature verification"
+				),
+				InternalError::ValidationError(err) => anyhow::bail!("Unable to validate the archive: {}", err),
+				err => anyhow::bail!("Encountered an error: {}", err.to_string()),
+			},
 		};
 
 		extract_archive(&mut archive, output_path)?;
@@ -90,9 +92,7 @@ impl CommandTrait for Evaluator {
 	}
 }
 
-fn extract_archive<T: Read + Seek>(
-	archive: &mut Archive<T>, save_folder: PathBuf,
-) -> anyhow::Result<()> {
+fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBuf) -> anyhow::Result<()> {
 	// For measuring the time difference
 	let time = Instant::now();
 	fs::create_dir_all(&save_folder)?;
@@ -121,11 +121,7 @@ fn extract_archive<T: Read + Seek>(
 			fs::create_dir_all(parent_dir)?;
 		};
 
-		pbar.println(format!(
-			"Extracting {} to {}",
-			id,
-			save_path.to_string_lossy()
-		));
+		pbar.println(format!("Extracting {} to {}", id, save_path.to_string_lossy()));
 
 		let mut file = File::create(save_path)?;
 

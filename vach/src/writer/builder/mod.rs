@@ -86,11 +86,7 @@ impl<'a> Builder<'a> {
 				let file = fs::File::open(uri)?;
 				let leaf = Leaf::from_handle(file)
 					.template(template.unwrap_or(&self.leaf_template))
-					.id(&format!(
-						"{}/{}",
-						v.get(v.len() - 2).unwrap(),
-						v.last().unwrap()
-					));
+					.id(&format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
 
 				self.add_leaf(leaf)?;
 			}
@@ -135,9 +131,7 @@ impl<'a> Builder<'a> {
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
 	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a [`Leaf`] is to be encrypted.
-	pub fn dump<W: DumpTrait>(
-		&mut self, mut target: W, config: &BuilderConfig,
-	) -> InternalResult<usize> {
+	pub fn dump<W: DumpTrait>(&mut self, mut target: W, config: &BuilderConfig) -> InternalResult<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		#[cfg(feature = "multithreaded")]
 		use rayon::prelude::*;
@@ -192,17 +186,16 @@ impl<'a> Builder<'a> {
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
 
 		if use_encryption && config.keypair.is_none() {
-			return Err(InternalError::NoKeypairError("Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string()));
+			return Err(InternalError::NoKeypairError(
+				"Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string(),
+			));
 		};
 
 		// Build encryptor
 		let encryptor = if use_encryption {
 			let keypair = &config.keypair;
 
-			Some(Encryptor::new(
-				&keypair.as_ref().unwrap().public,
-				config.magic,
-			))
+			Some(Encryptor::new(&keypair.as_ref().unwrap().public, config.magic))
 		} else {
 			None
 		};
@@ -261,8 +254,7 @@ impl<'a> Builder<'a> {
 					leaf.handle.read_to_end(&mut buffer)?;
 
 					let mut compressed_data = vec![];
-					Compressor::new(buffer.as_slice())
-						.compress(leaf.compression_algo, &mut compressed_data)?;
+					Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
 
 					if compressed_data.len() <= buffer.len() {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);

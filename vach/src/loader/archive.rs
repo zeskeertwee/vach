@@ -113,7 +113,10 @@ impl<T> Archive<T> {
 					}
 				};
 			} else {
-				return Err(InternalError::NoKeypairError(format!("Encountered encrypted Resource: {} but no decryption key(public key) was provided", id)));
+				return Err(InternalError::NoKeypairError(format!(
+					"Encountered encrypted Resource: {} but no decryption key(public key) was provided",
+					id
+				)));
 			}
 		}
 
@@ -122,14 +125,11 @@ impl<T> Archive<T> {
 			let mut buffer = vec![];
 
 			if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-				Compressor::new(raw.as_slice())
-					.decompress(CompressionAlgorithm::LZ4, &mut buffer)?
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
 			} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-				Compressor::new(raw.as_slice())
-					.decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
 			} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-				Compressor::new(raw.as_slice())
-					.decompress(CompressionAlgorithm::Snappy, &mut buffer)?
+				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
 			} else {
 				return InternalResult::Err(InternalError::DeCompressionError(
 					"Unspecified compression algorithm bits".to_string(),
@@ -265,10 +265,7 @@ where
 
 			#[cfg(feature = "multithreaded")]
 			{
-				dep = (
-					Arc::new(Mutex::new(&self.decryptor)),
-					Arc::new(Mutex::new(&self.key)),
-				);
+				dep = (Arc::new(Mutex::new(&self.decryptor)), Arc::new(Mutex::new(&self.key)));
 			}
 			#[cfg(not(feature = "multithreaded"))]
 			{
@@ -295,9 +292,7 @@ where
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
 	///  - Other `io` related errors
-	pub fn fetch_write<W: Write>(
-		&mut self, id: &str, mut target: W,
-	) -> InternalResult<(Flags, u8, bool)> {
+	pub fn fetch_write<W: Write>(&mut self, id: &str, mut target: W) -> InternalResult<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let raw = self.fetch_raw(&entry)?;
 
@@ -307,10 +302,7 @@ where
 
 			#[cfg(feature = "multithreaded")]
 			{
-				dep = (
-					Arc::new(Mutex::new(&self.decryptor)),
-					Arc::new(Mutex::new(&self.key)),
-				);
+				dep = (Arc::new(Mutex::new(&self.decryptor)), Arc::new(Mutex::new(&self.key)));
 			}
 			#[cfg(not(feature = "multithreaded"))]
 			{
@@ -363,10 +355,7 @@ where
 
 		// arc-mutex variables
 		let lock = Arc::new(Mutex::new(&mut processed));
-		let dependents = (
-			Arc::new(Mutex::new(&self.decryptor)),
-			Arc::new(Mutex::new(&self.key)),
-		);
+		let dependents = (Arc::new(Mutex::new(&self.decryptor)), Arc::new(Mutex::new(&self.key)));
 
 		independents.into_iter().par_bridge().for_each(|indeps| {
 			let id = indeps.1.to_string();

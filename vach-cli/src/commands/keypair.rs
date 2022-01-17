@@ -32,22 +32,13 @@ impl CommandTrait for Evaluator {
 			pk_path.push_str(".pk");
 
 			utils::create_and_write_to_file(&sk_path, &kp.secret.to_bytes())?;
-			log::info!(
-				"Secret Key successfully generated and saved in: {}",
-				sk_path
-			);
+			log::info!("Secret Key successfully generated and saved in: {}", sk_path);
 
 			utils::create_and_write_to_file(&pk_path, &kp.public.to_bytes())?;
-			log::info!(
-				"Public Key successfully generated and saved in: {}",
-				pk_path
-			);
+			log::info!("Public Key successfully generated and saved in: {}", pk_path);
 		} else {
 			utils::create_and_write_to_file(&output_path, &kp.to_bytes())?;
-			log::info!(
-				"KeyPair successfully generated and saved in: {}",
-				output_path
-			);
+			log::info!("KeyPair successfully generated and saved in: {}", output_path);
 		}
 
 		Ok(())

@@ -11,13 +11,12 @@ pub struct Evaluator;
 
 impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
-		let mut input_path =
-			match args.value_of(key_names::INPUT) {
-				Some(path) => path.to_string(),
-				None => {
-					anyhow::bail!("Please provide a some input to a keypair files using the -i or --input key!")
-				}
-			};
+		let mut input_path = match args.value_of(key_names::INPUT) {
+			Some(path) => path.to_string(),
+			None => {
+				anyhow::bail!("Please provide a some input to a keypair files using the -i or --input key!")
+			}
+		};
 
 		// Open and parse the keypair file
 		let file = File::open(&input_path)?;

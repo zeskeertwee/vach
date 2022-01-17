@@ -25,10 +25,7 @@ impl CommandTrait for Evaluator {
 		let input_file = File::open(input_path)?;
 
 		if let Err(err) = Archive::with_config(input_file, &HeaderConfig::new(magic, None)) {
-			anyhow::bail!(
-				"Unable to verify the archive source, error: {}",
-				err.to_string()
-			)
+			anyhow::bail!("Unable to verify the archive source, error: {}", err.to_string())
 		};
 
 		Ok(())

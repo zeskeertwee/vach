@@ -171,10 +171,7 @@ impl CommandTrait for Evaluator {
 		let mut kp = match secret_key {
 			Some(sk) => {
 				let pk = PublicKey::from(&sk);
-				Some(Keypair {
-					secret: sk,
-					public: pk,
-				})
+				Some(Keypair { secret: sk, public: pk })
 			}
 			None => None,
 		};
@@ -224,11 +221,7 @@ impl CommandTrait for Evaluator {
 
 		let output_file;
 
-		match OpenOptions::new()
-			.write(true)
-			.create_new(true)
-			.open(output_path)
-		{
+		match OpenOptions::new().write(true).create_new(true).open(output_path) {
 			Ok(file) => output_file = file,
 			#[rustfmt::skip]
 			Err(err) => anyhow::bail!( "Unable to generate archive @ {}: [IO::Error] {}", output_path, err ),
@@ -240,16 +233,12 @@ impl CommandTrait for Evaluator {
 				InputSource::VachResource(res, id) => {
 					builder.add(res.data.as_slice(), id)?;
 
-					let message =
-						format!("Preparing entry from archive: {} @ {}", id, archive_path);
+					let message = format!("Preparing entry from archive: {} @ {}", id, archive_path);
 					pbar.println(message);
 				}
 				InputSource::PathBuf(path) => {
 					if !path.exists() {
-						pbar.println(format!(
-							"Skipping {}, does not exist!",
-							path.to_string_lossy()
-						));
+						pbar.println(format!("Skipping {}, does not exist!", path.to_string_lossy()));
 
 						pbar.inc(1);
 
@@ -266,18 +255,10 @@ impl CommandTrait for Evaluator {
 					match File::open(&path) {
 						Ok(file) => {
 							if let Err(e) = builder.add(file, &id) {
-								pbar.println(format!(
-									"Couldn't add file: {}. {}",
-									path.to_string_lossy(),
-									e
-								))
+								pbar.println(format!("Couldn't add file: {}. {}", path.to_string_lossy(), e))
 							}
 						}
-						Err(e) => pbar.println(format!(
-							"Couldn't open file {}: {}",
-							path.to_string_lossy(),
-							e
-						)),
+						Err(e) => pbar.println(format!("Couldn't open file {}: {}", path.to_string_lossy(), e)),
 					}
 				}
 			}
@@ -296,10 +277,7 @@ impl CommandTrait for Evaluator {
 				if let InputSource::PathBuf(buf) = entry {
 					std::fs::remove_file(&buf)?;
 
-					pbar.println(format!(
-						"Truncated original file @ {}",
-						buf.to_string_lossy()
-					));
+					pbar.println(format!("Truncated original file @ {}", buf.to_string_lossy()));
 				}
 			}
 

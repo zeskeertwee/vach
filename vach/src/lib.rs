@@ -193,18 +193,15 @@ pub mod builder {
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
-	pub use crate::global::{
-		error::InternalError, compressor::CompressionAlgorithm, result::InternalResult,
-		flags::Flags,
-	};
+	pub use crate::global::{error::InternalError, compressor::CompressionAlgorithm, result::InternalResult, flags::Flags};
 }
 
 /// Loader-based logic and data-structures
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
-		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError,
-		result::InternalResult, compressor::CompressionAlgorithm, flags::Flags,
+		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult,
+		compressor::CompressionAlgorithm, flags::Flags,
 	};
 }
 
