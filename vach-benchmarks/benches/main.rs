@@ -95,7 +95,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		let template = Leaf::default()
 			.encrypt(true)
 			.sign(false)
-			.compress(CompressMode::Detect);
+			.compress(CompressMode::Always);
 		let mut builder = Builder::new().template(template);
 
 		// Add data
