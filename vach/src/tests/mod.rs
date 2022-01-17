@@ -517,6 +517,7 @@ fn test_batch_fetching() -> InternalResult<()> {
 		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
 		Err(err) => match err {
 			&InternalError::MissingResourceError(_) => {}
+
 			specific => {
 				return Err(InternalError::OtherError(format!(
 					"Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error",
