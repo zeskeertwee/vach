@@ -169,7 +169,7 @@ impl<'a> Leaf<'a> {
 		self.id = id.to_string();
 		self
 	}
-	/// Setter used to set the [`flags`](crate::builder::Leaf) field of a [`Leaf`]
+	/// Setter used to set the [`flags`](crate::builder::Flags) field of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf, Flags};
 	///
