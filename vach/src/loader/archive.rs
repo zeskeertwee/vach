@@ -341,11 +341,13 @@ where
 						}
 					},
 					None => {
-						#[rustfmt::skip]
-				processed.insert(
-					id.to_string(),
-					Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id ))),
-				);
+						processed.insert(
+							id.to_string(),
+							Err(InternalError::MissingResourceError(format!(
+								"Resource not found: {}",
+								id
+							))),
+						);
 
 						None
 					}
@@ -363,8 +365,8 @@ where
 			match Archive::<T>::process_raw(dependents.clone(), (&indeps.0, indeps.1, indeps.2)) {
 				Ok((data, is_secure)) => {
 					let resource = Resource {
-						data,
 						secured: is_secure,
+						data,
 						flags: indeps.0.flags,
 						content_version: indeps.0.content_version,
 					};
