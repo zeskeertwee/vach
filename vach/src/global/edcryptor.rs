@@ -2,23 +2,19 @@ use std::fmt;
 
 use ed25519_dalek::PublicKey;
 
-use aes_gcm_siv::aead::{Aead, NewAead};
-use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
+use aes_gcm::aead::{Aead, NewAead};
+use aes_gcm::aes::cipher::consts::U12;
+use aes_gcm::{Aes256Gcm, Key, Nonce};
 
-// Encryption - Decryption, A convenience wrapper around aes encryption and decryption
+// Encryption - Decryption, A convenient wrapper around aes encryption and decryption
 pub(crate) struct Encryptor {
-	cipher: Aes256GcmSiv,
-	nonce: Nonce,
+	cipher: Aes256Gcm,
+	nonce: Nonce<U12>,
 }
 
 impl fmt::Debug for Encryptor {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let nonce = self.nonce.to_ascii_lowercase();
-		write!(
-			f,
-			"[Vach::Encryptor] cipher: Aes256GcmSiv, nonce: {}",
-			String::from_utf8_lossy(nonce.as_slice())
-		)
+		write!(f, "[Vach::Encryptor] cipher: Aes256Gcm, nonce: Nonce",)
 	}
 }
 
@@ -33,7 +29,7 @@ impl Encryptor {
 		v.extend_from_slice(&magic);
 
 		Encryptor {
-			cipher: Aes256GcmSiv::new(key),
+			cipher: Aes256Gcm::new(key),
 			nonce: *Nonce::from_slice(v.as_slice()),
 		}
 	}

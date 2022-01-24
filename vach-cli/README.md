@@ -2,6 +2,8 @@
 
 `vach-cli` is a simple CLI for packing, unpacking and handling `.vach` files.
 
+> For the `vach version 20 LTS` old CLI use [this version](https://crates.io/crates/vach-cli/0.3.3) instead, this CLI version only works with `vach version 30` onwards
+
 ---
 
 ## **Installation**
@@ -66,7 +68,7 @@ vach list -i textures.vach
 # This builds only an empty archive
 vach pack -o hello.vach
 
-# You can add files as inputs using the "-i" or --input" keys
+# You can add files as inputs using the "-i" or "--input" keys
 vach pack -o hello.vach -i hello.txt goodbye.txt
 
 # Or add a directory using "-d" or "--directory"
@@ -93,7 +95,7 @@ vach pack -s secret_key.sk -o hello.vach -i hello.txt goodbye.txt
 # Compression: "-c always", "-c never" or "-c detect"
 vach pack -c always -o hello.vach -i hello.txt goodbye.txt
 
-# Hash: "-h" or "--hash"
+# Hash: "-a" or "--hash"
 # Whether to include signatures in the archive
 # This help to detect if the archive has been tampered with
 # But there are very computationaly intensive so use them sparingly
@@ -102,7 +104,7 @@ vach pack -s -o hello.vach -i hello.txt goodbye.txt
 # Encrypt: "-e" or "--encrypt"
 # Whether to encrypt your archive
 # If no pre-existing keypair|secret_key is provided then a new one is written: `${OUTPUT_ARCHIVE}.kp`
-# EG hello.vach -> hello.vach.kp, same applies for "-h"
+# EG hello.vach -> hello.vach.kp, same applies for "-a"
 vach pack -e -o hello.vach -i hello.txt goodbye.txt
 
 # Flags: "-f" or "--flags"

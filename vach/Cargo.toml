@@ -2,7 +2,7 @@
 name = "vach"
 
 # NOTE: Make sure spec.txt and vach::VERSION constants are all synced up
-version = "0.3.2"
+version = "0.3.3"
 
 edition = "2021"
 authors = [
@@ -22,10 +22,14 @@ include = ["Cargo.toml", "Cargo.lock", "src/*"]
 ed25519-dalek = "1.0.1"
 lz4_flex = "0.9.0"
 rand = "0.7.0"
-aes-gcm-siv = "0.10.3"
+aes-gcm = { version = "0.9.4", features = ["aes"] }
 snap = "1.0.5"
 brotli = "3.3.2"
 rayon = { version = "1.5.1", optional = true }
 
 [features]
 multithreaded = ["rayon"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

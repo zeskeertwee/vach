@@ -8,15 +8,15 @@ use super::{error::InternalError, result::InternalResult};
 /// Stand-alone meta-data from an archive entry(Leaf). This can be parsed without reading data about the leaf.
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
-	/// The flags extracted from the archive entry and parsed into a struct
+	/// The flags extracted from the archive entry and parsed into a accessible struct
 	pub flags: Flags,
 	/// The content version of the extracted archive entry
 	pub content_version: u8,
-	/// The signature of the extracted archive entry
+	/// The signature of the data in the archive, used when verifying data authenticity
 	pub signature: Option<esdalek::Signature>,
-	/// The location of the file in the archive, as bytes from the beginning of the file
+	/// The location of the file in the archive, as an offset of bytes from the beginning of the file
 	pub location: u64,
-	/// The offset|size of the [`Leaf`](crate::builder::Leaf), in bytes. This does not always correspond to the actual size of the file when read from the archive! ie when compressed
+	/// The offset|size of the [`Leaf`](crate::builder::Leaf), in bytes. This is the actual number of bytes in the leaf endpoint. But the size of the data may vary once processed, ie when decompressed
 	pub offset: u64,
 }
 
@@ -42,8 +42,7 @@ impl RegistryEntry {
 		#![allow(clippy::uninit_assumed_init)]
 		use std::mem::MaybeUninit;
 
-		let mut buffer: [u8; RegistryEntry::MIN_SIZE] =
-			unsafe { MaybeUninit::uninit().assume_init() };
+		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
 		handle.read_exact(&mut buffer)?;
 
 		// Construct entry
@@ -59,8 +58,7 @@ impl RegistryEntry {
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
 		if flags.contains(Flags::SIGNED_FLAG) {
-			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] =
-				unsafe { MaybeUninit::uninit().assume_init() };
+			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] = unsafe { MaybeUninit::uninit().assume_init() };
 			handle.read_exact(&mut sig_bytes)?;
 
 			let sig: esdalek::Signature = match sig_bytes.try_into() {
@@ -72,7 +70,7 @@ impl RegistryEntry {
 		};
 
 		// Construct ID
-		let mut id = String::new();
+		let mut id = String::with_capacity(id_length as usize);
 		handle.take(id_length as u64).read_to_string(&mut id)?;
 
 		// Build entry step manually, to prevent unnecessary `Default::default()` call, then changing fields individually

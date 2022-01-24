@@ -1,12 +1,11 @@
 use std::{convert::TryInto, fs::File};
 
 use tabled::{Style, Table, Tabled};
-use vach::prelude::*;
-use bytesize::ByteSize;
+use vach::prelude::{HeaderConfig, Archive, Flags};
+use indicatif::HumanBytes;
 
 use super::CommandTrait;
 use crate::keys::key_names;
-
 
 pub const VERSION: &str = "0.0.1";
 
@@ -17,7 +16,9 @@ impl CommandTrait for Evaluator {
 	fn evaluate(&self, args: &clap::ArgMatches) -> anyhow::Result<()> {
 		let archive_path = match args.value_of(key_names::INPUT) {
 			Some(path) => path,
-			None => anyhow::bail!("Please provide an input archive file using the -i or --input keys!"),
+			None => {
+				anyhow::bail!("Please provide an input archive file using the -i or --input keys!")
+			}
 		};
 
 		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
@@ -34,13 +35,13 @@ impl CommandTrait for Evaluator {
 				.iter()
 				.map(|(id, entry)| FileTableEntry {
 					id,
-					size: ByteSize(entry.offset).to_string(),
+					size: HumanBytes(entry.offset).to_string(),
 					flags: entry.flags,
 				})
 				.collect();
 
 			let table = Table::new(table_entries).with(Style::PSEUDO_CLEAN);
-			println!("{}", table.to_string());
+			println!("{}", table);
 		} else {
 			println!("<EMPTY ARCHIVE> @ {}", archive_path);
 		}

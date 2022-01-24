@@ -26,10 +26,7 @@ impl HeaderConfig {
 	/// ```
 	#[inline(always)]
 	pub fn new(magic: [u8; 5], key: Option<esdalek::PublicKey>) -> HeaderConfig {
-		HeaderConfig {
-			magic,
-			public_key: key,
-		}
+		HeaderConfig { magic, public_key: key }
 	}
 
 	/// Shorthand to load and parse an ed25519 public key from a `Read` handle, into this `HeaderConfig`,
@@ -108,8 +105,7 @@ impl Default for Header {
 }
 
 impl Header {
-	pub const BASE_SIZE: usize =
-		crate::MAGIC_LENGTH + Flags::SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
+	pub const BASE_SIZE: usize = crate::MAGIC_LENGTH + Flags::SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
 
 	// Data appears in this order
 	pub const VERSION_SIZE: usize = 2;
@@ -122,15 +118,14 @@ impl Header {
 		// Validate magic
 		if header.magic != config.magic {
 			return Err(InternalError::ValidationError(format!(
-				"Invalid magic found in Header, possible incompatibility with given source.\nMagic found {:?}", header.magic
+				"Invalid magic found in Header, possible incompatibility with given source.\nMagic found {:?}",
+				header.magic
 			)));
 		};
 
 		// Validate version
 		if crate::VERSION != header.arch_version {
-			return Err(InternalError::IncompatibleArchiveVersionError(
-				header.arch_version,
-			));
+			return Err(InternalError::IncompatibleArchiveVersionError(header.arch_version));
 		};
 
 		Ok(())

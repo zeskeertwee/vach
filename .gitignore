@@ -1,5 +1,8 @@
 /target
+
 .vscode
+.idea
+
 perf.data
 perf.data.old
 workspace.code-workspace

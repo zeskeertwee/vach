@@ -5,7 +5,8 @@ use std::io::{Read, Seek};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vach::prelude::*;
+use vach::prelude::{HeaderConfig, Archive, InternalError};
+use vach::utils;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use super::CommandTrait;
@@ -45,12 +46,12 @@ impl CommandTrait for Evaluator {
 					Err(err) => anyhow::bail!("IOError: {} @ {}", err, path),
 				};
 
-				Some(vach::utils::read_keypair(file)?.public)
+				Some(utils::read_keypair(file)?.public)
 			}
 			None => match args.value_of(key_names::PUBLIC_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(vach::utils::read_public_key(file)?)
+					Some(utils::read_public_key(file)?)
 				}
 				None => None,
 			},
@@ -69,12 +70,14 @@ impl CommandTrait for Evaluator {
 
 		// Parse then extract archive
 		let mut archive = match Archive::with_config(input_file, &header_config) {
-			 Ok(archive) => archive,
-			 Err(err) => match err {
-				  InternalError::NoKeypairError(_) => anyhow::bail!("Please provide a public key or a keypair for use in decryption or signature verification"),
-				  InternalError::ValidationError(err) => anyhow::bail!("Unable to validate the archive: {}", err),
-				  err => anyhow::bail!("Encountered an error: {}", err.to_string())
-			 },
+			Ok(archive) => archive,
+			Err(err) => match err {
+				InternalError::NoKeypairError(_) => anyhow::bail!(
+					"Please provide a public key or a keypair for use in decryption or signature verification"
+				),
+				InternalError::ValidationError(err) => anyhow::bail!("Unable to validate the archive: {}", err),
+				err => anyhow::bail!("Encountered an error: {}", err.to_string()),
+			},
 		};
 
 		extract_archive(&mut archive, output_path)?;
@@ -114,15 +117,11 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 		let mut save_path = save_folder.clone();
 		save_path.push(&id);
 
-		if let Some(parent_dir) = save_path.ancestors().skip(1).next() {
+		if let Some(parent_dir) = save_path.ancestors().nth(1) {
 			fs::create_dir_all(parent_dir)?;
 		};
 
-		pbar.println(format!(
-			"Extracting {} to {}",
-			id,
-			save_path.to_string_lossy()
-		));
+		pbar.println(format!("Extracting {} to {}", id, save_path.to_string_lossy()));
 
 		let mut file = File::create(save_path)?;
 

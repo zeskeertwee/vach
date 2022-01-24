@@ -7,21 +7,29 @@
 <p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
 
 <p align=center>
-  <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
   <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
+  <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
   <br/>
   <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/actions/workflows/rust.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/virtfs-rs/workflows/Rust/badge.svg"></a>
+  <a href="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
 </p>
 <p align=center>
  <a href="https://docs.rs/vach">Docs</a> | <a href="https://github.com/zeskeertwee/virtfs-rs">Repo</a>
 </p>
 
-
 ## 👔 The official `vach` crates' repo
 
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for [compression](https://github.com/PSeitz/lz4_flex), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for [compression](https://github.com/PSeitz/lz4_flex), [data signing and authentication](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+
+---
+
+### ⛏ Who is this for?
+
+- You just released a product and don't want your assets pirated or easily read.
+- You want a simple convinient way to manage, decompress, decrypt and authenticate assets in distribution.
+- You want a pure Rust™️ archive format with no C bindings underneath (bindings **for** C may become available in the future).
+- You want your product to be neat, and all your assets to be in one neat  secure container.
 
 ---
 
@@ -89,18 +97,21 @@ use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig, Keypair};
 use vach::utils::gen_keypair;
 
-let keypair: Keypair = gen_keypair();
-let config: BuilderConfig = BuilderConfig::default().keypair(keypair);
-let mut builder = Builder::default();
+let keypair:      Keypair = gen_keypair();
+let config:       BuilderConfig = BuilderConfig::default().keypair(keypair);
+let mut builder:  Builder = Builder::default();
+
+// Use different data types under the same builder umbrella, uses dynamic dispatch
+let data_1 = vec![12, 23, 45, 56, 67 ,78, 89, 69];
+let data_2 = File::open("test_data/footstep.wav").unwrap();
+let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
+builder.add(data_3, "ambient").unwrap();
+builder.add(data_2, "ftstep").unwrap();
+builder.add(data_1.as_slice(), "hello").unwrap();
 
-// let mut target = File::create("sounds.vach")?;
-let mut target = Cursor::new(Vec::new());
-
+let mut target = File::create("sounds.vach")?;
 builder.dump(&mut target, &config).unwrap();
 ```
 
@@ -113,9 +124,9 @@ use vach::prelude::{Keypair, SecretKey, PublicKey};
 use vach::utils::gen_keypair;
 
 // Generate keys
-let keypair : Keypair  = gen_keypair();
-let secret : SecretKey = keypair.secret;
-let public : PublicKey = keypair.public;
+let keypair :   Keypair  = gen_keypair();
+let secret :    SecretKey = keypair.secret;
+let public :    PublicKey = keypair.public;
 
 // Serialize
 let public_key_bytes : [u8; vach::PUBLIC_KEY_LENGTH] = public.to_bytes();
@@ -123,9 +134,9 @@ let secret_key_bytes : [u8; vach::SECRET_KEY_LENGTH] = secret.to_bytes();
 let keypair_bytes : [u8; vach::KEYPAIR_LENGTH]    = keypair.to_bytes();
 
 // Deserialize
-let public_key : PublicKey = PublicKey::from_bytes(&public_key_bytes).unwrap();
-let secret_key : SecretKey = SecretKey::from_bytes(&secret_key_bytes).unwrap();
-let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
+let public_key :  PublicKey = PublicKey::from_bytes(&public_key_bytes).unwrap();
+let secret_key :  SecretKey = SecretKey::from_bytes(&secret_key_bytes).unwrap();
+let keypair :     Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 ```
 
 ##### > Load resources from a signed `.vach` source

@@ -1,9 +1,6 @@
 use std::{convert::TryInto, fs::File};
 
-use vach::{
-	self,
-	archive::{Archive, HeaderConfig},
-};
+use vach::archive::{Archive, HeaderConfig};
 
 use super::CommandTrait;
 use crate::keys::key_names;
@@ -28,10 +25,7 @@ impl CommandTrait for Evaluator {
 		let input_file = File::open(input_path)?;
 
 		if let Err(err) = Archive::with_config(input_file, &HeaderConfig::new(magic, None)) {
-			anyhow::bail!(
-				"Unable to verify the archive source, error: {}",
-				err.to_string()
-			)
+			anyhow::bail!("Unable to verify the archive source, error: {}", err.to_string())
 		};
 
 		Ok(())

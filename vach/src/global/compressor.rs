@@ -1,6 +1,5 @@
-#![allow(unused)]
 use std::{
-	fmt::{self, Debug},
+	fmt::Debug,
 	io::{self, Read, Write},
 };
 use crate::prelude::Flags;
@@ -20,63 +19,57 @@ impl<'a, T: Read> Compressor<T> {
 	pub(crate) fn new(data: T) -> Compressor<T> {
 		Compressor { data }
 	}
-	pub(crate) fn compress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
+	pub(crate) fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
-				let mut compressor = lz4::frame::FrameEncoder::new(vec![]);
+				let mut compressor = lz4::frame::FrameEncoder::new(output);
 				io::copy(&mut self.data, &mut compressor)?;
+				compressor.finish()?;
 
-				compressor.flush()?;
-				Ok(compressor.finish()?)
+				Ok(())
 			}
 			CompressionAlgorithm::Snappy => {
-				let mut buffer = vec![];
 				let mut compressor = snap::read::FrameEncoder::new(&mut self.data);
+				io::copy(&mut compressor, output)?;
 
-				compressor.read_to_end(&mut buffer);
-				Ok(buffer)
+				Ok(())
 			}
 			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
-				let mut buffer = vec![];
-				let mut compressor =
-					brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
-				compressor.read_to_end(&mut buffer)?;
+				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
+				io::copy(&mut compressor, output)?;
 
-				Ok(buffer)
+				Ok(())
 			}
-			CompressionAlgorithm::Brotli(quality) => Err(InternalError::DeCompressionError(
+			CompressionAlgorithm::Brotli(_) => Err(InternalError::DeCompressionError(
 				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
 			)),
 		}
 	}
-	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm) -> InternalResult<Vec<u8>> {
+	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut rdr = lz4::frame::FrameDecoder::new(&mut self.data);
-				let mut buffer = vec![];
+				io::copy(&mut rdr, output)?;
 
-				rdr.read_to_end(&mut buffer)?;
-				Ok(buffer)
+				Ok(())
 			}
 			CompressionAlgorithm::Snappy => {
 				let mut rdr = snap::read::FrameDecoder::new(&mut self.data);
-				let mut buffer = vec![];
+				io::copy(&mut rdr, output)?;
 
-				rdr.read_to_end(&mut buffer)?;
-				Ok(buffer)
+				Ok(())
 			}
 			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
-				let mut buffer = vec![];
+				io::copy(&mut rdr, output)?;
 
-				rdr.read_to_end(&mut buffer)?;
-				Ok(buffer)
+				Ok(())
 			}
 		}
 	}
 }
 
-/// Allows a user to specify one of three `Compression Algorithm`s to use. Each with a specific use case
+/// Allows the user to specify which of three `Compression Algorithms` to use.
 #[derive(Clone, Copy, Debug)]
 pub enum CompressionAlgorithm {
 	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced

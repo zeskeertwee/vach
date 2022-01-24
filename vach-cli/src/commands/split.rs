@@ -37,7 +37,9 @@ impl CommandTrait for Evaluator {
 
 		log::info!(
 			"Successfully split keypair: {} -> into {} and {}",
-			input_path, pk_path, sk_path
+			input_path,
+			pk_path,
+			sk_path
 		);
 
 		Ok(())

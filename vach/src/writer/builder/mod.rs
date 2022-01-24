@@ -2,7 +2,10 @@ use std::io::{BufWriter, Write, Read, Seek, SeekFrom};
 use std::collections::HashSet;
 
 #[cfg(feature = "multithreaded")]
-use std::sync::{Arc, Mutex};
+use std::sync::{
+	Arc, Mutex,
+	atomic::{Ordering, AtomicUsize},
+};
 
 mod config;
 pub use config::BuilderConfig;
@@ -16,14 +19,14 @@ use crate::{
 
 use ed25519_dalek::Signer;
 
-/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
 #[cfg(feature = "multithreaded")]
 pub trait DumpTrait: Write + Seek + Send + Sync {}
 #[cfg(feature = "multithreaded")]
 impl<T: Write + Seek + Send + Sync> DumpTrait for T {}
 
 #[cfg(not(feature = "multithreaded"))]
-/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
 pub trait DumpTrait: Write + Seek {}
 #[cfg(not(feature = "multithreaded"))]
 impl<T: Write + Seek> DumpTrait for T {}
@@ -83,11 +86,7 @@ impl<'a> Builder<'a> {
 				let file = fs::File::open(uri)?;
 				let leaf = Leaf::from_handle(file)
 					.template(template.unwrap_or(&self.leaf_template))
-					.id(&format!(
-						"{}/{}",
-						v.get(v.len() - 2).unwrap(),
-						v.last().unwrap()
-					));
+					.id(&format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
 
 				self.add_leaf(leaf)?;
 			}
@@ -126,15 +125,13 @@ impl<'a> Builder<'a> {
 	}
 
 	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
-	/// Configure the custom *`MAGIC`*, [`Header`] flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
+	/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
 	/// Wraps the `target` in [BufWriter].
 	/// ### Errors
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
 	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a [`Leaf`] is to be encrypted.
-	pub fn dump<W: DumpTrait>(
-		&mut self, mut target: W, config: &BuilderConfig,
-	) -> InternalResult<usize> {
+	pub fn dump<W: DumpTrait>(&mut self, mut target: W, config: &BuilderConfig) -> InternalResult<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		#[cfg(feature = "multithreaded")]
 		use rayon::prelude::*;
@@ -189,17 +186,16 @@ impl<'a> Builder<'a> {
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
 
 		if use_encryption && config.keypair.is_none() {
-			return Err(InternalError::NoKeypairError("Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string()));
+			return Err(InternalError::NoKeypairError(
+				"Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string(),
+			));
 		};
 
 		// Build encryptor
 		let encryptor = if use_encryption {
 			let keypair = &config.keypair;
 
-			Some(Encryptor::new(
-				&keypair.as_ref().unwrap().public,
-				config.magic,
-			))
+			Some(Encryptor::new(&keypair.as_ref().unwrap().public, config.magic))
 		} else {
 			None
 		};
@@ -223,7 +219,7 @@ impl<'a> Builder<'a> {
 
 			// Define all arc-mutexes
 			leaf_offset_arc = Arc::new(Mutex::new(&mut leaf_offset_sync));
-			total_arc = Arc::new(Mutex::new(&mut total_sync));
+			total_arc = Arc::new(AtomicUsize::new(total_sync));
 			wtr_arc = Arc::new(Mutex::new(wtr_sync));
 			reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
 		}
@@ -233,7 +229,7 @@ impl<'a> Builder<'a> {
 			iter_mut = self.leafs.iter_mut();
 		}
 
-		/* ========== MULTI-THREADED EXECUTION STARTS HERE ================= */
+		/* ========== MULTI-THREADED EXECUTION MAY START HERE ================= */
 		// NOTE: Variables with *_sync cannot be accessed in the multithreaded context only the single threaded context
 		// NOTE: In the multithreaded context they have been wrapped in arc-mutexes for thread safety
 
@@ -242,28 +238,13 @@ impl<'a> Builder<'a> {
 			let mut entry = leaf.to_registry_entry();
 			let mut raw = Vec::new();
 
-			// Check if this is a linked [`Leaf`]
-			if let Some(id) = &leaf.link_mode {
-				if self.id_set.contains(id) {
-					use std::io::Cursor;
-
-					leaf.handle = Box::new(Cursor::new(id.as_bytes().to_vec()));
-					entry.flags.force_set(Flags::LINK_FLAG, true);
-				} else {
-					return Err(InternalError::MissingResourceError(format!(
-						"Linked Leaf: {}, references a non-existent Leaf: {}",
-						leaf.id, id
-					)));
-				}
-			}
-
 			// Compression comes first
 			match leaf.compress {
 				CompressMode::Never => {
 					leaf.handle.read_to_end(&mut raw)?;
 				}
 				CompressMode::Always => {
-					raw = Compressor::new(&mut leaf.handle).compress(leaf.compression_algo)?;
+					Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
 
 					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 					entry.flags.force_set(leaf.compression_algo.into(), true);
@@ -272,11 +253,10 @@ impl<'a> Builder<'a> {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
 
-					let compressed_data =
-						Compressor::new(buffer.as_slice()).compress(leaf.compression_algo)?;
-					let ratio = compressed_data.len() as f32 / buffer.len() as f32;
+					let mut compressed_data = vec![];
+					Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
 
-					if ratio < 1f32 {
+					if compressed_data.len() <= buffer.len() {
 						entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 						entry.flags.force_set(leaf.compression_algo.into(), true);
 
@@ -328,10 +308,7 @@ impl<'a> Builder<'a> {
 
 			#[cfg(feature = "multithreaded")]
 			{
-				let arc = Arc::clone(&total_arc);
-				let mut total = arc.lock().unwrap();
-
-				**total += glob_length;
+				total_arc.fetch_add(glob_length, Ordering::SeqCst)
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
@@ -393,22 +370,19 @@ impl<'a> Builder<'a> {
 				reg_buffer_sync.write_all(&entry_bytes)?;
 			}
 
-			// Call the progress callback bound within the [`BuilderConfig`]
-			if let Some(callback) = config.progress_callback {
-				callback(&leaf.id, &entry);
-			}
-
 			// Update offsets
 			#[cfg(feature = "multithreaded")]
 			{
-				let arc = Arc::clone(&total_arc);
-				let mut total = arc.lock().unwrap();
-
-				**total += entry_bytes.len();
+				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst)
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				total_sync += entry_bytes.len();
+			}
+
+			// Call the progress callback bound within the [`BuilderConfig`]
+			if let Some(callback) = config.progress_callback {
+				callback(&leaf.id, &entry);
 			}
 
 			Ok(())
@@ -432,6 +406,13 @@ impl<'a> Builder<'a> {
 			wtr_sync.write_all(reg_buffer_sync.as_slice())?;
 		}
 
-		Ok(total_sync)
+		#[cfg(feature = "multithreaded")]
+		{
+			Ok(total_arc.load(Ordering::SeqCst))
+		}
+		#[cfg(not(feature = "multithreaded"))]
+		{
+			Ok(total_sync)
+		}
 	}
 }

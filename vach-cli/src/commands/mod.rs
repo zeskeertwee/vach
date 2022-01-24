@@ -1,9 +1,10 @@
+use std::collections::HashMap;
+
 use clap::ArgMatches;
 use anyhow::Result;
-use lazy_static::lazy_static;
 
 // A common progress bar style for all commands
-const PROGRESS_BAR_STYLE: &str = "{wide_bar} {pos:>7}/{len:7} ETA {eta_precise}";
+const PROGRESS_BAR_STYLE: &str = "{msg:10.orange} {wide_bar} {pos:>7}/{len:7} ETA {eta_precise}";
 
 // Trait that must be implemented by all subcommands
 pub trait CommandTrait: Sync {
@@ -18,11 +19,15 @@ pub mod split;
 pub mod unpack;
 pub mod verify;
 
-lazy_static! {
-	pub static ref KEYPAIR_COMMAND: Box<dyn CommandTrait> = Box::new(keypair::Evaluator);
-	pub static ref SPLIT_COMMAND: Box<dyn CommandTrait> = Box::new(split::Evaluator);
-	pub static ref VERIFY_COMMAND: Box<dyn CommandTrait> = Box::new(verify::Evaluator);
-	pub static ref LIST_COMMAND: Box<dyn CommandTrait> = Box::new(list::Evaluator);
-	pub static ref UNPACK_COMMAND: Box<dyn CommandTrait> = Box::new(unpack::Evaluator);
-	pub static ref PACK_COMMAND: Box<dyn CommandTrait> = Box::new(pack::Evaluator);
+pub fn build_commands() -> HashMap<&'static str, Box<dyn CommandTrait>> {
+	let mut map: HashMap<&'static str, Box<dyn CommandTrait>> = HashMap::new();
+
+	map.insert("keypair", Box::new(keypair::Evaluator));
+	map.insert("split", Box::new(split::Evaluator));
+	map.insert("verify", Box::new(verify::Evaluator));
+	map.insert("list", Box::new(list::Evaluator));
+	map.insert("unpack", Box::new(unpack::Evaluator));
+	map.insert("pack", Box::new(pack::Evaluator));
+
+	map
 }

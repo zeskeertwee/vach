@@ -11,7 +11,7 @@
   <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
   <br/>
   <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/actions/workflows/rust.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/virtfs-rs/workflows/Rust/badge.svg"></a>
+  <a href="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
 </p>
 <p align=center>
@@ -20,9 +20,17 @@
 
 ---
 
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and **all** help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing and authentication](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and **all** help will be much appreciated, especially proof reading the docs, code contributions and review.
 
-## Simple usage
+## ⛏ Who is this for?
+
+- You just released a product and don't want your assets pirated or easily read.
+- You want a simple convinient way to manage, decompress, decrypt and authenticate assets in distribution.
+- You want a pure Rust™️ archive format with no C bindings underneath (bindings **for** C may become available in the future).
+- You want your product to be neat, and all your assets to be in one neat  secure container.
+- You like orbital cannons.
+
+## 🧷 Simple usage
 
 ```rust
 use std::fs::File;
@@ -44,4 +52,5 @@ let mut buffer = Vec::new();
 let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
 ```
 
-> For more information on how to use the crate, read the [documentation](https://docs.rs/vach).
+> For more information on how to use the crate, read the [documentation](https://docs.rs/vach) or pass by the [repository](https://github.com/zeskeertwee/vach).
+

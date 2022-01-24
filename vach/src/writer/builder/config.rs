@@ -25,12 +25,13 @@ pub struct BuilderConfig<'a> {
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	pub keypair: Option<esdalek::Keypair>,
 	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
-	/// The callback get passed to it: the leaf's id, the number of bytes written and the generated registry entry. Respectively.
+	/// The callback get passed to it: the leaf's id and the generated registry entry. Respectively.
 	/// > **To avoid** the `implementation of "FnOnce" is not general enough` error consider adding types to the closure's parameters, as this is a type inference error. Rust somehow cannot infer enough information, [link](https://www.reddit.com/r/rust/comments/ntqu68/implementation_of_fnonce_is_not_general_enough/).
-	///
 	/// Usage:
-	/// ```ignore
-	/// let builder_config = BuilderConfig::new()
+	/// ```
+	/// use vach::builder::BuilderConfig;
+	///
+	/// let builder_config = BuilderConfig::default();
 	/// ```
 	pub progress_callback: Option<&'a dyn CallbackTrait>,
 }
@@ -44,7 +45,7 @@ impl<'a> Debug for BuilderConfig<'a> {
 			.field(
 				"progress_callback",
 				if self.progress_callback.is_some() {
-					&"dyn Fn(id: &str, reg_entry: &RegistryEntry)"
+					&"Some(&dyn Fn(id: &str, reg_entry: &RegistryEntry))"
 				} else {
 					&"None"
 				},
@@ -60,6 +61,7 @@ impl<'a> BuilderConfig<'a> {
 		self.keypair = Some(keypair);
 		self
 	}
+
 	/// Setter for the `flags` field
 	///```
 	/// use vach::prelude::{Flags, BuilderConfig};

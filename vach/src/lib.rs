@@ -11,7 +11,7 @@
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LICENSE: MIT" src="https://img.shields.io/crates/l/vach?style=flat-square"></a>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/actions/workflows/rust.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/virtfs-rs/workflows/Rust/badge.svg"></a>
+  <a href="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
 </p>
 <p align=center>
@@ -29,8 +29,8 @@
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
 ### 🔫 Extra Features
-Turning on the `multithreaded` feature pulls [rayon] as a dependency and adds `Send + Sync` as a trait bound to many generic types.
-This allows for the parallelization of the `Builder::dump(---)` function, with more functions getting parallelization on the way.
+Turning on the `multithreaded` feature pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
+This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
  > Turning on parallelization adds a lot of overhead that would be completely unnecessary for much smaller archives, it only benefits where the **singular data** is very large and the `Arc<Mutex<Y>>` overhead is _relatively minimal_
 
 ### 🀄 Show me some code _dang it!_
@@ -151,8 +151,7 @@ pub(crate) mod writer;
 // Re-exports
 pub use rand;
 
-/// Current file spec version, both `Loader` and [`Builder`](crate::builder::Builder)
-/// Increments by ten with every spec change
+/// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;
 
 /// Size of a keypair: (secret + public)
@@ -188,24 +187,21 @@ pub mod crypto {
 	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
 }
 
-/// [`Builder`] related data structures and logic
+/// [`Builder`](crate::builder::Builder) related data structures and logic
 pub mod builder {
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
 		leaf::{Leaf, CompressMode},
 	};
-	pub use crate::global::{
-		error::InternalError, compressor::CompressionAlgorithm, result::InternalResult,
-		flags::Flags,
-	};
+	pub use crate::global::{error::InternalError, compressor::CompressionAlgorithm, result::InternalResult, flags::Flags};
 }
 
 /// Loader-based logic and data-structures
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
-		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError,
-		result::InternalResult, compressor::CompressionAlgorithm, flags::Flags,
+		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult,
+		compressor::CompressionAlgorithm, flags::Flags,
 	};
 }
 

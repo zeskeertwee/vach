@@ -118,10 +118,7 @@ fn builder_no_signature() -> InternalResult<()> {
 	builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
 
 	let mut poem_flags = Flags::default();
-	poem_flags.set(
-		CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4,
-		true,
-	)?;
+	poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)?;
 
 	builder.add_leaf(
 		Leaf::from_handle(File::open("test_data/poem.txt")?)
@@ -313,12 +310,7 @@ fn edcryptor_test() -> InternalResult<()> {
 
 #[test]
 fn builder_with_encryption() -> InternalResult<()> {
-	let mut builder = Builder::new().template(
-		Leaf::default()
-			.encrypt(true)
-			.compress(CompressMode::Never)
-			.sign(true),
-	);
+	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(File::open(KEYPAIR)?)?;
@@ -348,8 +340,8 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
-	// Check identity of retrieved data
-	println!("{}", song);
+	// Log archive to console
+	dbg!(&archive);
 
 	// Windows bullshit
 	#[cfg(target_os = "windows")]
@@ -366,45 +358,6 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
 
 	Ok(())
-}
-
-#[test]
-fn cyclic_linked_leafs() {
-	use std::io::Cursor;
-
-	// init
-	let mut target = Cursor::new(Vec::<u8>::new());
-
-	// Builder stage
-	let mut builder = Builder::default();
-
-	builder
-		.add_leaf(
-			Leaf::default()
-				.id("d2_link")
-				.link_mode(Some("d1_link".to_string())),
-		)
-		.unwrap();
-	builder
-		.add_leaf(
-			Leaf::default()
-				.id("d1_link")
-				.link_mode(Some("d2_link".to_string())),
-		)
-		.unwrap();
-	builder
-		.dump(&mut target, &BuilderConfig::default())
-		.unwrap();
-
-	let mut archive = Archive::from_handle(target).unwrap();
-
-	// Assert that this causes an error, [Cyclic Linked Leafs]
-	if let Err(err) = archive.fetch("d1_link") {
-		match err {
-			InternalError::CyclicLinkReferenceError(_, _) => (),
-			_ => panic!("Unrecognized error. Expected cyclic linked leaf error"),
-		}
-	};
 }
 
 #[test]
@@ -428,25 +381,27 @@ fn consolidated_example() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
+	let template = Leaf::default()
+		.encrypt(true)
+		.version(59)
+		.compression_algo(CompressionAlgorithm::Snappy);
 	builder.add_leaf(
 		Leaf::from_handle(data_1)
 			.id("d1")
-			.compress(CompressMode::Always),
+			.compress(CompressMode::Always)
+			.template(&template),
 	)?;
 	builder.add_leaf(
 		Leaf::from_handle(data_2)
 			.id("d2")
-			.compress(CompressMode::Never),
+			.compress(CompressMode::Never)
+			.template(&template),
 	)?;
 	builder.add_leaf(
 		Leaf::from_handle(data_3)
 			.id("d3")
-			.compress(CompressMode::Detect),
-	)?;
-	builder.add_leaf(
-		Leaf::default()
-			.id("d3_link")
-			.link_mode(Some("d3".to_string())),
+			.compress(CompressMode::Detect)
+			.template(&template),
 	)?;
 
 	// Dump data
@@ -460,24 +415,26 @@ fn consolidated_example() -> InternalResult<()> {
 	let mut config = HeaderConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
+	let then = Instant::now();
 	let mut archive = Archive::with_config(target, &config)?;
 	dbg!(archive.entries());
+
+	println!("Archive initialization took: {}us", then.elapsed().as_micros());
 
 	// Quick assertions
 	let then = Instant::now();
 	assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
 	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
-	assert_eq!(archive.fetch("d3_link")?.data.as_slice(), data_3);
 
-	println!("Fetching took: {}us", then.elapsed().as_micros());
+	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 
 	// All seems ok
 	Ok(())
 }
 
 #[test]
-fn test_compression() -> InternalResult<()> {
+fn test_compressors() -> InternalResult<()> {
 	const INPUT_LEN: usize = 4096;
 
 	let input = [12u8; INPUT_LEN];
@@ -524,6 +481,65 @@ fn test_compression() -> InternalResult<()> {
 	assert!(archive.fetch_entry("LZ4").unwrap().offset < INPUT_LEN as u64);
 	assert!(archive.fetch_entry("BROTLI").unwrap().offset < INPUT_LEN as u64);
 	assert!(archive.fetch_entry("SNAPPY").unwrap().offset < INPUT_LEN as u64);
+
+	// A simple test to show that these are somehow not the same data
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
+	assert!(archive.fetch_entry("BROTLI").unwrap().offset != archive.fetch_entry("LZ4").unwrap().offset);
+	assert!(archive.fetch_entry("SNAPPY").unwrap().offset != archive.fetch_entry("BROTLI").unwrap().offset);
+
+	Ok(())
+}
+
+#[test]
+#[cfg(feature = "multithreaded")]
+fn test_batch_fetching() -> InternalResult<()> {
+	// Define input constants
+	const INPUT_LEN: usize = 512;
+	let mut input = [12u8; INPUT_LEN];
+	input.iter_mut().for_each(|i| *i = rand::random::<u8>());
+
+	let mut target = Cursor::new(vec![]);
+	let mut builder = Builder::new();
+
+	// Define and queue data
+	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("LZ4"))?;
+	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("BROTLI"))?;
+	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("SNAPPY"))?;
+
+	// Process data
+	builder.dump(&mut target, &BuilderConfig::default())?;
+
+	let mut archive = Archive::from_handle(&mut target)?;
+	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter());
+
+	// Tests and checks
+	assert!(resources.get("NON_EXISTENT").is_some());
+	match resources.get("NON_EXISTENT").unwrap() {
+		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
+		Err(err) => match err {
+			&InternalError::MissingResourceError(_) => {}
+
+			specific => {
+				return Err(InternalError::OtherError(format!(
+					"Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error",
+					specific
+				)))
+			}
+		},
+	}
+
+	let d1 = resources.remove("LZ4").unwrap().unwrap();
+	let d2 = resources.remove("BROTLI").unwrap().unwrap();
+	let d3 = resources.remove("SNAPPY").unwrap().unwrap();
+
+	// Identity tests
+	assert_eq!(d1.data.len(), INPUT_LEN);
+	assert_eq!(d2.data.len(), INPUT_LEN);
+	assert_eq!(d3.data.len(), INPUT_LEN);
+
+	assert!(&d1.data[..] == &input);
+	assert!(&d2.data[..] == &input);
+	assert!(&d3.data[..] == &input);
 
 	Ok(())
 }
