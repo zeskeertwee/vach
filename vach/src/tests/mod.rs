@@ -417,6 +417,7 @@ fn consolidated_example() -> InternalResult<()> {
 
 	let then = Instant::now();
 	let mut archive = Archive::with_config(target, &config)?;
+	dbg!(archive.entries());
 
 	println!("Archive initialization took: {}us", then.elapsed().as_micros());
 
