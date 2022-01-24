@@ -43,7 +43,7 @@
 
 ### 👄 Terminologies
 
-- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or `io::Cursor`, that matches the `vach` spec and is thus a valid archive.
+- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or in memory buffer (`io::Cursor`).
 - **Leaf:** Any actual data endpoint within an archive, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding `leaf`. For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
@@ -198,9 +198,9 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 ### 🛠 Yet to be implemented
 
-- [ ] Skynet, (coming _very_ soon).
-- [ ] Some proper benchmarking code. (Call for participation)
-- [ ] `Some(examples)` directory instead of `None`
 - [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
 - [x] Data encryption.
 - [x] Benchmarks.
+- [ ] Skynet, (coming _very_ soon).
+- [ ] Some proper benchmarking code. (Call for participation)
+- [ ] `Some(examples)` directory instead of `None`
