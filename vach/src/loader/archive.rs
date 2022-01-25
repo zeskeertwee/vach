@@ -243,7 +243,7 @@ where
 	/// ### Errors:
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
 	pub fn fetch(&self, id: &str) -> InternalResult<Resource> {
-		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an allocation [MAYBE TOO MUCH?]
+		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		let mut buffer = Vec::new();
 		self.fetch_write(id, &mut buffer)?;
 
@@ -251,10 +251,10 @@ where
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
-			let in_deps = (&entry, id, raw);
-			let dep = (&self.decryptor, &self.key);
+			let independent = (&entry, id, raw);
+			let dependencies = (&self.decryptor, &self.key);
 
-			let (buffer, is_secure) = Archive::<T>::process_raw(dep, in_deps)?;
+			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
@@ -279,10 +279,10 @@ where
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
-			let in_deps = (&entry, id, raw);
-			let dep = (&self.decryptor, &self.key);
+			let independent = (&entry, id, raw);
+			let dependencies = (&self.decryptor, &self.key);
 
-			let (buffer, is_secure) = Archive::<T>::process_raw(dep, in_deps)?;
+			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
 
 			io::copy(&mut buffer.as_slice(), &mut target)?;
 			Ok((entry.flags, entry.content_version, is_secure))
