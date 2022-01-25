@@ -307,9 +307,7 @@ impl<'a> Builder<'a> {
 			}
 
 			#[cfg(feature = "multithreaded")]
-			{
-				total_arc.fetch_add(glob_length, Ordering::SeqCst)
-			};
+			total_arc.fetch_add(glob_length, Ordering::SeqCst);
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				total_sync += glob_length;
@@ -372,9 +370,7 @@ impl<'a> Builder<'a> {
 
 			// Update offsets
 			#[cfg(feature = "multithreaded")]
-			{
-				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst)
-			};
+			total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				total_sync += entry_bytes.len();
