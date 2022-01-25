@@ -97,10 +97,13 @@ fn header_config() -> InternalResult<()> {
 	use crate::global::header::Header;
 
 	let config = HeaderConfig::new(*b"VfACH", None);
-	let mut file = File::open("test_data/simple/target.vach")?.take(Header::BASE_SIZE as u64);
 	println!("{}", &config);
 
-	let header = Header::from_handle(&mut file)?;
+	let mut header_data = [0u8; Header::BASE_SIZE];
+	let mut file = File::open("test_data/simple/target.vach")?;
+	file.read(&mut header_data)?;
+
+	let header = Header::from_handle(header_data.as_slice())?;
 	println!("{}", header);
 
 	Header::validate(&header, &config)?;
@@ -143,7 +146,7 @@ fn builder_no_signature() -> InternalResult<()> {
 #[test]
 fn fetch_no_signature() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
-	let mut archive = Archive::from_handle(target)?;
+	let archive = Archive::from_handle(target)?;
 	dbg!(archive.entries());
 	let resource = archive.fetch("poem")?;
 
@@ -223,7 +226,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 	keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
 	config.load_public_key(keypair)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
@@ -266,7 +269,7 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 	keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
 	config.load_public_key(keypair)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	let mut song = Vec::new();
 
 	let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
@@ -336,7 +339,7 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 	public_key.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
 	config.load_public_key(public_key)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
@@ -416,7 +419,7 @@ fn consolidated_example() -> InternalResult<()> {
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let then = Instant::now();
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	dbg!(archive.entries());
 
 	println!("Archive initialization took: {}us", then.elapsed().as_micros());
@@ -462,7 +465,7 @@ fn test_compressors() -> InternalResult<()> {
 
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let mut archive = Archive::from_handle(&mut target)?;
+	let archive = Archive::from_handle(&mut target)?;
 
 	let d1 = archive.fetch("LZ4")?;
 	let d2 = archive.fetch("BROTLI")?;
@@ -510,7 +513,7 @@ fn test_batch_fetching() -> InternalResult<()> {
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
 	let mut archive = Archive::from_handle(&mut target)?;
-	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter());
+	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter())?;
 
 	// Tests and checks
 	assert!(resources.get("NON_EXISTENT").is_some());

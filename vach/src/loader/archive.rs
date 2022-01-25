@@ -2,6 +2,7 @@ use std::{
 	str,
 	io::{self, Read, Seek, SeekFrom, Write},
 	collections::HashMap,
+	sync::{Arc, Mutex},
 };
 
 use super::resource::Resource;
@@ -19,17 +20,6 @@ use crate::{
 
 use ed25519_dalek as esdalek;
 
-#[cfg(not(feature = "multithreaded"))]
-type DependentVars<'a> = (&'a Option<Encryptor>, &'a Option<esdalek::PublicKey>);
-
-#[cfg(feature = "multithreaded")]
-use std::sync::{Arc, Mutex};
-#[cfg(feature = "multithreaded")]
-type DependentVars<'a> = (
-	Arc<Mutex<&'a Option<Encryptor>>>,
-	Arc<Mutex<&'a Option<esdalek::PublicKey>>>,
-);
-
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching `Resources` and [`RegistryEntry`]s.
 /// It can be customized with the `HeaderConfig` struct.
@@ -38,7 +28,7 @@ type DependentVars<'a> = (
 #[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
-	handle: T,
+	handle: Arc<Mutex<T>>,
 	decryptor: Option<Encryptor>,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
@@ -46,43 +36,39 @@ pub struct Archive<T> {
 
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
-	pub fn into_inner(self) -> T {
-		self.handle
+	pub fn into_inner(self) -> InternalResult<T> {
+		match Arc::try_unwrap(self.handle) {
+			Ok(mutex) => match mutex.into_inner() {
+				Ok(inner) => Ok(inner),
+				Err(err) => Err(InternalError::OtherError(format!("[MutexError::PoisonError] {}", err))),
+			},
+			Err(_) => Err(InternalError::OtherError(
+				"[Sync::ArcError] Cannot consume this archive as other references (ARC) to it exist".to_string(),
+			)),
+		}
 	}
 
 	/// Helps in parallelized `Resource` fetching
 	#[inline(never)]
 	fn process_raw(
-		dependent: DependentVars, independent: (&RegistryEntry, &str, Vec<u8>),
+		dependencies: (&Option<Encryptor>, &Option<esdalek::PublicKey>), independent: (&RegistryEntry, &str, Vec<u8>),
 	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		let (entry, id, mut raw) = independent;
-		let (decryptor, key) = dependent;
+		let (decryptor, key) = dependencies;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 		{
-			let key_guard;
-			#[cfg(feature = "multithreaded")]
-			{
-				key_guard = key.lock().unwrap();
-			}
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				key_guard = key
-			}
-
-			if key_guard.is_some() {
-				let pub_key = key_guard.as_ref().unwrap();
-
+			if let Some(pk) = key {
 				let raw_size = raw.len();
 
 				// If there is an error the data is flagged as invalid
 				raw.extend(id.as_bytes());
 				if let Some(signature) = entry.signature {
-					is_secure = pub_key.verify_strict(&raw, &signature).is_ok();
+					is_secure = pk.verify_strict(&raw, &signature).is_ok();
 				}
 
 				raw.truncate(raw_size);
@@ -92,31 +78,24 @@ impl<T> Archive<T> {
 		// Add read layers
 		// 1: Decryption layer
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
-			let decryptor_guard;
-			#[cfg(feature = "multithreaded")]
-			{
-				decryptor_guard = decryptor.lock().unwrap();
-			}
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				decryptor_guard = decryptor
-			}
-
-			if decryptor_guard.is_some() {
-				let dx = decryptor_guard.as_ref().unwrap();
-
-				raw = match dx.decrypt(&raw) {
-					Ok(bytes) => bytes,
-					Err(err) => {
-						#[rustfmt::skip]
-						return Err(InternalError::CryptoError(format!( "Unable to decrypt resource: {}. Error: {}", id, err )));
-					}
-				};
-			} else {
-				return Err(InternalError::NoKeypairError(format!(
-					"Encountered encrypted Resource: {} but no decryption key(public key) was provided",
-					id
-				)));
+			match decryptor {
+				Some(dc) => {
+					raw = match dc.decrypt(&raw) {
+						Ok(bytes) => bytes,
+						Err(err) => {
+							return Err(InternalError::CryptoError(format!(
+								"Unable to decrypt resource: {}. Error: {}",
+								id, err
+							)));
+						}
+					};
+				}
+				None => {
+					return Err(InternalError::NoKeypairError(format!(
+						"Encountered encrypted Resource: {} but no decryption key(public key) was provided",
+						id
+					)))
+				}
 			}
 		}
 
@@ -201,7 +180,7 @@ where
 
 		Ok(Archive {
 			header,
-			handle,
+			handle: Arc::new(Mutex::new(handle)),
 			key: config.public_key,
 			entries,
 			decryptor,
@@ -209,12 +188,24 @@ where
 	}
 
 	#[inline(always)]
-	pub(crate) fn fetch_raw(&mut self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let handle = &mut self.handle;
-		handle.seek(SeekFrom::Start(entry.location))?;
+	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+		let handle = &self.handle;
+		{
+			handle.lock().unwrap().seek(SeekFrom::Start(entry.location))?;
+		}
 
-		let mut raw = vec![];
-		handle.take(entry.offset).read_to_end(&mut raw)?;
+		let offset = entry.offset as usize;
+		let mut raw = Vec::with_capacity(offset);
+
+		// This is ok since we never **read** from the vector
+		#[allow(clippy::uninit_vec)]
+		unsafe {
+			raw.set_len(offset);
+		}
+
+		{
+			handle.lock().unwrap().read_exact(raw.as_mut_slice())?;
+		}
 
 		Ok(raw)
 	}
@@ -251,7 +242,7 @@ where
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	/// ### Errors:
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
-	pub fn fetch(&mut self, id: &str) -> InternalResult<Resource> {
+	pub fn fetch(&self, id: &str) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an allocation [MAYBE TOO MUCH?]
 		let mut buffer = Vec::new();
 		self.fetch_write(id, &mut buffer)?;
@@ -261,16 +252,7 @@ where
 
 			// Prepare contextual variables
 			let in_deps = (&entry, id, raw);
-			let dep;
-
-			#[cfg(feature = "multithreaded")]
-			{
-				dep = (Arc::new(Mutex::new(&self.decryptor)), Arc::new(Mutex::new(&self.key)));
-			}
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				dep = (&self.decryptor, &self.key)
-			}
+			let dep = (&self.decryptor, &self.key);
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dep, in_deps)?;
 
@@ -292,22 +274,13 @@ where
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
 	///  - Other `io` related errors
-	pub fn fetch_write<W: Write>(&mut self, id: &str, mut target: W) -> InternalResult<(Flags, u8, bool)> {
+	pub fn fetch_write<W: Write>(&self, id: &str, mut target: W) -> InternalResult<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(id) {
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
 			let in_deps = (&entry, id, raw);
-			let dep;
-
-			#[cfg(feature = "multithreaded")]
-			{
-				dep = (Arc::new(Mutex::new(&self.decryptor)), Arc::new(Mutex::new(&self.key)));
-			}
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				dep = (&self.decryptor, &self.key)
-			}
+			let dep = (&self.decryptor, &self.key);
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dep, in_deps)?;
 
@@ -318,67 +291,33 @@ where
 			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id )));
 		}
 	}
+}
 
+impl<T: Read + Seek + Send + Sync> Archive<T> {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
 	#[cfg(feature = "multithreaded")]
 	#[cfg_attr(docsrs, feature(doc_cfg))]
 	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-	pub fn fetch_batch<'a, I: Iterator<Item = &'a str>>(
+	pub fn fetch_batch<'a, I: Send + Sync + Iterator<Item = &'a str>>(
 		&mut self, items: I,
-	) -> HashMap<String, InternalResult<Resource>> {
+	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {
 		use rayon::prelude::*;
+		let processed = Arc::new(Mutex::new(HashMap::new()));
 
-		let mut processed = HashMap::new();
-		let independents: Vec<_> = items
-			.filter_map(|id| -> Option<(RegistryEntry, &str, Vec<u8>)> {
-				match self.fetch_entry(id) {
-					Some(entry) => match self.fetch_raw(&entry) {
-						Ok(raw) => return Some((entry, id, raw)),
-						Err(err) => {
-							processed.insert(id.to_string(), Err(err));
-							return None;
-						}
-					},
-					None => {
-						processed.insert(
-							id.to_string(),
-							Err(InternalError::MissingResourceError(format!(
-								"Resource not found: {}",
-								id
-							))),
-						);
+		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
+			processed.lock().unwrap().insert(id.to_string(), self.fetch(id));
+			Ok(())
+		})?;
 
-						None
-					}
-				}
-			})
-			.collect();
-
-		// arc-mutex variables
-		let lock = Arc::new(Mutex::new(&mut processed));
-		let dependents = (Arc::new(Mutex::new(&self.decryptor)), Arc::new(Mutex::new(&self.key)));
-
-		independents.into_iter().par_bridge().for_each(|indeps| {
-			let id = indeps.1.to_string();
-
-			match Archive::<T>::process_raw(dependents.clone(), (&indeps.0, indeps.1, indeps.2)) {
-				Ok((data, is_secure)) => {
-					let resource = Resource {
-						secured: is_secure,
-						data,
-						flags: indeps.0.flags,
-						content_version: indeps.0.content_version,
-					};
-
-					lock.lock().unwrap().insert(id, Ok(resource));
-				}
-				Err(err) => {
-					lock.lock().unwrap().insert(id, Err(err));
-				}
-			};
-		});
-
-		processed
+		match Arc::try_unwrap(processed) {
+			Ok(mutex) => match mutex.into_inner() {
+				Ok(inner) => Ok(inner),
+				Err(err) => Err(InternalError::OtherError(format!("[MutexError::PoisonError] {}", err))),
+			},
+			Err(_) => Err(InternalError::OtherError(
+				"[Sync::ArcError] Cannot consume this HashMap as other references (ARC) to it exist".to_string(),
+			)),
+		}
 	}
 }

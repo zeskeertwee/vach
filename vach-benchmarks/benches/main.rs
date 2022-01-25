@@ -112,7 +112,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		(data_1.len() + data_2.len() + data_3.len()) as u64,
 	));
 
-	let mut archive = Archive::with_config(&mut target, &h_config).unwrap();
+	let archive = Archive::with_config(&mut target, &h_config).unwrap();
 	let mut sink = Sink::new();
 
 	throughput_group.bench_function("Archive::fetch_write(---)", |b| {
