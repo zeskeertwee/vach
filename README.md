@@ -143,9 +143,7 @@ let keypair :     Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 
 ```rust
 // Load public_key
-let mut public_key = File::open(PUBLIC_KEY)?;
-let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH];
-public_key.read_exact(&mut public_key_bytes)?;
+let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH] = include_bytes!(PUBLIC_KEY);
 
 // Build the Loader config
 let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
