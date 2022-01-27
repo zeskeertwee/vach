@@ -26,7 +26,7 @@
 
 ### ⛏ Who is this for?
 
-- You just released a product and don't want your assets pirated or easily read.
+- You just released some software and don't want your assets pirated or easily read.
 - You want a simple convinient way to manage, decompress, decrypt and authenticate assets in distribution.
 - You want a pure Rust™️ archive format with no C bindings underneath (bindings **for** C may become available in the future).
 - You want your product to be neat, and all your assets to be in one neat  secure container.
