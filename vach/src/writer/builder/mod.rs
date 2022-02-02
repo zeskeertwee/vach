@@ -116,7 +116,7 @@ impl<'a> Builder<'a> {
 	/// let template = Leaf::default().compress(CompressMode::Always).version(12);
 	/// let mut builder = Builder::new().template(template);
 	///
-	/// builder.add(b"JEB" as &[u8], "JEB").unwrap();
+	/// builder.add(b"JEB" as &[u8], "JEB_NAME").unwrap();
 	/// // `JEB` is compressed and has a version of 12
 	/// ```
 	pub fn template(mut self, template: Leaf<'a>) -> Builder {
@@ -307,9 +307,7 @@ impl<'a> Builder<'a> {
 			}
 
 			#[cfg(feature = "multithreaded")]
-			{
-				total_arc.fetch_add(glob_length, Ordering::SeqCst)
-			};
+			total_arc.fetch_add(glob_length, Ordering::SeqCst);
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				total_sync += glob_length;
@@ -372,9 +370,7 @@ impl<'a> Builder<'a> {
 
 			// Update offsets
 			#[cfg(feature = "multithreaded")]
-			{
-				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst)
-			};
+			total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				total_sync += entry_bytes.len();

@@ -26,7 +26,7 @@
 
 ### ⛏ Who is this for?
 
-- You just released a product and don't want your assets pirated or easily read.
+- You just released some software and don't want your assets pirated or easily read.
 - You want a simple convinient way to manage, decompress, decrypt and authenticate assets in distribution.
 - You want a pure Rust™️ archive format with no C bindings underneath (bindings **for** C may become available in the future).
 - You want your product to be neat, and all your assets to be in one neat  secure container.
@@ -43,7 +43,7 @@
 
 ### 👄 Terminologies
 
-- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or `io::Cursor`, that matches the `vach` spec and is thus a valid archive.
+- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or in memory buffer (`io::Cursor`).
 - **Leaf:** Any actual data endpoint within an archive, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding `leaf`. For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
@@ -143,9 +143,7 @@ let keypair :     Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 
 ```rust
 // Load public_key
-let mut public_key = File::open(PUBLIC_KEY)?;
-let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH];
-public_key.read_exact(&mut public_key_bytes)?;
+let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH] = include_bytes!(PUBLIC_KEY);
 
 // Build the Loader config
 let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
@@ -198,9 +196,9 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 ### 🛠 Yet to be implemented
 
-- [ ] Skynet, (coming _very_ soon).
-- [ ] Some proper benchmarking code. (Call for participation)
-- [ ] `Some(examples)` directory instead of `None`
 - [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
 - [x] Data encryption.
 - [x] Benchmarks.
+- [ ] Skynet, (coming _very_ soon).
+- [ ] Some proper benchmarking code. (Call for participation)
+- [ ] `Some(examples)` directory instead of `None`

@@ -4,7 +4,7 @@
 // Boring, average every day contemporary imports
 use std::{
 	fs::File,
-	io::{Seek, SeekFrom, Read, Cursor},
+	io::{Read, Cursor},
 	str,
 };
 
@@ -12,7 +12,8 @@ use crate::{global::result::InternalResult, prelude::*};
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
-const KEYPAIR: &str = "test_data/pair.pub";
+const KEYPAIR_PATH: &str = "test_data/pair.pub";
+const KEYPAIR: &[u8; crate::KEYPAIR_LENGTH] = include_bytes!("../../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
 const SIGNED_TARGET: &str = "test_data/signed/target.vach";
@@ -97,10 +98,13 @@ fn header_config() -> InternalResult<()> {
 	use crate::global::header::Header;
 
 	let config = HeaderConfig::new(*b"VfACH", None);
-	let mut file = File::open("test_data/simple/target.vach")?.take(Header::BASE_SIZE as u64);
 	println!("{}", &config);
 
-	let header = Header::from_handle(&mut file)?;
+	let mut header_data = [0u8; Header::BASE_SIZE];
+	let mut file = File::open("test_data/simple/target.vach")?;
+	file.read(&mut header_data)?;
+
+	let header = Header::from_handle(header_data.as_slice())?;
 	println!("{}", header);
 
 	Header::validate(&header, &config)?;
@@ -143,7 +147,7 @@ fn builder_no_signature() -> InternalResult<()> {
 #[test]
 fn fetch_no_signature() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
-	let mut archive = Archive::from_handle(target)?;
+	let archive = Archive::from_handle(target)?;
 	dbg!(archive.entries());
 	let resource = archive.fetch("poem")?;
 
@@ -179,7 +183,7 @@ fn gen_keypair() -> InternalResult<()> {
 	if regenerate {
 		let keypair = gen_keypair();
 
-		std::fs::write(KEYPAIR, &keypair.to_bytes())?;
+		std::fs::write(KEYPAIR_PATH, &keypair.to_bytes())?;
 	};
 
 	Ok(())
@@ -194,7 +198,7 @@ fn builder_with_signature() -> InternalResult<()> {
 	};
 	let mut build_config = BuilderConfig::default().callback(&cb);
 
-	build_config.load_keypair(File::open(KEYPAIR)?)?;
+	build_config.load_keypair(KEYPAIR.as_slice())?;
 
 	builder.add_dir(
 		"test_data",
@@ -219,11 +223,10 @@ fn fetch_with_signature() -> InternalResult<()> {
 
 	// Load keypair
 	let mut config = HeaderConfig::default();
-	let mut keypair = File::open(KEYPAIR)?;
-	keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
+	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
@@ -262,11 +265,10 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 
 	// Load keypair
 	let mut config = HeaderConfig::default();
-	let mut keypair = File::open(KEYPAIR)?;
-	keypair.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
+	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	let mut song = Vec::new();
 
 	let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
@@ -297,7 +299,6 @@ fn edcryptor_test() -> InternalResult<()> {
 	let pk = gen_keypair().public;
 
 	let crypt = Encryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
-
 	let data = vec![12, 12, 12, 12];
 
 	let ciphertext = crypt.encrypt(&data).unwrap();
@@ -313,7 +314,7 @@ fn builder_with_encryption() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
 	let mut build_config = BuilderConfig::default();
-	build_config.load_keypair(File::open(KEYPAIR)?)?;
+	build_config.load_keypair(KEYPAIR.as_slice())?;
 
 	builder.add_dir("test_data", None)?;
 
@@ -332,11 +333,10 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 
 	// Load keypair
 	let mut config = HeaderConfig::default();
-	let mut public_key = File::open(KEYPAIR)?;
-	public_key.seek(SeekFrom::Start(crate::SECRET_KEY_LENGTH as u64))?;
+	let public_key = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(public_key)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
@@ -416,7 +416,7 @@ fn consolidated_example() -> InternalResult<()> {
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let then = Instant::now();
-	let mut archive = Archive::with_config(target, &config)?;
+	let archive = Archive::with_config(target, &config)?;
 	dbg!(archive.entries());
 
 	println!("Archive initialization took: {}us", then.elapsed().as_micros());
@@ -462,7 +462,7 @@ fn test_compressors() -> InternalResult<()> {
 
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let mut archive = Archive::from_handle(&mut target)?;
+	let archive = Archive::from_handle(&mut target)?;
 
 	let d1 = archive.fetch("LZ4")?;
 	let d2 = archive.fetch("BROTLI")?;
@@ -510,7 +510,7 @@ fn test_batch_fetching() -> InternalResult<()> {
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
 	let mut archive = Archive::from_handle(&mut target)?;
-	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter());
+	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter())?;
 
 	// Tests and checks
 	assert!(resources.get("NON_EXISTENT").is_some());

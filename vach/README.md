@@ -24,10 +24,10 @@
 
 ## ⛏ Who is this for?
 
-- You just released a product and don't want your assets pirated or easily read.
+- You just released some software and don't want your assets pirated or easily read.
 - You want a simple convinient way to manage, decompress, decrypt and authenticate assets in distribution.
 - You want a pure Rust™️ archive format with no C bindings underneath (bindings **for** C may become available in the future).
-- You want your product to be neat, and all your assets to be in one neat  secure container.
+- You want your software to be neat, and all your assets to be in one neat secure container.
 - You like orbital cannons.
 
 ## 🧷 Simple usage
@@ -36,8 +36,9 @@
 use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
-let target = File::open("sounds.vach")?;
-let mut archive = Archive::from_handle(target)?;
+let source = File::open("sounds.vach")?;
+
+let mut archive = Archive::from_handle(source)?;
 let resource: Resource = archive.fetch("footstep.wav")?;
 
 // By default all resources are flagged as NOT secure
@@ -52,5 +53,4 @@ let mut buffer = Vec::new();
 let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
 ```
 
-> For more information on how to use the crate, read the [documentation](https://docs.rs/vach) or pass by the [repository](https://github.com/zeskeertwee/vach).
-
+> For more information on how to use the crate, read the [documentation](https://docs.rs/vach) or pass by the [repository](https://github.com/zeskeertwee/vach). Maybe also check out the [CLI](https://crates.io/crates/vach-cli), for a more user-friendly use of `vach`
