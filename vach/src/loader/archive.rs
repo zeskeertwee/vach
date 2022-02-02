@@ -317,8 +317,6 @@ where
 impl<T: Read + Seek + Send + Sync> Archive<T> {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
-	#[cfg_attr(docsrs, feature(doc_cfg))]
-	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
 	pub fn fetch_batch<'a, I: Iterator<Item = &'a str> + Send + Sync>(
 		&mut self, items: I,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {

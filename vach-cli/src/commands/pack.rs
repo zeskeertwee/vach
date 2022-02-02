@@ -133,11 +133,9 @@ impl CommandTrait for Evaluator {
 		};
 
 		if let Some(arch) = &mut archive {
-			let arch_pointer = arch as *mut Archive<File>;
-
 			for (id, _) in arch.entries().iter() {
 				// This safe archive.fetch does not interact with &archive.entries mutably, therefore can not cause "pulling the rug from beneath your feet" problems
-				unsafe { inputs.push(InputSource::VachResource((*arch_pointer).fetch(id)?, id)) }
+				inputs.push(InputSource::VachResource(arch.fetch(id)?, id))
 			}
 		}
 

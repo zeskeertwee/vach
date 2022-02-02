@@ -6,7 +6,7 @@ permissions:
 
 on:
   release:
-    branches: [ main ]
+    branches: [main]
     tags:
       - r[0-9]+.*
 

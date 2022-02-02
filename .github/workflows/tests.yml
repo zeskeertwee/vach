@@ -2,41 +2,39 @@ name: Rust Unit Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   single-threaded-tests:
-
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build
-    - name: Run tests
-      run: cargo test --verbose -- --test-threads=1 --nocapture
-      env:
-        RUST_LOG: trace
+      - uses: actions/checkout@v2
+      - name: Build
+        run: cargo build
+      - name: Run tests
+        run: cargo test --verbose -- --test-threads=1 --nocapture
+        env:
+          RUST_LOG: trace
   multithreaded-tests:
-
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build
-    - name: Run tests
-      run: cargo test -p vach --features multithreaded -- --test-threads=1 --nocapture
-      env:
-        RUST_LOG: trace
+      - uses: actions/checkout@v2
+      - name: Build
+        run: cargo build
+      - name: Run tests
+        run: cargo test -p vach --features multithreaded -- --test-threads=1 --nocapture
+        env:
+          RUST_LOG: trace

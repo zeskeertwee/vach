@@ -2,7 +2,7 @@ name: Publish to crates.io
 
 on:
   release:
-    branches: [ main ]
+    branches: [main]
     tags:
       - p[0-9]+.*
 
