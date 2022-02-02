@@ -108,9 +108,6 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 	// NOTE: More styling is to come
 	pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
 
-	// Some unsafe code to keep living dangerous
-	let archive_pointer = archive as *mut Archive<T>;
-
 	for (id, entry) in archive.entries() {
 		pbar.set_message(id.to_owned());
 
@@ -124,11 +121,7 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 		pbar.println(format!("Extracting {} to {}", id, save_path.to_string_lossy()));
 
 		let mut file = File::create(save_path)?;
-
-		// Let us dabble in a little unsafe
-		unsafe {
-			(*archive_pointer).fetch_write(id.as_str(), &mut file)?;
-		}
+		archive.fetch_write(id.as_str(), &mut file)?;
 
 		pbar.inc(entry.offset);
 	}
