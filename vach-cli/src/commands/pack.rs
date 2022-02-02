@@ -63,7 +63,7 @@ impl CommandTrait for Evaluator {
 					match path.canonicalize() {
 						Ok(path) => Some(path),
 						Err(err) => {
-							println!(
+							log::warn!(
 								"Failed to evaluate: {}. Skipping due to error: {}",
 								path.to_string_lossy(),
 								err
@@ -84,7 +84,7 @@ impl CommandTrait for Evaluator {
 		let path_filter = |path: &PathBuf| match path.canonicalize() {
 			Ok(canonical) => !excludes.contains(&canonical) && canonical.is_file(),
 			Err(err) => {
-				println!(
+				log::warn!(
 					"Failed to evaluate: {}. Skipping due to error: {}",
 					path.to_string_lossy(),
 					err
@@ -126,7 +126,7 @@ impl CommandTrait for Evaluator {
 		if let Some(path) = args.value_of(key_names::SOURCE) {
 			// Storing the path of the archive for reporting purposes
 			archive_path = path;
-			dbg!(archive_path);
+			log::trace!(format!("{}", archive_path));
 
 			let archive_file = File::open(PathBuf::from(path))?;
 			archive = Some(Archive::from_handle(archive_file)?);
@@ -180,7 +180,7 @@ impl CommandTrait for Evaluator {
 
 			let mut file = File::create("keypair.kp")?;
 			file.write_all(&generated.to_bytes())?;
-			println!("Generated a new keypair @ keypair.kp");
+			log::info!("Generated a new keypair @ keypair.kp");
 
 			kp = Some(generated);
 		}
