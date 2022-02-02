@@ -40,10 +40,13 @@ impl<T> Archive<T> {
 		match Arc::try_unwrap(self.handle) {
 			Ok(mutex) => match mutex.into_inner() {
 				Ok(inner) => Ok(inner),
-				Err(err) => Err(InternalError::OtherError(format!("[MutexError::PoisonError] {}", err))),
+				Err(err) => Err(InternalError::SyncError(format!(
+					"Trying to consume a poisoned mutex {}",
+					err
+				))),
 			},
-			Err(_) => Err(InternalError::OtherError(
-				"[Sync::ArcError] Cannot consume this archive as other references (ARC) to it exist".to_string(),
+			Err(_) => Err(InternalError::SyncError(
+				"Cannot consume this archive as other copy-references (ARC) to it exist".to_string(),
 			)),
 		}
 	}
@@ -189,9 +192,17 @@ where
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let handle = &self.handle;
 		{
-			handle.lock().unwrap().seek(SeekFrom::Start(entry.location))?;
+			let mut guard = match self.handle.lock() {
+				Ok(guard) => guard,
+				Err(_) => {
+					return Err(InternalError::SyncError(
+						"The Mutex in this Archive has been poisoned, an error occured somewhere".to_string(),
+					))
+				}
+			};
+
+			guard.seek(SeekFrom::Start(entry.location))?;
 		}
 
 		let offset = entry.offset as usize;
@@ -204,7 +215,16 @@ where
 		}
 
 		{
-			handle.lock().unwrap().read_exact(raw.as_mut_slice())?;
+			let mut guard = match self.handle.lock() {
+				Ok(guard) => guard,
+				Err(_) => {
+					return Err(InternalError::SyncError(
+						"The Mutex in this Archive has been poisoned, an error occured somewhere".to_string(),
+					))
+				}
+			};
+
+			guard.read_exact(raw.as_mut_slice())?;
 		}
 
 		Ok(raw)
@@ -303,21 +323,27 @@ impl<T: Read + Seek + Send + Sync> Archive<T> {
 		&mut self, items: I,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {
 		use rayon::prelude::*;
-		let processed = Arc::new(Mutex::new(HashMap::new()));
+		let mut processed = HashMap::new();
+		let (sender, receiver) = std::sync::mpsc::sync_channel(20);
 
 		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
-			processed.lock().unwrap().insert(id.to_string(), self.fetch(id));
-			Ok(())
+			let resource = self.fetch(id);
+			let id = id.to_string();
+
+			if let Err(err) = sender.send((id, resource)) {
+				Err(InternalError::SyncError(format!(
+					"Unable to send data over channel {}",
+					err
+				)))
+			} else {
+				Ok(())
+			}
 		})?;
 
-		match Arc::try_unwrap(processed) {
-			Ok(mutex) => match mutex.into_inner() {
-				Ok(inner) => Ok(inner),
-				Err(err) => Err(InternalError::OtherError(format!("[MutexError::PoisonError] {}", err))),
-			},
-			Err(_) => Err(InternalError::OtherError(
-				"[Sync::ArcError] Cannot consume this HashMap as other references (ARC) to it exist".to_string(),
-			)),
-		}
+		receiver.try_iter().for_each(|(id, res)| {
+			processed.insert(id, res);
+		});
+
+		Ok(processed)
 	}
 }

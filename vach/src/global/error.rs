@@ -30,6 +30,8 @@ pub enum InternalError {
 	DeCompressionError(String),
 	/// An error that is thrown when the current loader attempts to load an incompatible version, contains the incompatible version
 	IncompatibleArchiveVersionError(u16),
+	/// An error that is thrown when if `Mutex` is poisoned, when a message doesn't go though an `mspc::sync_channel` or other sync related issues
+	SyncError(String),
 }
 
 impl fmt::Display for InternalError {
@@ -46,7 +48,8 @@ impl fmt::Display for InternalError {
 			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
 			Self::LeafAppendError(id) => write!(f, "[VachError::LeafAppendError] A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", id),
 			Self::DeCompressionError(err) => write!(f, "[VachError::DeCompressionError] Encountered an error during compression or decompression: {}", err),
-			Self::IncompatibleArchiveVersionError(version) => write!(f, "The provided archive source has version: {}. While the loader has a spec-version: {}. The current loader is incompatible!", version, crate::VERSION)
+			Self::IncompatibleArchiveVersionError(version) => write!(f, "The provided archive source has version: {}. While the loader has a spec-version: {}. The current loader is incompatible!", version, crate::VERSION),
+			Self::SyncError(err) => write!(f, "[VachError::SyncError] {}", err),
 		}
 	}
 }
