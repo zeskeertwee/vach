@@ -16,6 +16,7 @@ pub fn gen_keypair() -> esdalek::Keypair {
 pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<esdalek::Keypair> {
 	let mut keypair_bytes = [0; crate::KEYPAIR_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;
+
 	Ok(match esdalek::Keypair::from_bytes(&keypair_bytes) {
 		Ok(kep) => kep,
 		Err(err) => return Err(InternalError::ParseError(err.to_string())),
