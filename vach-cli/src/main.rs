@@ -6,6 +6,7 @@ mod utils;
 
 // NOTE: Unwrapping in a CLI is a no-no. Since throwing Rust developer errors at average users is mental overload
 fn main() {
+	pretty_env_logger::init();
 	use keys::key_names;
 
 	// Build CLI
@@ -29,6 +30,6 @@ fn main() {
 	};
 
 	if let Err(err) = res {
-		println!("[VACH-CLI ERROR]: {}", err)
+		log::error!("{}", err)
 	};
 }

@@ -84,7 +84,7 @@ impl CommandTrait for Evaluator {
 
 		// Delete original archive
 		if truncate {
-			println!("Truncating original archive @ {}", &input_path);
+			log::info!("Truncating original archive @ {}", &input_path);
 			std::fs::remove_file(input_path)?;
 		};
 
