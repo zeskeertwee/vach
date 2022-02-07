@@ -126,7 +126,7 @@ impl CommandTrait for Evaluator {
 		if let Some(path) = args.value_of(key_names::SOURCE) {
 			// Storing the path of the archive for reporting purposes
 			archive_path = path;
-			log::trace!(format!("{}", archive_path));
+			log::trace!("{}", format!("{}", archive_path));
 
 			let archive_file = File::open(PathBuf::from(path))?;
 			archive = Some(Archive::from_handle(archive_file)?);

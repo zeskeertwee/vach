@@ -25,13 +25,23 @@ use ed25519_dalek as esdalek;
 /// It can be customized with the `HeaderConfig` struct.
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
-#[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,
 	decryptor: Option<Encryptor>,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
+}
+
+impl<T> std::fmt::Debug for Archive<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Archive")
+			.field("header", &self.header)
+			.field("decryptor", &self.decryptor)
+			.field("key", &self.key)
+			.field("entries", &self.entries)
+			.finish()
+	}
 }
 
 impl<T> Archive<T> {
@@ -317,14 +327,16 @@ where
 impl<T: Read + Seek + Send + Sync> Archive<T> {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
-	pub fn fetch_batch<'a, I: Iterator<Item = &'a str> + Send + Sync>(
+	pub fn fetch_batch<'a, I: Iterator<Item = S> + Send + Sync, S: Send + Sync + Into<&'a str>>(
 		&mut self, items: I,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {
 		use rayon::prelude::*;
+
 		let mut processed = HashMap::new();
-		let (sender, receiver) = std::sync::mpsc::sync_channel(20);
+		let (sender, receiver) = crossbeam_channel::unbounded();
 
 		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
+			let id = id.into();
 			let resource = self.fetch(id);
 			let id = id.to_string();
 

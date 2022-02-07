@@ -494,30 +494,42 @@ fn test_compressors() -> InternalResult<()> {
 #[cfg(feature = "multithreaded")]
 fn test_batch_fetching() -> InternalResult<()> {
 	// Define input constants
-	const INPUT_LEN: usize = 512;
-	let mut input = [12u8; INPUT_LEN];
+	const INPUT_LEN: usize = 64;
+	let mut input = [0u8; INPUT_LEN];
 	input.iter_mut().for_each(|i| *i = rand::random::<u8>());
 
 	let mut target = Cursor::new(vec![]);
 	let mut builder = Builder::new();
 
 	// Define and queue data
-	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("LZ4"))?;
-	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("BROTLI"))?;
-	builder.add_leaf(Leaf::from_handle(input.as_slice()).id("SNAPPY"))?;
+	let mut ids = vec![];
+
+	for i in 0..50 {
+		let id = format!("ID {}", i);
+		ids.push(id);
+
+		builder.add(&input[..], ids[i].as_str())?;
+	}
+
+	ids.push("ERRORS".to_string());
 
 	// Process data
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
 	let mut archive = Archive::from_handle(&mut target)?;
-	let mut resources = archive.fetch_batch(["LZ4", "BROTLI", "SNAPPY", "NON_EXISTENT"].into_iter())?;
+	let mut resources = archive.fetch_batch(ids.iter().map(|id| id.as_str()))?;
 
 	// Tests and checks
-	assert!(resources.get("NON_EXISTENT").is_some());
-	match resources.get("NON_EXISTENT").unwrap() {
+	assert!(resources.get("NON_EXISTENT").is_none());
+	assert!(resources.get("ERRORS").is_some());
+
+	match resources.get("ERRORS").unwrap() {
 		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
 		Err(err) => match err {
-			&InternalError::MissingResourceError(_) => {}
+			&InternalError::MissingResourceError(_) => {
+				resources.remove("ERRORS");
+				drop(ids);
+			}
 
 			specific => {
 				return Err(InternalError::OtherError(format!(
@@ -526,20 +538,11 @@ fn test_batch_fetching() -> InternalResult<()> {
 				)))
 			}
 		},
+	};
+
+	for (_, res) in resources {
+		assert_eq!(res?.data.as_slice(), &input[..]);
 	}
-
-	let d1 = resources.remove("LZ4").unwrap().unwrap();
-	let d2 = resources.remove("BROTLI").unwrap().unwrap();
-	let d3 = resources.remove("SNAPPY").unwrap().unwrap();
-
-	// Identity tests
-	assert_eq!(d1.data.len(), INPUT_LEN);
-	assert_eq!(d2.data.len(), INPUT_LEN);
-	assert_eq!(d3.data.len(), INPUT_LEN);
-
-	assert!(&d1.data[..] == &input);
-	assert!(&d2.data[..] == &input);
-	assert!(&d3.data[..] == &input);
 
 	Ok(())
 }
