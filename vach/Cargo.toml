@@ -36,6 +36,5 @@ rayon = { version = "1.5.1", optional = true }
 crossbeam-channel = { version = "0.5.2", optional = true }
 
 [features]
-default = ["compression"]
 multithreaded = ["rayon", "crossbeam-channel"]
 compression = ["snap", "lz4_flex", "brotli"]

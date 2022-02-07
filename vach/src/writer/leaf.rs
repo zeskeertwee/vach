@@ -10,6 +10,7 @@ use std::{io::Read, fmt};
 /// Configures how [`Leaf`]s should be compressed.
 /// Default is `CompressMode::Never`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg(feature = "compression")]
 pub enum CompressMode {
 	/// The data will always be compressed
 	Always,
@@ -19,6 +20,7 @@ pub enum CompressMode {
 	Never,
 }
 
+#[cfg(feature = "compression")]
 impl Default for CompressMode {
 	fn default() -> CompressMode {
 		CompressMode::Never
@@ -49,6 +51,7 @@ pub struct Leaf<'a> {
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
 	/// How a [`Leaf`] should be compressed
+	#[cfg(feature = "compression")]
 	pub compress: CompressMode,
 	/// The specific compression algorithm to use
 	#[cfg(feature = "compression")]
@@ -118,6 +121,7 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::default().compress(CompressMode::Always);
 	/// ```
+	#[cfg(feature = "compression")]
 	pub fn compress(mut self, compress: CompressMode) -> Self {
 		self.compress = compress;
 		self
@@ -189,6 +193,7 @@ impl<'a> Default for Leaf<'a> {
 			handle: Box::<&[u8]>::new(&[]),
 			flags: Flags::empty(),
 			content_version: 0,
+			#[cfg(feature = "compression")]
 			compress: CompressMode::Never,
 			encrypt: false,
 			sign: false,
@@ -205,11 +210,12 @@ impl<'a> fmt::Debug for Leaf<'a> {
 		dbg.field("handle", &"[Box<dyn io::Read>]")
 			.field("id", &self.id)
 			.field("content_version", &self.content_version)
-			.field("compress", &self.compress)
 			.field("flags", &self.flags)
 			.field("encrypt", &self.encrypt)
 			.field("sign", &self.sign);
 
+		#[cfg(feature = "compression")]
+		dbg.field("compress", &self.compress);
 		#[cfg(feature = "compression")]
 		dbg.field("compression_algo", &self.compression_algo);
 
