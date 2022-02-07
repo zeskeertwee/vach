@@ -84,7 +84,7 @@ impl Default for HeaderConfig {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Header {
 	pub magic: [u8; crate::MAGIC_LENGTH], // VfACH
 	pub flags: Flags,

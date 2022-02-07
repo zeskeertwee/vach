@@ -27,6 +27,7 @@ use ed25519_dalek as esdalek;
 /// It can be customized with the `HeaderConfig` struct.
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
+#[derive(Clone)]
 pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,

@@ -491,44 +491,22 @@ fn test_compressors() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "multithreaded")]
 fn test_batch_fetching() -> InternalResult<()> {
-	// Define input constants
-	const INPUT_LEN: usize = 64;
-	let mut input = [0u8; INPUT_LEN];
-	input.iter_mut().for_each(|i| *i = rand::random::<u8>());
-
-	let mut target = Cursor::new(vec![]);
-	let mut builder = Builder::new();
-
-	// Define and queue data
-	let mut ids = vec![];
-
-	for i in 0..50 {
-		let id = format!("ID {}", i);
-		ids.push(id);
-
-		builder.add(&input[..], ids[i].as_str())?;
-	}
-
-	ids.push("ERRORS".to_string());
-
-	// Process data
-	builder.dump(&mut target, &BuilderConfig::default())?;
-
+	let mut target = File::open(SIMPLE_TARGET)?;
+	let entries = ["wasm", "greeting", "poem", "lorem", "song", "script", "NON_EXISTENT"];
 	let mut archive = Archive::from_handle(&mut target)?;
-	let mut resources = archive.fetch_batch(ids.iter().map(|id| id.as_str()))?;
+
+	let mut resources = archive.fetch_batch(entries.into_iter())?;
 
 	// Tests and checks
-	assert!(resources.get("NON_EXISTENT").is_none());
-	assert!(resources.get("ERRORS").is_some());
+	assert!(resources.get("NON_EXISTENT").is_some());
+	assert!(resources.get("ERRORS").is_none());
 
-	match resources.get("ERRORS").unwrap() {
+	match resources.get("NON_EXISTENT").unwrap() {
 		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
 		Err(err) => match err {
 			&InternalError::MissingResourceError(_) => {
-				resources.remove("ERRORS");
-				drop(ids);
+				resources.remove("NON_EXISTENT");
 			}
 
 			specific => {
@@ -540,8 +518,24 @@ fn test_batch_fetching() -> InternalResult<()> {
 		},
 	};
 
-	for (_, res) in resources {
-		assert_eq!(res?.data.as_slice(), &input[..]);
+	// Manual data assertions
+	let hello = resources.remove("greeting").unwrap()?;
+	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
+	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
+
+	let song = resources.remove("song").unwrap()?;
+	String::from_utf8(song.data).unwrap();
+
+	let resource = resources.remove("poem").unwrap()?;
+
+	// Windows bullshit
+	#[cfg(target_os = "windows")]
+	{
+		assert_eq!(resource.data.len(), 359);
+	}
+	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
+	{
+		assert_eq!(resource.data.len(), 345);
 	}
 
 	Ok(())
