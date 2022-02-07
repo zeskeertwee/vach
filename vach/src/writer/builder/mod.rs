@@ -1,4 +1,4 @@
-use std::io::{BufWriter, Write, Read, Seek, SeekFrom};
+use std::io::{BufWriter, Write, Seek, SeekFrom};
 use std::collections::HashSet;
 
 #[cfg(feature = "multithreaded")]
@@ -9,8 +9,17 @@ use std::sync::{
 
 mod config;
 pub use config::BuilderConfig;
-use super::leaf::{Leaf, CompressMode, HandleTrait};
+use super::leaf::{Leaf, HandleTrait};
+
+#[cfg(feature = "compression")]
 use crate::global::compressor::Compressor;
+
+#[cfg(feature = "compression")]
+use super::leaf::CompressMode;
+
+#[cfg(feature = "compression")]
+use std::io::Read;
+
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
 use crate::{
@@ -239,6 +248,7 @@ impl<'a> Builder<'a> {
 			let mut raw = Vec::new();
 
 			// Compression comes first
+			#[cfg(feature = "compression")]
 			match leaf.compress {
 				CompressMode::Never => {
 					leaf.handle.read_to_end(&mut raw)?;

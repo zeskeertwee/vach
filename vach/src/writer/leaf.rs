@@ -1,6 +1,10 @@
 use crate::{
-	global::{reg_entry::RegistryEntry, flags::Flags, compressor::CompressionAlgorithm},
+	global::{reg_entry::RegistryEntry, flags::Flags},
 };
+
+#[cfg(feature = "compression")]
+use crate::global::compressor::CompressionAlgorithm;
+
 use std::{io::Read, fmt};
 
 /// Configures how [`Leaf`]s should be compressed.
@@ -47,6 +51,7 @@ pub struct Leaf<'a> {
 	/// How a [`Leaf`] should be compressed
 	pub compress: CompressMode,
 	/// The specific compression algorithm to use
+	#[cfg(feature = "compression")]
 	pub compression_algo: CompressionAlgorithm,
 	/// The flags that will go into the archive write target.
 	pub flags: Flags,
@@ -60,16 +65,19 @@ pub struct Leaf<'a> {
 
 impl<'a> fmt::Debug for Leaf<'a> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("Leaf")
-			.field("handle", &"[Box<dyn io::Read>]")
+		let mut dbg = f.debug_struct("Leaf");
+		dbg.field("handle", &"[Box<dyn io::Read>]")
 			.field("id", &self.id)
 			.field("content_version", &self.content_version)
 			.field("compress", &self.compress)
 			.field("flags", &self.flags)
 			.field("encrypt", &self.encrypt)
-			.field("sign", &self.sign)
-			.field("compression_algo", &self.compression_algo)
-			.finish()
+			.field("sign", &self.sign);
+
+		#[cfg(feature = "compression")]
+		dbg.field("compression_algo", &self.compression_algo);
+
+		dbg.finish()
 	}
 }
 
@@ -83,9 +91,11 @@ impl<'a> Default for Leaf<'a> {
 			flags: Flags::empty(),
 			content_version: 0,
 			compress: CompressMode::Never,
-			compression_algo: CompressionAlgorithm::LZ4,
 			encrypt: false,
 			sign: false,
+
+			#[cfg(feature = "compression")]
+			compression_algo: CompressionAlgorithm::LZ4,
 		}
 	}
 }
@@ -200,6 +210,7 @@ impl<'a> Leaf<'a> {
 	}
 
 	/// Setter for the `compression_algo` field
+	#[cfg(feature = "compression")]
 	pub fn compression_algo(mut self, compression_algo: CompressionAlgorithm) -> Self {
 		self.compression_algo = compression_algo;
 		self

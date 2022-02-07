@@ -14,9 +14,11 @@ use crate::{
 		header::{Header, HeaderConfig},
 		reg_entry::RegistryEntry,
 		result::InternalResult,
-		compressor::{Compressor, CompressionAlgorithm},
 	},
 };
+
+#[cfg(feature = "compression")]
+use crate::global::compressor::{Compressor, CompressionAlgorithm};
 
 use ed25519_dalek as esdalek;
 
@@ -113,6 +115,7 @@ impl<T> Archive<T> {
 		}
 
 		// 2: Decompression layer
+		#[cfg(feature = "compression")]
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 			let mut buffer = vec![];
 

@@ -1,3 +1,5 @@
+#![cfg(feature = "compression")]
+
 use std::{
 	fmt::Debug,
 	io::{self, Read, Write},

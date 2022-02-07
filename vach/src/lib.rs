@@ -191,18 +191,24 @@ pub mod crypto {
 pub mod builder {
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
-		leaf::{Leaf, CompressMode},
+		leaf::Leaf,
 	};
-	pub use crate::global::{error::InternalError, compressor::CompressionAlgorithm, result::InternalResult, flags::Flags};
+	pub use crate::global::{error::InternalError, result::InternalResult, flags::Flags};
+
+	#[cfg(feature = "compression")]
+	pub use crate::writer::leaf::CompressMode;
+	#[cfg(feature = "compression")]
+	pub use crate::global::compressor::CompressionAlgorithm;
 }
 
 /// Loader-based logic and data-structures
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
-		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult,
-		compressor::CompressionAlgorithm, flags::Flags,
+		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult, flags::Flags,
 	};
+	#[cfg(feature = "compression")]
+	pub use crate::global::compressor::CompressionAlgorithm;
 }
 
 /// Some utility functions to keep you happy
