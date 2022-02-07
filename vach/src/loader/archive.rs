@@ -210,7 +210,7 @@ where
 				Ok(guard) => guard,
 				Err(_) => {
 					return Err(InternalError::SyncError(
-						"The Mutex in this Archive has been poisoned, an error occured somewhere".to_string(),
+						"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
 					))
 				}
 			};
@@ -277,9 +277,6 @@ where
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
 	pub fn fetch(&self, id: &str) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
-		let mut buffer = Vec::new();
-		self.fetch_write(id, &mut buffer)?;
-
 		if let Some(entry) = self.fetch_entry(id) {
 			let raw = self.fetch_raw(&entry)?;
 
