@@ -25,13 +25,23 @@ use ed25519_dalek as esdalek;
 /// It can be customized with the `HeaderConfig` struct.
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
-#[derive(Debug)]
 pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,
 	decryptor: Option<Encryptor>,
 	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
+}
+
+impl<T> std::fmt::Debug for Archive<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		f.debug_struct("Archive")
+			.field("header", &self.header)
+			.field("decryptor", &self.decryptor)
+			.field("key", &self.key)
+			.field("entries", &self.entries)
+			.finish()
+	}
 }
 
 impl<T> Archive<T> {
