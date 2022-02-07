@@ -324,7 +324,10 @@ where
 }
 
 #[cfg(feature = "multithreaded")]
-impl<T: Read + Seek + Send + Sync> Archive<T> {
+impl<T> Archive<T>
+where
+	T: Read + Seek + Send + Sync,
+{
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
 	pub fn fetch_batch<'a, I: Iterator<Item = S> + Send + Sync, S: Send + Sync + Into<&'a str>>(

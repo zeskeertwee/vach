@@ -19,10 +19,15 @@ readme = "README.md"
 include = ["Cargo.toml", "Cargo.lock", "src/*"]
 
 [dependencies]
+# Authentication dependencies
 ed25519-dalek = "1.0.1"
-lz4_flex = "0.9.0"
 rand = "0.7.0"
+
+# Encryption dependencies
 aes-gcm = { version = "0.9.4", features = ["aes"] }
+
+# Compression dependencies
+lz4_flex = "0.9.0"
 snap = "1.0.5"
 brotli = "3.3.2"
 
