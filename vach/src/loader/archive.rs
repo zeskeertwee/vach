@@ -317,7 +317,7 @@ where
 impl<T: Read + Seek + Send + Sync> Archive<T> {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
-	pub fn fetch_batch<'a, I: Iterator<Item = &'a str> + Send + Sync>(
+	pub fn fetch_batch<'a, I: Iterator<Item = S> + Send + Sync, S: Send + Sync + Into<&'a str>>(
 		&mut self, items: I,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {
 		use rayon::prelude::*;
@@ -325,6 +325,7 @@ impl<T: Read + Seek + Send + Sync> Archive<T> {
 		let (sender, receiver) = std::sync::mpsc::sync_channel(20);
 
 		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
+			let id = id.into();
 			let resource = self.fetch(id);
 			let id = id.to_string();
 
