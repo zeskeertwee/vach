@@ -338,9 +338,9 @@ impl<T: Read + Seek + Send + Sync> Archive<T> {
 		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
 			let id = id.into();
 			let resource = self.fetch(id);
-			let id = id.to_string();
 
-			if let Err(err) = sender.send((id, resource)) {
+			let string = id.to_string();
+			if let Err(err) = sender.send((string, resource)) {
 				Err(InternalError::SyncError(format!(
 					"Unable to send data over channel {}",
 					err

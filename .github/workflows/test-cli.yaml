@@ -10,12 +10,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  single-threaded-tests:
+  cli-test:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v2
       - name: Change directory into cli directory
         run: cd vach-cli/test_data
+      - name: List what directory we are in
+        run: pwd && ls .
+      - name: Give executive permissions to test script
+        run: chmod +x test.sh
       - name: Run CLI tests
         run: sh test.sh
