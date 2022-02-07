@@ -331,10 +331,9 @@ impl<T: Read + Seek + Send + Sync> Archive<T> {
 		&mut self, items: I,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {
 		use rayon::prelude::*;
-		use crossbeam::channel;
 
 		let mut processed = HashMap::new();
-		let (sender, receiver) = channel::unbounded();
+		let (sender, receiver) = crossbeam_channel::unbounded();
 
 		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
 			let id = id.into();

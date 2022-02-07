@@ -28,7 +28,7 @@ brotli = "3.3.2"
 
 # Multithreaded feature
 rayon = { version = "1.5.1", optional = true }
-crossbeam = { version = "0.8.1", optional = true }
+crossbeam-channel = { version = "0.5.2", optional = true }
 
 [features]
-multithreaded = ["rayon", "crossbeam"]
+multithreaded = ["rayon", "crossbeam-channel"]
