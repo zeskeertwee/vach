@@ -15,11 +15,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Change directory into cli directory
-        run: cd vach-cli/test_data
-      - name: List what directory we are in
-        run: pwd && ls .
-      - name: Give executive permissions to test script
-        run: chmod +x test.sh
+        run: chmod +x ./vach-cli/test_data/test.sh
       - name: Run CLI tests
-        run: sh test.sh
+        run: sh ./vach-cli/test_data/test.sh
