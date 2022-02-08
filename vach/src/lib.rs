@@ -150,6 +150,10 @@ pub(crate) mod writer;
 
 // Re-exports
 pub use rand;
+#[cfg(feature = "multithreaded")]
+pub use rayon;
+#[cfg(feature = "multithreaded")]
+pub use num_cpus;
 
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;

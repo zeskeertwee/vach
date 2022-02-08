@@ -13,15 +13,18 @@ use snap;
 use brotli;
 
 #[derive(Debug)]
+/// Exported utility compressor used by `vach`
 pub struct Compressor<T: Read> {
 	data: T,
 }
 
 impl<'a, T: Read> Compressor<T> {
-	pub(crate) fn new(data: T) -> Compressor<T> {
+	/// Construct a new compressor over a read handle
+	pub fn new(data: T) -> Compressor<T> {
 		Compressor { data }
 	}
-	pub(crate) fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
+	/// Pass in a compression algorithm to use, sit back and let the compressor do it's job
+	pub fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut compressor = lz4::frame::FrameEncoder::new(output);
@@ -47,6 +50,7 @@ impl<'a, T: Read> Compressor<T> {
 			)),
 		}
 	}
+	/// Pass in a compression algorithm to use, sit back and let the decompressor do it's job. That is if the compressed data *is* compressed with the adjacent algorithm
 	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
