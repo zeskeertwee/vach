@@ -331,33 +331,57 @@ where
 {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
-	pub fn fetch_batch<'a, I: Iterator<Item = S> + Send + Sync, S: Send + Sync + Into<&'a str>>(
-		&mut self, items: I,
-	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {
+	pub fn fetch_batch<'a, I, S>(
+		&mut self, items: I, num_threads: Option<usize>,
+	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
+	where
+		I: Iterator<Item = S> + Send + Sync,
+		S: Send + Sync + Into<&'a str>,
+	{
 		use rayon::prelude::*;
 
-		let mut processed = HashMap::new();
-		let (sender, receiver) = crossbeam_channel::unbounded();
+		// Prepare mutexes
+		let processed = Arc::new(Mutex::new(HashMap::new()));
+		let queue = Arc::new(Mutex::new(items));
 
-		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
-			let id = id.into();
-			let resource = self.fetch(id);
+		let num_threads = match num_threads {
+			Some(num) => num,
+			None => num_cpus::get(),
+		};
 
-			let string = id.to_string();
-			if let Err(err) = sender.send((string, resource)) {
-				Err(InternalError::SyncError(format!(
-					"Unable to send data over channel {}",
-					err
-				)))
-			} else {
-				Ok(())
+		(0..num_threads).par_bridge().try_for_each(|_| -> InternalResult<()> {
+			let mut wait_queue = vec![];
+
+			// Query next item on queue and process
+			while let Some(id) = queue.lock().unwrap().next() {
+				let id = id.into();
+				let resource = self.fetch(id);
+
+				let string = id.to_string();
+				if let Ok(mut guard) = processed.try_lock() {
+					guard.insert(string, resource);
+
+					// The lock is available, so we pop everything off the queue
+					for _ in 0..wait_queue.len() {
+						let (id, res) = wait_queue.pop().unwrap();
+						guard.insert(id, res);
+					}
+				} else {
+					wait_queue.push((string, resource));
+				}
 			}
+
+			Ok(())
 		})?;
 
-		receiver.try_iter().for_each(|(id, res)| {
-			processed.insert(id, res);
-		});
-
-		Ok(processed)
+		match Arc::try_unwrap(processed) {
+			Ok(mutex) => match mutex.into_inner() {
+				Ok(inner) => Ok(inner),
+				Err(err) => Err(InternalError::SyncError(format!("Mutex has been poisoned! {}", err))),
+			},
+			Err(_) => Err(InternalError::SyncError(
+				"Cannot consume this HashMap as other references (ARC) to it exist".to_string(),
+			)),
+		}
 	}
 }
