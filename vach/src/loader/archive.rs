@@ -233,7 +233,7 @@ where
 				Ok(guard) => guard,
 				Err(_) => {
 					return Err(InternalError::SyncError(
-						"The Mutex in this Archive has been poisoned, an error occured somewhere".to_string(),
+						"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
 					))
 				}
 			};
