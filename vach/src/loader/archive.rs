@@ -349,7 +349,7 @@ where
 			None => num_cpus::get(),
 		};
 
-		(0..num_threads).par_bridge().try_for_each(|_| -> InternalResult<()> {
+		(0..num_threads).into_par_iter().try_for_each(|_| -> InternalResult<()> {
 			let mut wait_queue = vec![];
 
 			// Query next item on queue and process
