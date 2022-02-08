@@ -223,8 +223,8 @@ where
 		let mut raw = Vec::with_capacity(offset);
 
 		// This is ok since we never **read** from the vector
-		#[allow(clippy::uninit_vec)]
 		unsafe {
+			#[allow(clippy::uninit_vec)]
 			raw.set_len(offset);
 		}
 
@@ -349,30 +349,32 @@ where
 			None => num_cpus::get(),
 		};
 
-		(0..num_threads).into_par_iter().try_for_each(|_| -> InternalResult<()> {
-			let mut wait_queue = vec![];
+		(0..num_threads)
+			.into_par_iter()
+			.try_for_each(|_| -> InternalResult<()> {
+				let mut wait_queue = vec![];
 
-			// Query next item on queue and process
-			while let Some(id) = queue.lock().unwrap().next() {
-				let id = id.into();
-				let resource = self.fetch(id);
+				// Query next item on queue and process
+				while let Some(id) = queue.lock().unwrap().next() {
+					let id = id.into();
+					let resource = self.fetch(id);
 
-				let string = id.to_string();
-				if let Ok(mut guard) = processed.try_lock() {
-					guard.insert(string, resource);
+					let string = id.to_string();
+					if let Ok(mut guard) = processed.try_lock() {
+						guard.insert(string, resource);
 
-					// The lock is available, so we pop everything off the queue
-					for _ in 0..wait_queue.len() {
-						let (id, res) = wait_queue.pop().unwrap();
-						guard.insert(id, res);
+						// The lock is available, so we pop everything off the queue
+						for _ in 0..wait_queue.len() {
+							let (id, res) = wait_queue.pop().unwrap();
+							guard.insert(id, res);
+						}
+					} else {
+						wait_queue.push((string, resource));
 					}
-				} else {
-					wait_queue.push((string, resource));
 				}
-			}
 
-			Ok(())
-		})?;
+				Ok(())
+			})?;
 
 		match Arc::try_unwrap(processed) {
 			Ok(mutex) => match mutex.into_inner() {
