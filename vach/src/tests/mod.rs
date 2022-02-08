@@ -491,22 +491,43 @@ fn test_compressors() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "multithreaded")]
 fn test_batch_fetching() -> InternalResult<()> {
-	let mut target = File::open(SIMPLE_TARGET)?;
-	let entries = ["wasm", "greeting", "poem", "lorem", "song", "script", "NON_EXISTENT"];
-	let mut archive = Archive::from_handle(&mut target)?;
+	// Define input constants
+	const INPUT_LEN: usize = 8;
+	const INPUT: [u8; INPUT_LEN] = [69u8; INPUT_LEN];
 
-	let mut resources = archive.fetch_batch(entries.into_iter())?;
+	let mut target = Cursor::new(vec![]);
+	let mut builder = Builder::new();
+
+	// Define and queue data
+	let mut ids = vec![];
+
+	for i in 0..70 {
+		let id = format!("ID {}", i);
+		ids.push(id);
+
+		builder.add(&INPUT[..], ids[i].as_str())?;
+	}
+
+	ids.push("ERRORS".to_string());
+
+	// Process data
+	builder.dump(&mut target, &BuilderConfig::default())?;
+
+	let mut archive = Archive::from_handle(&mut target)?;
+	let mut resources = archive.fetch_batch(ids.iter().map(|id| id.as_str()), None)?;
 
 	// Tests and checks
-	assert!(resources.get("NON_EXISTENT").is_some());
-	assert!(resources.get("ERRORS").is_none());
+	assert!(resources.get("NON_EXISTENT").is_none());
+	assert!(resources.get("ERRORS").is_some());
 
-	match resources.get("NON_EXISTENT").unwrap() {
+	match resources.get("ERRORS").unwrap() {
 		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
 		Err(err) => match err {
 			&InternalError::MissingResourceError(_) => {
-				resources.remove("NON_EXISTENT");
+				resources.remove("ERRORS");
+				drop(ids);
 			}
 
 			specific => {
@@ -518,24 +539,8 @@ fn test_batch_fetching() -> InternalResult<()> {
 		},
 	};
 
-	// Manual data assertions
-	let hello = resources.remove("greeting").unwrap()?;
-	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
-	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
-
-	let song = resources.remove("song").unwrap()?;
-	String::from_utf8(song.data).unwrap();
-
-	let resource = resources.remove("poem").unwrap()?;
-
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(resource.data.len(), 359);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(resource.data.len(), 345);
+	for (_, res) in resources {
+		assert_eq!(res?.data.as_slice(), &INPUT[..]);
 	}
 
 	Ok(())
