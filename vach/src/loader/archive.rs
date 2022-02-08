@@ -206,19 +206,6 @@ where
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		{
-			let mut guard = match self.handle.lock() {
-				Ok(guard) => guard,
-				Err(_) => {
-					return Err(InternalError::SyncError(
-						"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
-					))
-				}
-			};
-
-			guard.seek(SeekFrom::Start(entry.location))?;
-		}
-
 		let offset = entry.offset as usize;
 		let mut raw = Vec::with_capacity(offset);
 
@@ -238,6 +225,7 @@ where
 				}
 			};
 
+			guard.seek(SeekFrom::Start(entry.location))?;
 			guard.read_exact(raw.as_mut_slice())?;
 		}
 
@@ -349,6 +337,7 @@ where
 			None => num_cpus::get(),
 		};
 
+		// Creates a thread-pool`
 		(0..num_threads)
 			.into_par_iter()
 			.try_for_each(|_| -> InternalResult<()> {
