@@ -210,8 +210,8 @@ where
 		let mut raw = Vec::with_capacity(offset);
 
 		// This is ok since we never **read** from the vector
+		#[allow(clippy::uninit_vec)]
 		unsafe {
-			#[allow(clippy::uninit_vec)]
 			raw.set_len(offset);
 		}
 
