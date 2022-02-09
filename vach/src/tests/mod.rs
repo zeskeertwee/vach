@@ -2,11 +2,7 @@
 
 #![cfg(test)]
 // Boring, average every day contemporary imports
-use std::{
-	fs::File,
-	io::{Read, Cursor},
-	str,
-};
+use std::{fs::File, io::Read, str};
 
 use crate::{global::result::InternalResult, prelude::*};
 
@@ -112,6 +108,7 @@ fn header_config() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "compression")]
 fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
@@ -145,6 +142,7 @@ fn builder_no_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "compression")]
 fn fetch_no_signature() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
@@ -200,10 +198,7 @@ fn builder_with_signature() -> InternalResult<()> {
 
 	build_config.load_keypair(KEYPAIR.as_slice())?;
 
-	builder.add_dir(
-		"test_data",
-		Some(&Leaf::default().compress(CompressMode::Detect).sign(true)),
-	)?;
+	builder.add_dir("test_data", Some(&Leaf::default().sign(true)))?;
 
 	// Tests conditional signing
 	builder.add_leaf(Leaf::default().id("not_signed").sign(false))?;
@@ -310,6 +305,7 @@ fn edcryptor_test() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "compression")]
 fn builder_with_encryption() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
@@ -381,28 +377,10 @@ fn consolidated_example() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
-	let template = Leaf::default()
-		.encrypt(true)
-		.version(59)
-		.compression_algo(CompressionAlgorithm::Snappy);
-	builder.add_leaf(
-		Leaf::from_handle(data_1)
-			.id("d1")
-			.compress(CompressMode::Always)
-			.template(&template),
-	)?;
-	builder.add_leaf(
-		Leaf::from_handle(data_2)
-			.id("d2")
-			.compress(CompressMode::Never)
-			.template(&template),
-	)?;
-	builder.add_leaf(
-		Leaf::from_handle(data_3)
-			.id("d3")
-			.compress(CompressMode::Detect)
-			.template(&template),
-	)?;
+	let template = Leaf::default().encrypt(true).version(59);
+	builder.add_leaf(Leaf::from_handle(data_1).id("d1").template(&template))?;
+	builder.add_leaf(Leaf::from_handle(data_2).id("d2").template(&template))?;
+	builder.add_leaf(Leaf::from_handle(data_3).id("d3").template(&template))?;
 
 	// Dump data
 	let then = Instant::now();
@@ -417,7 +395,6 @@ fn consolidated_example() -> InternalResult<()> {
 
 	let then = Instant::now();
 	let archive = Archive::with_config(target, &config)?;
-	dbg!(archive.entries());
 
 	println!("Archive initialization took: {}us", then.elapsed().as_micros());
 
@@ -434,7 +411,9 @@ fn consolidated_example() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "compression")]
 fn test_compressors() -> InternalResult<()> {
+	use std::io::Cursor;
 	const INPUT_LEN: usize = 4096;
 
 	let input = [12u8; INPUT_LEN];
@@ -493,6 +472,8 @@ fn test_compressors() -> InternalResult<()> {
 #[test]
 #[cfg(feature = "multithreaded")]
 fn test_batch_fetching() -> InternalResult<()> {
+	use std::io::Cursor;
+
 	// Define input constants
 	const INPUT_LEN: usize = 8;
 	const INPUT: [u8; INPUT_LEN] = [69u8; INPUT_LEN];
@@ -503,7 +484,7 @@ fn test_batch_fetching() -> InternalResult<()> {
 	// Define and queue data
 	let mut ids = vec![];
 
-	for i in 0..70 {
+	for i in 0..120 {
 		let id = format!("ID {}", i);
 		ids.push(id);
 
@@ -515,7 +496,7 @@ fn test_batch_fetching() -> InternalResult<()> {
 	// Process data
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let mut archive = Archive::from_handle(&mut target)?;
+	let mut archive = Archive::from_handle(target)?;
 	let mut resources = archive.fetch_batch(ids.iter().map(|id| id.as_str()), None)?;
 
 	// Tests and checks
