@@ -320,6 +320,7 @@ where
 {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
+	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
 	pub fn fetch_batch<'a, I, S>(
 		&mut self, items: I, num_threads: Option<usize>,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>

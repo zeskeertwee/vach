@@ -14,6 +14,7 @@ use brotli;
 
 #[derive(Debug)]
 /// Exported utility compressor used by `vach`
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub struct Compressor<T: Read> {
 	data: T,
 }
@@ -76,6 +77,7 @@ impl<'a, T: Read> Compressor<T> {
 }
 
 /// Allows the user to specify which of three `Compression Algorithms` to use.
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 #[derive(Clone, Copy, Debug)]
 pub enum CompressionAlgorithm {
 	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced

@@ -11,6 +11,7 @@ use std::{io::Read, fmt};
 /// Default is `CompressMode::Never`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg(feature = "compression")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub enum CompressMode {
 	/// The data will always be compressed
 	Always,
@@ -52,8 +53,10 @@ pub struct Leaf<'a> {
 	pub content_version: u8,
 	/// How a [`Leaf`] should be compressed
 	#[cfg(feature = "compression")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	pub compress: CompressMode,
 	/// The specific compression algorithm to use
+	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	#[cfg(feature = "compression")]
 	pub compression_algo: CompressionAlgorithm,
 	/// The flags that will go into the archive write target.
@@ -122,6 +125,7 @@ impl<'a> Leaf<'a> {
 	/// let leaf = Leaf::default().compress(CompressMode::Always);
 	/// ```
 	#[cfg(feature = "compression")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	pub fn compress(mut self, compress: CompressMode) -> Self {
 		self.compress = compress;
 		self

@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::manual_map)]
 #![deny(missing_docs)]
@@ -150,8 +151,10 @@ pub(crate) mod writer;
 
 // Re-exports
 pub use rand;
+
 #[cfg(feature = "multithreaded")]
 pub use rayon;
+
 #[cfg(feature = "multithreaded")]
 pub use num_cpus;
 
