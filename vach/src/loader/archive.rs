@@ -326,7 +326,7 @@ where
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
 	where
 		I: Iterator<Item = S> + Send + Sync,
-		S: Send + Sync + Into<&'a str>,
+		S: Into<&'a str>,
 	{
 		use rayon::prelude::*;
 
