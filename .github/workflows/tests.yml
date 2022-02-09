@@ -21,7 +21,7 @@ jobs:
       - name: Build
         run: cargo build
       - name: Run tests
-        run: cargo test -p vach-assets-manager --verbose -- --test-threads=1 --nocapture
+        run: cargo test --verbose -- --test-threads=1 --nocapture
         env:
           RUST_LOG: trace
   multithreaded-tests:
