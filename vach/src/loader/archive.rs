@@ -222,9 +222,7 @@ where
 			let reader_ref = &mut *guard;
 			let mut take = reader_ref.take(entry.offset);
 
-			dbg!(&raw); // Empty buffer
 			take.read_to_end(&mut raw)?;
-			dbg!(&raw); // Should be populated with data, but acts randomly. Now it reads data or just writes zeroes at random
 		}
 
 		Ok(raw)
