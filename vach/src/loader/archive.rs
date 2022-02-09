@@ -206,7 +206,7 @@ where
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let mut raw = vec![0; entry.offset as usize];
+		let mut raw = vec![69; entry.offset as usize];
 
 		{
 			let mut guard = match self.handle.lock() {
@@ -220,9 +220,9 @@ where
 
 			guard.seek(SeekFrom::Start(entry.location))?;
 
-			dbg!(&raw);
+			dbg!(&raw); // Full of 69s
 			guard.read_exact(raw.as_mut_slice())?;
-			dbg!(&raw);
+			dbg!(&raw); // Should be populated with data, but acts randomly. Reads zeroes, 69s (reading somehow didn't happen) or works (data is read into buffer)
 		}
 
 		Ok(raw)
