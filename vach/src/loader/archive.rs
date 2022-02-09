@@ -219,7 +219,10 @@ where
 			};
 
 			guard.seek(SeekFrom::Start(entry.location))?;
+
+			dbg!(&raw);
 			guard.read_exact(raw.as_mut_slice())?;
+			dbg!(&raw);
 		}
 
 		Ok(raw)
