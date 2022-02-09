@@ -206,14 +206,7 @@ where
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let offset = entry.offset as usize;
-		let mut raw = Vec::with_capacity(offset);
-
-		// This is ok since we never **read** from the vector
-		#[allow(clippy::uninit_vec)]
-		unsafe {
-			raw.set_len(offset);
-		}
+		let mut raw = vec![0; entry.offset as usize];
 
 		{
 			let mut guard = match self.handle.lock() {
