@@ -103,15 +103,15 @@ impl<T> Archive<T> {
 								"Unable to decrypt resource: {}. Error: {}",
 								id, err
 							)));
-						}
+						},
 					};
-				}
+				},
 				None => {
 					return Err(InternalError::NoKeypairError(format!(
 						"Encountered encrypted Resource: {} but no decryption key(public key) was provided",
 						id
 					)))
-				}
+				},
 			}
 		}
 
@@ -220,7 +220,7 @@ where
 					return Err(InternalError::SyncError(
 						"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
 					))
-				}
+				},
 			};
 
 			guard.seek(SeekFrom::Start(entry.location))?;

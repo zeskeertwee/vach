@@ -32,19 +32,19 @@ impl<'a, T: Read> Compressor<T> {
 				compressor.finish()?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Snappy => {
 				let mut compressor = snap::read::FrameEncoder::new(&mut self.data);
 				io::copy(&mut compressor, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
 				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
 				io::copy(&mut compressor, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Brotli(_) => Err(InternalError::DeCompressionError(
 				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
 			)),
@@ -58,19 +58,19 @@ impl<'a, T: Read> Compressor<T> {
 				io::copy(&mut rdr, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Snappy => {
 				let mut rdr = snap::read::FrameDecoder::new(&mut self.data);
 				io::copy(&mut rdr, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
 				io::copy(&mut rdr, output)?;
 
 				Ok(())
-			}
+			},
 		}
 	}
 }

@@ -67,10 +67,10 @@ impl fmt::Display for HeaderConfig {
 			match str::from_utf8(&self.magic) {
 				Ok(magic) => {
 					magic
-				}
+				},
 				Err(_) => {
 					return fmt::Result::Err(fmt::Error);
-				}
+				},
 			},
 			self.public_key.is_some()
 		)

@@ -509,14 +509,14 @@ fn test_batch_fetching() -> InternalResult<()> {
 			&InternalError::MissingResourceError(_) => {
 				resources.remove("ERRORS");
 				drop(ids);
-			}
+			},
 
 			specific => {
 				return Err(InternalError::OtherError(format!(
 					"Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error",
 					specific
 				)))
-			}
+			},
 		},
 	};
 
