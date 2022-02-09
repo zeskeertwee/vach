@@ -277,6 +277,17 @@ impl<'a> Builder<'a> {
 				}
 			}
 
+
+			// If the compression feature is turned off, simply reads into buffer
+			#[cfg(not(feature = "compression"))]
+			{
+				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+					return Err(InternalError::DeCompressionError("The \"compression\" feature was turned off during compilation. To handle compressed data please consider turning it on".to_string()));
+				};
+
+				leaf.handle.read_to_end(&mut raw)?;
+			}
+
 			// Encryption comes after
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
@@ -294,45 +305,33 @@ impl<'a> Builder<'a> {
 				}
 			}
 
-			// Write leaf-contents accordingly
+			// Write leaf-contents accordingly and update offsets within MutexGuard protection
 			let glob_length = raw.len();
 			#[cfg(feature = "multithreaded")]
 			{
-				let arc = Arc::clone(&wtr_arc);
-				let mut wtr = arc.lock().unwrap();
+				// Lock writer
+				let wtr_arc = Arc::clone(&wtr_arc);
+				let mut wtr = wtr_arc.lock().unwrap();
 
-				{
-					let arc = Arc::clone(&leaf_offset_arc);
-					let leaf_offset = arc.lock().unwrap();
+				// Lock leaf_offset
+				let leaf_arc = Arc::clone(&leaf_offset_arc);
+				let mut leaf_offset = leaf_arc.lock().unwrap();
 
-					wtr.seek(SeekFrom::Start(**leaf_offset as u64))?;
-				}
-
+				wtr.seek(SeekFrom::Start(**leaf_offset as u64))?;
 				wtr.write_all(&raw)?;
+
+				// Update offset locations
+				entry.location = **leaf_offset as u64;
+				**leaf_offset += glob_length;
+
+				// Update number of bytes written
+				total_arc.fetch_add(glob_length, Ordering::SeqCst);
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				wtr_sync.seek(SeekFrom::Start(leaf_offset_sync as u64))?;
 				wtr_sync.write_all(&raw)?;
-			}
-
-			#[cfg(feature = "multithreaded")]
-			total_arc.fetch_add(glob_length, Ordering::SeqCst);
-			#[cfg(not(feature = "multithreaded"))]
-			{
 				total_sync += glob_length;
-			}
-
-			#[cfg(feature = "multithreaded")]
-			{
-				let arc = Arc::clone(&leaf_offset_arc);
-				let mut leaf_offset = arc.lock().unwrap();
-
-				entry.location = **leaf_offset as u64;
-				**leaf_offset += glob_length;
-			};
-			#[cfg(not(feature = "multithreaded"))]
-			{
 				entry.location = leaf_offset_sync as u64;
 				leaf_offset_sync += glob_length;
 			}
@@ -365,24 +364,18 @@ impl<'a> Builder<'a> {
 			let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
 			entry_bytes.extend(leaf.id.as_bytes());
 
-			// Write to the registry-buffer
+			// Write to the registry-buffer and update total number of bytes written
 			#[cfg(feature = "multithreaded")]
 			{
 				let arc = Arc::clone(&reg_buffer_arc);
 				let mut reg_buffer = arc.lock().unwrap();
 
 				reg_buffer.write_all(&entry_bytes)?;
+				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
 			};
 			#[cfg(not(feature = "multithreaded"))]
 			{
 				reg_buffer_sync.write_all(&entry_bytes)?;
-			}
-
-			// Update offsets
-			#[cfg(feature = "multithreaded")]
-			total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
-			#[cfg(not(feature = "multithreaded"))]
-			{
 				total_sync += entry_bytes.len();
 			}
 
