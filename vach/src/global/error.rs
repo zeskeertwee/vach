@@ -50,7 +50,7 @@ impl fmt::Display for InternalError {
 			Self::LeafAppendError(id) => write!(f, "[VachError::LeafAppendError] A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", id),
 			Self::IncompatibleArchiveVersionError(version) => write!(f, "The provided archive source has version: {}. While the loader has a spec-version: {}. The current loader is incompatible!", version, crate::VERSION),
 			Self::SyncError(err) => write!(f, "[VachError::SyncError] {}", err),
-			Self::DeCompressionError(err) => write!(f, "[VachError::DeCompressionError] Encountered an error during compression or decompression: {}", err),
+			Self::DeCompressionError(err) => write!(f, "[VachError::DeCompressionError]: {}", err),
 		}
 	}
 }

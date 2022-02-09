@@ -369,7 +369,10 @@ where
 		match Arc::try_unwrap(processed) {
 			Ok(mutex) => match mutex.into_inner() {
 				Ok(inner) => Ok(inner),
-				Err(err) => Err(InternalError::SyncError(format!("Mutex has been poisoned! {}", err))),
+				Err(err) => Err(InternalError::SyncError(format!(
+					"Mutex<HashMap> has been poisoned! {}",
+					err
+				))),
 			},
 			Err(_) => Err(InternalError::SyncError(
 				"Cannot consume this HashMap as other references (ARC) to it exist".to_string(),
