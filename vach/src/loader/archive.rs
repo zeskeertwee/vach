@@ -116,23 +116,28 @@ impl<T> Archive<T> {
 		}
 
 		// 2: Decompression layer
-		#[cfg(feature = "compression")]
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-			let mut buffer = vec![];
+			#[cfg(feature = "compression")]
+			{
+				let mut buffer = vec![];
 
-			if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
-			} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
-			} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
-			} else {
-				return InternalResult::Err(InternalError::DeCompressionError(
-					"Unspecified compression algorithm bits".to_string(),
-				));
-			};
+				if entry.flags.contains(Flags::LZ4_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
+				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
+				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
+				} else {
+					return InternalResult::Err(InternalError::DeCompressionError(
+						"Unspecified compression algorithm bits".to_string(),
+					));
+				};
 
-			raw = buffer
+				raw = buffer
+			}
+
+			#[cfg(not(feature = "compression"))]
+			return Err(InternalError::DeCompressionError("The -compression- feature was turned off during compilation. To handle (de)compressed data please consider turning it on".to_string()));
 		};
 
 		let mut buffer = vec![];

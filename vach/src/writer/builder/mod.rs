@@ -282,7 +282,7 @@ impl<'a> Builder<'a> {
 			#[cfg(not(feature = "compression"))]
 			{
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					return Err(InternalError::DeCompressionError("The \"compression\" feature was turned off during compilation. To handle compressed data please consider turning it on".to_string()));
+					return Err(InternalError::DeCompressionError("The -compression- feature was turned off during compilation. To handle compressed data please consider turning it on".to_string()));
 				};
 
 				leaf.handle.read_to_end(&mut raw)?;
