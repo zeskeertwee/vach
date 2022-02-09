@@ -124,6 +124,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		});
 	});
 
+	throughput_group.bench_function("Archive::fetch_batch(---)", |b| {
+		// Load data
+		b.iter(|| {
+			archive.fetch_batch(["d2", "d1", "d3"].into_iter(), None).unwrap();
+		});
+	});
+
 	drop(throughput_group);
 
 	c.bench_function("Archive::LOAD_NEW", |b| {

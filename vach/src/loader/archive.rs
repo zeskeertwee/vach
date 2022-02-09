@@ -319,10 +319,10 @@ where
 	T: Read + Seek + Send + Sync,
 {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
-	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
+	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop (rayon if you want) construct otherwise
 	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
 	pub fn fetch_batch<'a, I, S>(
-		&mut self, items: I, num_threads: Option<usize>,
+		&self, items: I, num_threads: Option<usize>,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
 	where
 		I: Iterator<Item = S> + Send + Sync,
@@ -343,7 +343,7 @@ where
 		(0..num_threads)
 			.into_par_iter()
 			.try_for_each(|_| -> InternalResult<()> {
-				let mut wait_queue = vec![];
+				let mut produce = vec![];
 
 				// Query next item on queue and process
 				while let Some(id) = queue.lock().unwrap().next() {
@@ -355,12 +355,12 @@ where
 						guard.insert(string, resource);
 
 						// The lock is available, so we pop everything off the queue
-						for _ in 0..wait_queue.len() {
-							let (id, res) = wait_queue.pop().unwrap();
+						for _ in 0..produce.len() {
+							let (id, res) = produce.pop().unwrap();
 							guard.insert(id, res);
 						}
 					} else {
-						wait_queue.push((string, resource));
+						produce.push((string, resource));
 					}
 				}
 

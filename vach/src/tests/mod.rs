@@ -496,7 +496,7 @@ fn test_batch_fetching() -> InternalResult<()> {
 	// Process data
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let mut archive = Archive::from_handle(target)?;
+	let archive = Archive::from_handle(target)?;
 	let mut resources = archive.fetch_batch(ids.iter().map(|id| id.as_str()), None)?;
 
 	// Tests and checks
