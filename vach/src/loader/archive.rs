@@ -223,7 +223,6 @@ where
 			let mut take = reader_ref.take(entry.offset);
 
 			dbg!(&raw); // Empty buffer
-			// guard.read_exact(raw.as_mut_slice())?;
 			take.read_to_end(&mut raw)?;
 			dbg!(&raw); // Should be populated with data, but acts randomly. Now it reads data or just writes zeroes at random
 		}
