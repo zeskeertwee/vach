@@ -31,7 +31,6 @@ impl Read for FileWrapper {
 		};
 		let result = file.read(buf);
 
-
 		// Intercepts a file once it's finished reading to drop it, thus avoiding OS filesystem limitations easily
 		// Meaning we can safely drop the `fs::File` stored in this file wrapper
 		if let Ok(0) = result {
@@ -198,7 +197,11 @@ impl CommandTrait for Evaluator {
 		}
 
 		let pbar = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
-		pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
+		pbar.set_style(
+			ProgressStyle::default_bar()
+				.template(super::PROGRESS_BAR_STYLE)
+				.progress_chars("█*-"),
+		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
 		let callback = |msg: &str, _: &RegistryEntry| {
@@ -269,6 +272,7 @@ impl CommandTrait for Evaluator {
 		if truncate {
 			for wrapper in inputs {
 				std::fs::remove_file(&wrapper.0)?;
+				pbar.finish();
 				pbar.println(format!("Truncated original file @ {}", wrapper.0.to_string_lossy()));
 			}
 
