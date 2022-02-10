@@ -15,7 +15,7 @@ impl CommandTrait for Evaluator {
 			Some(path) => path.to_string(),
 			None => {
 				anyhow::bail!("Please provide a some input to a keypair files using the -i or --input key!")
-			}
+			},
 		};
 
 		// Open and parse the keypair file

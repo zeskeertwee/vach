@@ -47,12 +47,12 @@ impl CommandTrait for Evaluator {
 				};
 
 				Some(utils::read_keypair(file)?.public)
-			}
+			},
 			None => match args.value_of(key_names::PUBLIC_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
 					Some(utils::read_public_key(file)?)
-				}
+				},
 				None => None,
 			},
 		};

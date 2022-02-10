@@ -26,7 +26,7 @@ fn main() {
 		None => {
 			log::info!("vach-cli: Run `vach --help` for usage");
 			Ok(())
-		}
+		},
 	};
 
 	if let Err(err) = res {

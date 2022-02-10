@@ -50,15 +50,15 @@ impl CommandTrait for Evaluator {
 					};
 
 					let c_algo = match c_algo {
-						 Some(algo) => algo.to_string(),
-						 None => "None".to_string(),
+						Some(algo) => algo.to_string(),
+						None => "None".to_string(),
 					};
 
 					FileTableEntry {
 						id,
 						size: HumanBytes(entry.offset).to_string(),
 						flags: entry.flags,
-						compression: c_algo
+						compression: c_algo,
 					}
 				})
 				.collect();
