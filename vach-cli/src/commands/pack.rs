@@ -200,7 +200,7 @@ impl CommandTrait for Evaluator {
 		pbar.set_style(
 			ProgressStyle::default_bar()
 				.template(super::PROGRESS_BAR_STYLE)
-				.progress_chars("█*-"),
+				.progress_chars("█░-"),
 		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
