@@ -18,7 +18,7 @@ cargo check -q
 cargo build -q --release
 
 # # Create simple archive with simple input, no compression only signatures
-$VACH pack -o signed.vach -r ./ -c never -a -x $EXCLUDE
+$VACH pack -o signed.vach -r ./ -c detect -g brotli -a -x $EXCLUDE
 
 # # Split the resulting keypair
 $VACH split -i keypair.kp

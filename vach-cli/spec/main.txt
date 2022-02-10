@@ -25,12 +25,13 @@ vach repack == vach r
  -t 	| --truncates		-> deletes the original files after they have been processed successfully
 
  -f 	| --flags			-> The flags that go into the .vach file header section
- -m 	| --magic			-> the magic used to generate the archive
- -c 	| --compress-mode	-> the compress mode of the adjacent leafs
+ -m 	| --magic			-> The magic used to generate the archive
+ -c 	| --compress-mode	-> The compress mode of the adjacent leafs
+ -g	| --compress-algo -> The compression algorithm to use in compression, can be; "lz4", "brotli" or "snappy"
  -v 	| --version			-> the version of the leafs being read or to be written
- -a 	| --hash				-> to sign the entries and include the signatures in the target
- -e 	| --encrypt			-> encrypt the data, an sk or kp must be provided
- -s	| --split			-> used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts
+ -a 	| --hash				-> To sign the entries and include the signatures in the target
+ -e 	| --encrypt			-> Encrypt the data, an sk or kp must be provided
+ -s	| --split			-> Used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts
 
  -s	| --secret-key		-> The secret key to be used in signing of signatures
  -p	| --public-key		-> The public key to be used in decryption and validation of signatures

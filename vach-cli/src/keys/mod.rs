@@ -16,6 +16,7 @@ pub mod key_names {
 	pub(crate) const VERSION: &str = "VERSION";
 	pub(crate) const MAGIC: &str = "MAGIC";
 	pub(crate) const COMPRESS_MODE: &str = "COMPRESS_MODE";
+	pub(crate) const COMPRESS_ALGO: &str = "COMPRESS_ALGO";
 	pub(crate) const HASH: &str = "HASH";
 	pub(crate) const ENCRYPT: &str = "ENCRYPT";
 	pub(crate) const SPLIT_KEY: &str = "SPLIT_KEY";
@@ -159,8 +160,30 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.takes_value(true)
 			.number_of_values(1)
 			.validator(|c_mode| {
+				let c_mode = c_mode.to_ascii_lowercase();
 				if c_mode != "always" && c_mode != "never" && c_mode != "detect" {
 					return Err(format!("Please provide a valid Compress Mode, either 'Always', 'Detect' or 'Never' (case insensitive). Not: {}", c_mode));
+				};
+
+				Ok(())
+			}),
+	);
+
+	// The compression algorithm to use for the adjacent leafs
+	map.insert(
+		key_names::COMPRESS_ALGO,
+		Arg::new(key_names::COMPRESS_ALGO)
+			.long("compress-algo")
+			.short('g')
+			.value_name(key_names::COMPRESS_ALGO)
+			.help("The compression algorithm to use in compression, can be; 'lz4', 'brotli' or 'snappy'")
+			.required(false)
+			.takes_value(true)
+			.number_of_values(1)
+			.validator(|c_mode| {
+				let c_mode = c_mode.to_ascii_lowercase();
+				if c_mode != "lz4" && c_mode != "brotli" && c_mode != "snappy" {
+					return Err(format!("Please provide a valid Compression Algorithm to use, either 'lz4', 'brotli' or 'snappy' (case insensitive). Not: {}", c_mode));
 				};
 
 				Ok(())
@@ -280,7 +303,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.number_of_values(1),
 	);
 
-	assert_eq!(map.len(), 18);
+	assert_eq!(map.len(), 19);
 
 	map
 }

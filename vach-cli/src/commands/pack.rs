@@ -50,7 +50,20 @@ impl CommandTrait for Evaluator {
 				"never" => CompressMode::Never,
 				invalid_value => {
 					anyhow::bail!("{} is an invalid value for COMPRESS_MODE", invalid_value)
-				}
+				},
+			}
+		};
+
+		// Extract the compress mode
+		let mut compression_algo = CompressionAlgorithm::default();
+		if let Some(value) = args.value_of(key_names::COMPRESS_ALGO) {
+			compression_algo = match value.to_lowercase().as_str() {
+				"lz4" => CompressionAlgorithm::LZ4,
+				"brotli" => CompressionAlgorithm::Brotli(8),
+				"snappy" => CompressionAlgorithm::Snappy,
+				invalid_value => {
+					anyhow::bail!("{} is an invalid value for COMPRESS_ALGO", invalid_value)
+				},
 			}
 		};
 
@@ -69,7 +82,7 @@ impl CommandTrait for Evaluator {
 								err
 							);
 							None
-						}
+						},
 					}
 				})
 				.filter(|v| v.is_file())
@@ -90,7 +103,7 @@ impl CommandTrait for Evaluator {
 					err
 				);
 				false
-			}
+			},
 		};
 
 		if let Some(val) = args.values_of(key_names::INPUT) {
@@ -155,12 +168,12 @@ impl CommandTrait for Evaluator {
 			Some(path) => {
 				let file = File::open(path)?;
 				Some(utils::read_keypair(file)?.secret)
-			}
+			},
 			None => match args.value_of(key_names::SECRET_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
 					Some(utils::read_secret_key(file)?)
-				}
+				},
 				None => None,
 			},
 		};
@@ -170,7 +183,7 @@ impl CommandTrait for Evaluator {
 			Some(sk) => {
 				let pk = PublicKey::from(&sk);
 				Some(Keypair { secret: sk, public: pk })
-			}
+			},
 			None => None,
 		};
 
@@ -206,6 +219,7 @@ impl CommandTrait for Evaluator {
 		let mut builder = Builder::new().template(
 			Leaf::default()
 				.compress(compress_mode)
+				.compression_algo(compression_algo)
 				.encrypt(encrypt)
 				.sign(hash)
 				.version(version),
@@ -233,7 +247,7 @@ impl CommandTrait for Evaluator {
 
 					let message = format!("Preparing entry from archive: {} @ {}", id, archive_path);
 					pbar.println(message);
-				}
+				},
 				InputSource::PathBuf(path) => {
 					if !path.exists() {
 						pbar.println(format!("Skipping {}, does not exist!", path.to_string_lossy()));
@@ -255,10 +269,10 @@ impl CommandTrait for Evaluator {
 							if let Err(e) = builder.add(file, &id) {
 								pbar.println(format!("Couldn't add file: {}. {}", path.to_string_lossy(), e))
 							}
-						}
+						},
 						Err(e) => pbar.println(format!("Couldn't open file {}: {}", path.to_string_lossy(), e)),
 					}
-				}
+				},
 			}
 		}
 

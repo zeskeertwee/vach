@@ -89,6 +89,22 @@ pub enum CompressionAlgorithm {
 	Brotli(u32),
 }
 
+impl std::fmt::Display for CompressionAlgorithm {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			CompressionAlgorithm::Snappy => write!(f, "Snappy"),
+			CompressionAlgorithm::LZ4 => write!(f, "LZ4"),
+			CompressionAlgorithm::Brotli(_) => write!(f, "Brotli"),
+		}
+	}
+}
+
+impl Default for CompressionAlgorithm {
+	fn default() -> CompressionAlgorithm {
+		CompressionAlgorithm::LZ4
+	}
+}
+
 impl From<CompressionAlgorithm> for u32 {
 	fn from(algo: CompressionAlgorithm) -> Self {
 		match algo {
