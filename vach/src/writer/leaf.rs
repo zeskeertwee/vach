@@ -1,11 +1,17 @@
 use crate::{
-	global::{reg_entry::RegistryEntry, flags::Flags, compressor::CompressionAlgorithm},
+	global::{reg_entry::RegistryEntry, flags::Flags},
 };
+
+#[cfg(feature = "compression")]
+use crate::global::compressor::CompressionAlgorithm;
+
 use std::{io::Read, fmt};
 
 /// Configures how [`Leaf`]s should be compressed.
 /// Default is `CompressMode::Never`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg(feature = "compression")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub enum CompressMode {
 	/// The data will always be compressed
 	Always,
@@ -15,6 +21,7 @@ pub enum CompressMode {
 	Never,
 }
 
+#[cfg(feature = "compression")]
 impl Default for CompressMode {
 	fn default() -> CompressMode {
 		CompressMode::Never
@@ -45,8 +52,12 @@ pub struct Leaf<'a> {
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
 	/// How a [`Leaf`] should be compressed
+	#[cfg(feature = "compression")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	pub compress: CompressMode,
 	/// The specific compression algorithm to use
+	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+	#[cfg(feature = "compression")]
 	pub compression_algo: CompressionAlgorithm,
 	/// The flags that will go into the archive write target.
 	pub flags: Flags,
@@ -56,38 +67,6 @@ pub struct Leaf<'a> {
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
 	pub sign: bool,
-}
-
-impl<'a> fmt::Debug for Leaf<'a> {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("Leaf")
-			.field("handle", &"[Box<dyn io::Read>]")
-			.field("id", &self.id)
-			.field("content_version", &self.content_version)
-			.field("compress", &self.compress)
-			.field("flags", &self.flags)
-			.field("encrypt", &self.encrypt)
-			.field("sign", &self.sign)
-			.field("compression_algo", &self.compression_algo)
-			.finish()
-	}
-}
-
-impl<'a> Default for Leaf<'a> {
-	/// The default leaf holds no bytes at all, this is expected to be used as a stencil|template.
-	#[inline(always)]
-	fn default() -> Leaf<'a> {
-		Leaf {
-			id: String::new(),
-			handle: Box::<&[u8]>::new(&[]),
-			flags: Flags::empty(),
-			content_version: 0,
-			compress: CompressMode::Never,
-			compression_algo: CompressionAlgorithm::LZ4,
-			encrypt: false,
-			sign: false,
-		}
-	}
 }
 
 impl<'a> Leaf<'a> {
@@ -121,14 +100,14 @@ impl<'a> Leaf<'a> {
 	/// Meant to be used like a setter:
 	/// ```rust
 	/// use std::io::Cursor;
-	/// use vach::prelude::{Leaf, CompressMode};
+	/// use vach::prelude::Leaf;
 	/// let template = Leaf::default()
 	///    .version(12)
-	///    .compress(CompressMode::Always);
+	///    .encrypt(false);
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
 	/// assert_eq!(&leaf.content_version, &template.content_version);
-	/// assert_eq!(&leaf.compress, &template.compress);
+	/// assert_eq!(&leaf.encrypt, &template.encrypt);
 	/// ```
 	pub fn template(self, other: &Leaf<'a>) -> Self {
 		Leaf {
@@ -145,6 +124,8 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::default().compress(CompressMode::Always);
 	/// ```
+	#[cfg(feature = "compression")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	pub fn compress(mut self, compress: CompressMode) -> Self {
 		self.compress = compress;
 		self
@@ -200,8 +181,48 @@ impl<'a> Leaf<'a> {
 	}
 
 	/// Setter for the `compression_algo` field
+	#[cfg(feature = "compression")]
 	pub fn compression_algo(mut self, compression_algo: CompressionAlgorithm) -> Self {
 		self.compression_algo = compression_algo;
 		self
+	}
+}
+
+impl<'a> Default for Leaf<'a> {
+	/// The default leaf holds no bytes at all, this is expected to be used as a stencil|template.
+	#[inline(always)]
+	fn default() -> Leaf<'a> {
+		Leaf {
+			id: String::new(),
+			handle: Box::<&[u8]>::new(&[]),
+			flags: Flags::empty(),
+			content_version: 0,
+			#[cfg(feature = "compression")]
+			compress: CompressMode::Never,
+			encrypt: false,
+			sign: false,
+
+			#[cfg(feature = "compression")]
+			compression_algo: CompressionAlgorithm::LZ4,
+		}
+	}
+}
+
+impl<'a> fmt::Debug for Leaf<'a> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		let mut d = f.debug_struct("Leaf");
+		d.field("handle", &"[Box<dyn io::Read>]")
+			.field("id", &self.id)
+			.field("content_version", &self.content_version)
+			.field("flags", &self.flags)
+			.field("encrypt", &self.encrypt)
+			.field("sign", &self.sign);
+
+		#[cfg(feature = "compression")]
+		d.field("compress", &self.compress);
+		#[cfg(feature = "compression")]
+		d.field("compression_algo", &self.compression_algo);
+
+		d.finish()
 	}
 }

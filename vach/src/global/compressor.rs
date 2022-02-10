@@ -1,3 +1,5 @@
+#![cfg(feature = "compression")]
+
 use std::{
 	fmt::Debug,
 	io::{self, Read, Write},
@@ -11,15 +13,19 @@ use snap;
 use brotli;
 
 #[derive(Debug)]
+/// Exported utility compressor used by `vach`
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub struct Compressor<T: Read> {
 	data: T,
 }
 
 impl<'a, T: Read> Compressor<T> {
-	pub(crate) fn new(data: T) -> Compressor<T> {
+	/// Construct a new compressor over a read handle
+	pub fn new(data: T) -> Compressor<T> {
 		Compressor { data }
 	}
-	pub(crate) fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
+	/// Pass in a compression algorithm to use, sit back and let the compressor do it's job
+	pub fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut compressor = lz4::frame::FrameEncoder::new(output);
@@ -27,24 +33,25 @@ impl<'a, T: Read> Compressor<T> {
 				compressor.finish()?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Snappy => {
 				let mut compressor = snap::read::FrameEncoder::new(&mut self.data);
 				io::copy(&mut compressor, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Brotli(quality) if quality < 12 && quality > 0 => {
 				let mut compressor = brotli::CompressorReader::new(&mut self.data, 4096, quality, 21u32);
 				io::copy(&mut compressor, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Brotli(_) => Err(InternalError::DeCompressionError(
 				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
 			)),
 		}
 	}
+	/// Pass in a compression algorithm to use, sit back and let the decompressor do it's job. That is if the compressed data *is* compressed with the adjacent algorithm
 	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
@@ -52,24 +59,25 @@ impl<'a, T: Read> Compressor<T> {
 				io::copy(&mut rdr, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Snappy => {
 				let mut rdr = snap::read::FrameDecoder::new(&mut self.data);
 				io::copy(&mut rdr, output)?;
 
 				Ok(())
-			}
+			},
 			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
 				io::copy(&mut rdr, output)?;
 
 				Ok(())
-			}
+			},
 		}
 	}
 }
 
 /// Allows the user to specify which of three `Compression Algorithms` to use.
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 #[derive(Clone, Copy, Debug)]
 pub enum CompressionAlgorithm {
 	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced
@@ -79,6 +87,22 @@ pub enum CompressionAlgorithm {
 	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
 	/// Allows one to specify the quality of the compression, from 1-11. (9 Recommended, 11 for extra compression)
 	Brotli(u32),
+}
+
+impl std::fmt::Display for CompressionAlgorithm {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			CompressionAlgorithm::Snappy => write!(f, "Snappy"),
+			CompressionAlgorithm::LZ4 => write!(f, "LZ4"),
+			CompressionAlgorithm::Brotli(_) => write!(f, "Brotli"),
+		}
+	}
+}
+
+impl Default for CompressionAlgorithm {
+	fn default() -> CompressionAlgorithm {
+		CompressionAlgorithm::LZ4
+	}
 }
 
 impl From<CompressionAlgorithm> for u32 {

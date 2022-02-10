@@ -66,7 +66,6 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> App<'a> {
 				.arg(key_map.get(key_names::INPUT).unwrap())
 				.arg(key_map.get(key_names::DIR_INPUT).unwrap())
 				.arg(key_map.get(key_names::DIR_INPUT_REC).unwrap())
-				.arg(key_map.get(key_names::SOURCE).unwrap())
 				.arg(key_map.get(key_names::EXCLUDE).unwrap())
 				// Crypto shit
 				.arg(key_map.get(key_names::KEYPAIR).unwrap())
@@ -74,6 +73,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> App<'a> {
 				// Modifiers
 				.arg(key_map.get(key_names::FLAGS).unwrap())
 				.arg(key_map.get(key_names::COMPRESS_MODE).unwrap())
+				.arg(key_map.get(key_names::COMPRESS_ALGO).unwrap())
 				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::ENCRYPT).unwrap())
 				.arg(key_map.get(key_names::HASH).unwrap())

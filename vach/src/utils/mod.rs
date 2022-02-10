@@ -4,6 +4,10 @@ use std::{io::Read};
 
 use crate::global::{error::InternalError, result::InternalResult};
 
+// A favour
+#[cfg(feature = "compression")]
+pub use super::global::compressor::Compressor;
+
 /// Use this function to easily generate a [Keypair](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/struct.Keypair.html) using `OsRng`
 #[inline(always)]
 pub fn gen_keypair() -> esdalek::Keypair {

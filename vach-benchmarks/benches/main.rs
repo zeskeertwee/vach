@@ -47,9 +47,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
 	// Configure benchmark
-	builder_group.throughput(Throughput::Bytes(
-		(data_1.len() + data_2.len() + data_3.len()) as u64,
-	));
+	builder_group.throughput(Throughput::Bytes((data_1.len() + data_2.len() + data_3.len()) as u64));
 
 	builder_group.bench_function("Builder::dump(---)", |b| {
 		b.iter(|| {
@@ -57,25 +55,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 			// Add data
 			builder
-				.add_leaf(
-					Leaf::from_handle(data_1)
-						.id("d1")
-						.compress(CompressMode::Always),
-				)
+				.add_leaf(Leaf::from_handle(data_1).id("d1").compress(CompressMode::Always))
 				.unwrap();
 			builder
-				.add_leaf(
-					Leaf::from_handle(data_2)
-						.id("d2")
-						.compress(CompressMode::Never),
-				)
+				.add_leaf(Leaf::from_handle(data_2).id("d2").compress(CompressMode::Never))
 				.unwrap();
 			builder
-				.add_leaf(
-					Leaf::from_handle(data_3)
-						.id("d3")
-						.compress(CompressMode::Detect),
-				)
+				.add_leaf(Leaf::from_handle(data_3).id("d3").compress(CompressMode::Detect))
 				.unwrap();
 
 			// Dump data
@@ -92,10 +78,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 	{
 		// Builds an archive source from which to benchmark
-		let template = Leaf::default()
-			.encrypt(true)
-			.sign(false)
-			.compress(CompressMode::Always);
+		let template = Leaf::default().encrypt(true).sign(false).compress(CompressMode::Always);
 		let mut builder = Builder::new().template(template);
 
 		// Add data
@@ -108,9 +91,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	}
 
 	// Load data
-	throughput_group.throughput(Throughput::Bytes(
-		(data_1.len() + data_2.len() + data_3.len()) as u64,
-	));
+	throughput_group.throughput(Throughput::Bytes((data_1.len() + data_2.len() + data_3.len()) as u64));
 
 	let archive = Archive::with_config(&mut target, &h_config).unwrap();
 	let mut sink = Sink::new();
@@ -121,6 +102,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 			archive.fetch_write("d1", &mut sink).unwrap();
 			archive.fetch_write("d2", &mut sink).unwrap();
 			archive.fetch_write("d3", &mut sink).unwrap();
+		});
+	});
+
+	throughput_group.bench_function("Archive::fetch_batch(---)", |b| {
+		// Load data
+		b.iter(|| {
+			archive.fetch_batch(["d2", "d1", "d3"].into_iter(), None).unwrap();
 		});
 	});
 

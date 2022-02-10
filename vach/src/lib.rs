@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(clippy::or_fun_call)]
 #![allow(clippy::manual_map)]
 #![deny(missing_docs)]
@@ -151,6 +152,12 @@ pub(crate) mod writer;
 // Re-exports
 pub use rand;
 
+#[cfg(feature = "multithreaded")]
+pub use rayon;
+
+#[cfg(feature = "multithreaded")]
+pub use num_cpus;
+
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;
 
@@ -191,18 +198,24 @@ pub mod crypto {
 pub mod builder {
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
-		leaf::{Leaf, CompressMode},
+		leaf::Leaf,
 	};
-	pub use crate::global::{error::InternalError, compressor::CompressionAlgorithm, result::InternalResult, flags::Flags};
+	pub use crate::global::{error::InternalError, result::InternalResult, flags::Flags};
+
+	#[cfg(feature = "compression")]
+	pub use crate::writer::leaf::CompressMode;
+	#[cfg(feature = "compression")]
+	pub use crate::global::compressor::CompressionAlgorithm;
 }
 
 /// Loader-based logic and data-structures
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
-		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult,
-		compressor::CompressionAlgorithm, flags::Flags,
+		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult, flags::Flags,
 	};
+	#[cfg(feature = "compression")]
+	pub use crate::global::compressor::CompressionAlgorithm;
 }
 
 /// Some utility functions to keep you happy

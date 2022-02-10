@@ -1,5 +1,8 @@
 use std::fs::OpenOptions;
-use std::{fs::File, io::Write};
+use std::{
+	fs::File,
+	io::{Write, Read, self},
+};
 use std::path::PathBuf;
 use std::convert::TryInto;
 use std::collections::HashSet;
@@ -12,18 +15,32 @@ use walkdir;
 use super::CommandTrait;
 use crate::keys::key_names;
 
-enum InputSource<'a> {
-	PathBuf(PathBuf),
-	VachResource(Resource, &'a str),
-}
+pub const VERSION: &str = "0.0.5";
 
-impl<'a> From<PathBuf> for InputSource<'a> {
-	fn from(pb: PathBuf) -> InputSource<'a> {
-		InputSource::PathBuf(pb)
+struct FileWrapper(PathBuf, Option<File>);
+
+impl Read for FileWrapper {
+	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+		// If no file is defined open it
+		let file = match self.1.as_mut() {
+			Some(file) => file,
+			None => {
+				self.1 = Some(File::open(&self.0)?);
+				self.1.as_mut().unwrap()
+			},
+		};
+		let result = file.read(buf);
+
+		// Intercepts a file once it's finished reading to drop it, thus avoiding OS filesystem limitations easily
+		// Meaning we can safely drop the `fs::File` stored in this file wrapper
+		if let Ok(0) = result {
+			self.1.take();
+		};
+
+		result
 	}
 }
 
-pub const VERSION: &str = "0.0.5";
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
@@ -50,7 +67,20 @@ impl CommandTrait for Evaluator {
 				"never" => CompressMode::Never,
 				invalid_value => {
 					anyhow::bail!("{} is an invalid value for COMPRESS_MODE", invalid_value)
-				}
+				},
+			}
+		};
+
+		// Extract the compress mode
+		let mut compression_algo = CompressionAlgorithm::default();
+		if let Some(value) = args.value_of(key_names::COMPRESS_ALGO) {
+			compression_algo = match value.to_lowercase().as_str() {
+				"lz4" => CompressionAlgorithm::LZ4,
+				"brotli" => CompressionAlgorithm::Brotli(8),
+				"snappy" => CompressionAlgorithm::Snappy,
+				invalid_value => {
+					anyhow::bail!("{} is an invalid value for COMPRESS_ALGO", invalid_value)
+				},
 			}
 		};
 
@@ -69,7 +99,7 @@ impl CommandTrait for Evaluator {
 								err
 							);
 							None
-						}
+						},
 					}
 				})
 				.filter(|v| v.is_file())
@@ -78,7 +108,7 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Extract the inputs
-		let mut inputs: Vec<InputSource> = vec![];
+		let mut inputs: Vec<FileWrapper> = vec![];
 
 		// Used to filter invalid inputs and excluded inputs
 		let path_filter = |path: &PathBuf| match path.canonicalize() {
@@ -90,13 +120,13 @@ impl CommandTrait for Evaluator {
 					err
 				);
 				false
-			}
+			},
 		};
 
 		if let Some(val) = args.values_of(key_names::INPUT) {
 			val.map(PathBuf::from)
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
+				.for_each(|p| inputs.push(FileWrapper(p, None)));
 		};
 
 		// Extract directory inputs
@@ -107,7 +137,7 @@ impl CommandTrait for Evaluator {
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
 					.filter(|f| path_filter(f))
-					.for_each(|p| inputs.push(InputSource::PathBuf(p)))
+					.for_each(|p| inputs.push(FileWrapper(p, None)))
 			});
 		};
 
@@ -117,26 +147,7 @@ impl CommandTrait for Evaluator {
 				.flatten()
 				.map(|v| v.unwrap().into_path())
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(InputSource::PathBuf(p)));
-		}
-
-		// Extract inputs from the archive
-		let mut archive = None;
-		let mut archive_path = "";
-		if let Some(path) = args.value_of(key_names::SOURCE) {
-			// Storing the path of the archive for reporting purposes
-			archive_path = path;
-			log::trace!("{}", format!("{}", archive_path));
-
-			let archive_file = File::open(PathBuf::from(path))?;
-			archive = Some(Archive::from_handle(archive_file)?);
-		};
-
-		if let Some(arch) = &mut archive {
-			for (id, _) in arch.entries().iter() {
-				// This safe archive.fetch does not interact with &archive.entries mutably, therefore can not cause "pulling the rug from beneath your feet" problems
-				inputs.push(InputSource::VachResource(arch.fetch(id)?, id))
-			}
+				.for_each(|p| inputs.push(FileWrapper(p, None)));
 		}
 
 		// Read valueless flags
@@ -155,12 +166,12 @@ impl CommandTrait for Evaluator {
 			Some(path) => {
 				let file = File::open(path)?;
 				Some(utils::read_keypair(file)?.secret)
-			}
+			},
 			None => match args.value_of(key_names::SECRET_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
 					Some(utils::read_secret_key(file)?)
-				}
+				},
 				None => None,
 			},
 		};
@@ -170,7 +181,7 @@ impl CommandTrait for Evaluator {
 			Some(sk) => {
 				let pk = PublicKey::from(&sk);
 				Some(Keypair { secret: sk, public: pk })
-			}
+			},
 			None => None,
 		};
 
@@ -186,7 +197,11 @@ impl CommandTrait for Evaluator {
 		}
 
 		let pbar = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
-		pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
+		pbar.set_style(
+			ProgressStyle::default_bar()
+				.template(super::PROGRESS_BAR_STYLE)
+				.progress_chars("█░-"),
+		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
 		let callback = |msg: &str, _: &RegistryEntry| {
@@ -206,6 +221,7 @@ impl CommandTrait for Evaluator {
 		let mut builder = Builder::new().template(
 			Leaf::default()
 				.compress(compress_mode)
+				.compression_algo(compression_algo)
 				.encrypt(encrypt)
 				.sign(hash)
 				.version(version),
@@ -226,40 +242,23 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Process the files
-		for entry in &inputs {
-			match entry {
-				InputSource::VachResource(res, id) => {
-					builder.add(res.data.as_slice(), id)?;
+		for wrapper in &mut inputs {
+			if !wrapper.0.exists() {
+				pbar.println(format!("Skipping {}, does not exist!", wrapper.0.to_string_lossy()));
 
-					let message = format!("Preparing entry from archive: {} @ {}", id, archive_path);
-					pbar.println(message);
-				}
-				InputSource::PathBuf(path) => {
-					if !path.exists() {
-						pbar.println(format!("Skipping {}, does not exist!", path.to_string_lossy()));
+				pbar.inc(1);
 
-						pbar.inc(1);
-
-						continue;
-					}
-
-					let id = path
-						.to_string_lossy()
-						.trim_start_matches("./")
-						.trim_start_matches(".\\")
-						.to_string();
-					pbar.println(format!("Preparing {} for packaging", id));
-
-					match File::open(&path) {
-						Ok(file) => {
-							if let Err(e) = builder.add(file, &id) {
-								pbar.println(format!("Couldn't add file: {}. {}", path.to_string_lossy(), e))
-							}
-						}
-						Err(e) => pbar.println(format!("Couldn't open file {}: {}", path.to_string_lossy(), e)),
-					}
-				}
+				continue;
 			}
+
+			let id = wrapper
+				.0
+				.to_string_lossy()
+				.trim_start_matches("./")
+				.trim_start_matches(".\\")
+				.to_string();
+			log::info!("Preparing {} for packaging", id);
+			builder.add(wrapper, &id)?;
 		}
 
 		// Inform of success in input queue
@@ -271,12 +270,10 @@ impl CommandTrait for Evaluator {
 
 		// Truncate original files
 		if truncate {
-			for entry in inputs {
-				if let InputSource::PathBuf(buf) = entry {
-					std::fs::remove_file(&buf)?;
-
-					pbar.println(format!("Truncated original file @ {}", buf.to_string_lossy()));
-				}
+			for wrapper in inputs {
+				std::fs::remove_file(&wrapper.0)?;
+				pbar.finish();
+				pbar.println(format!("Truncated original file @ {}", wrapper.0.to_string_lossy()));
 			}
 
 			pbar.inc(3);

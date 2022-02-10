@@ -1177,9 +1177,9 @@ version = "0.3.4"
 dependencies = [
  "aes-gcm",
  "brotli",
- "crossbeam-channel",
  "ed25519-dalek",
  "lz4_flex",
+ "num_cpus",
  "rand",
  "rayon",
  "snap",

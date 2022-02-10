@@ -24,9 +24,9 @@ fn main() {
 	let res = match matches.subcommand() {
 		Some((key, mtx)) => commands.get(key).unwrap().evaluate(mtx),
 		None => {
-			log::info!("vach-cli: Run `vach --help` for usage");
+			println!("vach-cli: Run `vach --help`");
 			Ok(())
-		}
+		},
 	};
 
 	if let Err(err) = res {

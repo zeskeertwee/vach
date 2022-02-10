@@ -1,7 +1,5 @@
-use std::io::{BufWriter, Write, Read, Seek, SeekFrom};
+use std::io::{BufWriter, Write, Seek, SeekFrom};
 use std::collections::HashSet;
-
-#[cfg(feature = "multithreaded")]
 use std::sync::{
 	Arc, Mutex,
 	atomic::{Ordering, AtomicUsize},
@@ -9,8 +7,17 @@ use std::sync::{
 
 mod config;
 pub use config::BuilderConfig;
-use super::leaf::{Leaf, CompressMode, HandleTrait};
+use super::leaf::{Leaf, HandleTrait};
+
+#[cfg(feature = "compression")]
 use crate::global::compressor::Compressor;
+
+#[cfg(feature = "compression")]
+use super::leaf::CompressMode;
+
+#[cfg(feature = "compression")]
+use std::io::Read;
+
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
 use crate::{
@@ -111,9 +118,9 @@ impl<'a> Builder<'a> {
 
 	/// Avoid unnecessary boilerplate by auto-templating all [`Leaf`]s added with `Builder::add(--)` with the given template
 	/// ```
-	/// use vach::builder::{Builder, Leaf, CompressMode};
+	/// use vach::builder::{Builder, Leaf};
 	///
-	/// let template = Leaf::default().compress(CompressMode::Always).version(12);
+	/// let template = Leaf::default().encrypt(false).version(12);
 	/// let mut builder = Builder::new().template(template);
 	///
 	/// builder.add(b"JEB" as &[u8], "JEB_NAME").unwrap();
@@ -200,28 +207,19 @@ impl<'a> Builder<'a> {
 			None
 		};
 
+		// Define all arc-mutexes
+		let leaf_offset_arc = Arc::new(AtomicUsize::new(leaf_offset_sync));
+		let total_arc = Arc::new(AtomicUsize::new(total_sync));
+		let wtr_arc = Arc::new(Mutex::new(wtr_sync));
+		let reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
+
 		#[allow(unused_mut)]
 		let mut iter_mut;
 
-		// All these arc-mutexes are used only during multithreaded execution
-		#[cfg(feature = "multithreaded")]
-		let leaf_offset_arc;
-		#[cfg(feature = "multithreaded")]
-		let total_arc;
-		#[cfg(feature = "multithreaded")]
-		let wtr_arc;
-		#[cfg(feature = "multithreaded")]
-		let reg_buffer_arc;
-
+		// Conditionally define iterator
 		#[cfg(feature = "multithreaded")]
 		{
 			iter_mut = self.leafs.as_mut_slice().par_iter_mut();
-
-			// Define all arc-mutexes
-			leaf_offset_arc = Arc::new(Mutex::new(&mut leaf_offset_sync));
-			total_arc = Arc::new(AtomicUsize::new(total_sync));
-			wtr_arc = Arc::new(Mutex::new(wtr_sync));
-			reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
 		}
 
 		#[cfg(not(feature = "multithreaded"))]
@@ -229,16 +227,13 @@ impl<'a> Builder<'a> {
 			iter_mut = self.leafs.iter_mut();
 		}
 
-		/* ========== MULTI-THREADED EXECUTION MAY START HERE ================= */
-		// NOTE: Variables with *_sync cannot be accessed in the multithreaded context only the single threaded context
-		// NOTE: In the multithreaded context they have been wrapped in arc-mutexes for thread safety
-
 		// Populate the archive glob
 		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult<()> {
 			let mut entry = leaf.to_registry_entry();
 			let mut raw = Vec::new();
 
 			// Compression comes first
+			#[cfg(feature = "compression")]
 			match leaf.compress {
 				CompressMode::Never => {
 					leaf.handle.read_to_end(&mut raw)?;
@@ -267,7 +262,18 @@ impl<'a> Builder<'a> {
 				}
 			}
 
-			// Encryption comes after
+
+			// If the compression feature is turned off, simply reads into buffer
+			#[cfg(not(feature = "compression"))]
+			{
+				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+					return Err(InternalError::DeCompressionError("The -compression- feature was turned off during compilation. To handle compressed data please consider turning it on".to_string()));
+				};
+
+				leaf.handle.read_to_end(&mut raw)?;
+			}
+
+			// Encryption comes second
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
 					raw = match ex.encrypt(&raw) {
@@ -284,49 +290,30 @@ impl<'a> Builder<'a> {
 				}
 			}
 
-			// Write leaf-contents accordingly
+			// Write processed leaf-contents and update offsets within `MutexGuard` protection
 			let glob_length = raw.len();
-			#[cfg(feature = "multithreaded")]
+
 			{
-				let arc = Arc::clone(&wtr_arc);
-				let mut wtr = arc.lock().unwrap();
+				// Lock writer
+				let wtr_arc = Arc::clone(&wtr_arc);
+				let mut wtr = wtr_arc.lock().unwrap();
 
-				{
-					let arc = Arc::clone(&leaf_offset_arc);
-					let leaf_offset = arc.lock().unwrap();
+				// Lock leaf_offset
+				let leaf_offset_arc = Arc::clone(&leaf_offset_arc);
+				let leaf_offset = leaf_offset_arc.load(Ordering::SeqCst);
 
-					wtr.seek(SeekFrom::Start(**leaf_offset as u64))?;
-				}
-
+				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
 				wtr.write_all(&raw)?;
+
+				// Update offset locations
+				entry.location = leaf_offset as u64;
+				leaf_offset_arc.fetch_add(glob_length, Ordering::SeqCst);
+
+				// Update number of bytes written
+				total_arc.fetch_add(glob_length, Ordering::SeqCst);
 			};
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				wtr_sync.seek(SeekFrom::Start(leaf_offset_sync as u64))?;
-				wtr_sync.write_all(&raw)?;
-			}
 
-			#[cfg(feature = "multithreaded")]
-			total_arc.fetch_add(glob_length, Ordering::SeqCst);
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				total_sync += glob_length;
-			}
-
-			#[cfg(feature = "multithreaded")]
-			{
-				let arc = Arc::clone(&leaf_offset_arc);
-				let mut leaf_offset = arc.lock().unwrap();
-
-				entry.location = **leaf_offset as u64;
-				**leaf_offset += glob_length;
-			};
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				entry.location = leaf_offset_sync as u64;
-				leaf_offset_sync += glob_length;
-			}
-
+			// Update the offset of the entry to be the length of the glob
 			entry.offset = glob_length as u64;
 
 			if leaf.sign {
@@ -355,25 +342,13 @@ impl<'a> Builder<'a> {
 			let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
 			entry_bytes.extend(leaf.id.as_bytes());
 
-			// Write to the registry-buffer
-			#[cfg(feature = "multithreaded")]
+			// Write to the registry-buffer and update total number of bytes written
 			{
 				let arc = Arc::clone(&reg_buffer_arc);
 				let mut reg_buffer = arc.lock().unwrap();
 
 				reg_buffer.write_all(&entry_bytes)?;
-			};
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				reg_buffer_sync.write_all(&entry_bytes)?;
-			}
-
-			// Update offsets
-			#[cfg(feature = "multithreaded")]
-			total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				total_sync += entry_bytes.len();
+				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
 			}
 
 			// Call the progress callback bound within the [`BuilderConfig`]
@@ -385,7 +360,6 @@ impl<'a> Builder<'a> {
 		})?;
 
 		// Write out the contents of the registry
-		#[cfg(feature = "multithreaded")]
 		{
 			let arc = Arc::clone(&wtr_arc);
 			let mut wtr = arc.lock().unwrap();
@@ -396,19 +370,8 @@ impl<'a> Builder<'a> {
 			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
 			wtr.write_all(reg_buffer.as_slice())?;
 		};
-		#[cfg(not(feature = "multithreaded"))]
-		{
-			wtr_sync.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
-			wtr_sync.write_all(reg_buffer_sync.as_slice())?;
-		}
 
-		#[cfg(feature = "multithreaded")]
-		{
-			Ok(total_arc.load(Ordering::SeqCst))
-		}
-		#[cfg(not(feature = "multithreaded"))]
-		{
-			Ok(total_sync)
-		}
+		// Return total number of bytes written
+		Ok(total_arc.load(Ordering::SeqCst))
 	}
 }

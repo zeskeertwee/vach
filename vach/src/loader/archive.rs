@@ -14,9 +14,11 @@ use crate::{
 		header::{Header, HeaderConfig},
 		reg_entry::RegistryEntry,
 		result::InternalResult,
-		compressor::{Compressor, CompressionAlgorithm},
 	},
 };
+
+#[cfg(feature = "compression")]
+use crate::global::compressor::{Compressor, CompressionAlgorithm};
 
 use ed25519_dalek as esdalek;
 
@@ -25,6 +27,7 @@ use ed25519_dalek as esdalek;
 /// It can be customized with the `HeaderConfig` struct.
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
+#[derive(Clone)]
 pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,
@@ -100,35 +103,41 @@ impl<T> Archive<T> {
 								"Unable to decrypt resource: {}. Error: {}",
 								id, err
 							)));
-						}
+						},
 					};
-				}
+				},
 				None => {
 					return Err(InternalError::NoKeypairError(format!(
 						"Encountered encrypted Resource: {} but no decryption key(public key) was provided",
 						id
 					)))
-				}
+				},
 			}
 		}
 
 		// 2: Decompression layer
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-			let mut buffer = vec![];
+			#[cfg(feature = "compression")]
+			{
+				let mut buffer = vec![];
 
-			if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
-			} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
-			} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-				Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
-			} else {
-				return InternalResult::Err(InternalError::DeCompressionError(
-					"Unspecified compression algorithm bits".to_string(),
-				));
-			};
+				if entry.flags.contains(Flags::LZ4_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
+				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
+				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
+					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
+				} else {
+					return InternalResult::Err(InternalError::DeCompressionError(
+						"Unspecified compression algorithm bits".to_string(),
+					));
+				};
 
-			raw = buffer
+				raw = buffer
+			}
+
+			#[cfg(not(feature = "compression"))]
+			return Err(InternalError::DeCompressionError("The -compression- feature was turned off during compilation. To handle (de)compressed data please consider turning it on".to_string()));
 		};
 
 		let mut buffer = vec![];
@@ -202,39 +211,23 @@ where
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+		let mut raw = vec![];
+
 		{
 			let mut guard = match self.handle.lock() {
 				Ok(guard) => guard,
 				Err(_) => {
 					return Err(InternalError::SyncError(
-						"The Mutex in this Archive has been poisoned, an error occured somewhere".to_string(),
+						"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
 					))
-				}
+				},
 			};
 
 			guard.seek(SeekFrom::Start(entry.location))?;
-		}
+			let reader_ref = &mut *guard;
+			let mut take = reader_ref.take(entry.offset);
 
-		let offset = entry.offset as usize;
-		let mut raw = Vec::with_capacity(offset);
-
-		// This is ok since we never **read** from the vector
-		#[allow(clippy::uninit_vec)]
-		unsafe {
-			raw.set_len(offset);
-		}
-
-		{
-			let mut guard = match self.handle.lock() {
-				Ok(guard) => guard,
-				Err(_) => {
-					return Err(InternalError::SyncError(
-						"The Mutex in this Archive has been poisoned, an error occured somewhere".to_string(),
-					))
-				}
-			};
-
-			guard.read_exact(raw.as_mut_slice())?;
+			take.read_to_end(&mut raw)?;
 		}
 
 		Ok(raw)
@@ -274,9 +267,6 @@ where
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
 	pub fn fetch(&self, id: &str) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
-		let mut buffer = Vec::new();
-		self.fetch_write(id, &mut buffer)?;
-
 		if let Some(entry) = self.fetch_entry(id) {
 			let raw = self.fetch_raw(&entry)?;
 
@@ -324,36 +314,70 @@ where
 }
 
 #[cfg(feature = "multithreaded")]
-impl<T: Read + Seek + Send + Sync> Archive<T> {
+impl<T> Archive<T>
+where
+	T: Read + Seek + Send + Sync,
+{
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
-	/// This function is only available with the `multithreaded` feature. Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct otherwise
-	pub fn fetch_batch<'a, I: Iterator<Item = S> + Send + Sync, S: Send + Sync + Into<&'a str>>(
-		&mut self, items: I,
-	) -> InternalResult<HashMap<String, InternalResult<Resource>>> {
+	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop (rayon if you want) construct otherwise
+	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
+	pub fn fetch_batch<'a, I, S>(
+		&self, items: I, num_threads: Option<usize>,
+	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
+	where
+		I: Iterator<Item = S> + Send + Sync,
+		S: Into<&'a str>,
+	{
 		use rayon::prelude::*;
 
-		let mut processed = HashMap::new();
-		let (sender, receiver) = crossbeam_channel::unbounded();
+		// Prepare mutexes
+		let processed = Arc::new(Mutex::new(HashMap::new()));
+		let queue = Arc::new(Mutex::new(items));
 
-		items.par_bridge().try_for_each(|id| -> InternalResult<()> {
-			let id = id.into();
-			let resource = self.fetch(id);
+		let num_threads = match num_threads {
+			Some(num) => num,
+			None => num_cpus::get(),
+		};
 
-			let string = id.to_string();
-			if let Err(err) = sender.send((string, resource)) {
-				Err(InternalError::SyncError(format!(
-					"Unable to send data over channel {}",
-					err
-				)))
-			} else {
+		// Creates a thread-pool`
+		(0..num_threads)
+			.into_par_iter()
+			.try_for_each(|_| -> InternalResult<()> {
+				let mut produce = vec![];
+
+				// Query next item on queue and process
+				while let Some(id) = queue.lock().unwrap().next() {
+					let id = id.into();
+					let resource = self.fetch(id);
+
+					let string = id.to_string();
+					if let Ok(mut guard) = processed.try_lock() {
+						guard.insert(string, resource);
+
+						// The lock is available, so we pop everything off the queue
+						for _ in 0..produce.len() {
+							let (id, res) = produce.pop().unwrap();
+							guard.insert(id, res);
+						}
+					} else {
+						produce.push((string, resource));
+					}
+				}
+
 				Ok(())
-			}
-		})?;
+			})?;
 
-		receiver.try_iter().for_each(|(id, res)| {
-			processed.insert(id, res);
-		});
-
-		Ok(processed)
+		match Arc::try_unwrap(processed) {
+			Ok(mutex) => match mutex.into_inner() {
+				Ok(inner) => Ok(inner),
+				Err(err) => Err(InternalError::SyncError(format!(
+					"Mutex<HashMap> has been poisoned! {}",
+					err
+				))),
+			},
+			Err(_) => Err(InternalError::SyncError(
+				"Cannot consume this HashMap as other references (ARC) to it exist".to_string(),
+			)),
+		}
 	}
 }

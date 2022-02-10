@@ -40,9 +40,7 @@ impl RegistryEntry {
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(Self, String)> {
 		#![allow(clippy::uninit_assumed_init)]
-		use std::mem::MaybeUninit;
-
-		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
+		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = [0u8; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
 		// Construct entry
@@ -58,7 +56,7 @@ impl RegistryEntry {
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
 		// Only produce a flag from data that is signed
 		if flags.contains(Flags::SIGNED_FLAG) {
-			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] = unsafe { MaybeUninit::uninit().assume_init() };
+			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] = [0u8; crate::SIGNATURE_LENGTH];
 			handle.read_exact(&mut sig_bytes)?;
 
 			let sig: esdalek::Signature = match sig_bytes.try_into() {

@@ -67,10 +67,10 @@ impl fmt::Display for HeaderConfig {
 			match str::from_utf8(&self.magic) {
 				Ok(magic) => {
 					magic
-				}
+				},
 				Err(_) => {
 					return fmt::Result::Err(fmt::Error);
-				}
+				},
 			},
 			self.public_key.is_some()
 		)
@@ -84,7 +84,7 @@ impl Default for HeaderConfig {
 	}
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct Header {
 	pub magic: [u8; crate::MAGIC_LENGTH], // VfACH
 	pub flags: Flags,
@@ -135,10 +135,7 @@ impl Header {
 	///  - `io` errors
 	pub fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
 		#![allow(clippy::uninit_assumed_init)]
-		// We are never reading from `buffer`, so it's safe to use uninitialized memory. We initialize it instantly after
-
-		use std::mem::MaybeUninit;
-		let mut buffer: [u8; Header::BASE_SIZE] = unsafe { MaybeUninit::uninit().assume_init() };
+		let mut buffer: [u8; Header::BASE_SIZE] = [0u8; Header::BASE_SIZE];
 
 		handle.read_exact(&mut buffer)?;
 

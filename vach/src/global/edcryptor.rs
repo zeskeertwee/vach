@@ -7,6 +7,7 @@ use aes_gcm::aes::cipher::consts::U12;
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 
 // Encryption - Decryption, A convenient wrapper around aes encryption and decryption
+#[derive(Clone)]
 pub(crate) struct Encryptor {
 	cipher: Aes256Gcm,
 	nonce: Nonce<U12>,
