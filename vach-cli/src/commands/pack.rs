@@ -1,5 +1,8 @@
 use std::fs::OpenOptions;
-use std::{fs::File, io::Write};
+use std::{
+	fs::File,
+	io::{Write, Read},
+};
 use std::path::PathBuf;
 use std::convert::TryInto;
 use std::collections::HashSet;
@@ -13,6 +16,16 @@ use super::CommandTrait;
 use crate::keys::key_names;
 
 pub const VERSION: &str = "0.0.5";
+
+struct FileWrapper(PathBuf);
+
+impl Read for FileWrapper {
+	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+		let mut file = File::open(&self.0)?;
+		file.read(buf)
+	}
+}
+
 /// This command verifies the validity and integrity of an archive
 pub struct Evaluator;
 
@@ -80,7 +93,7 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Extract the inputs
-		let mut inputs: Vec<PathBuf> = vec![];
+		let mut inputs: Vec<FileWrapper> = vec![];
 
 		// Used to filter invalid inputs and excluded inputs
 		let path_filter = |path: &PathBuf| match path.canonicalize() {
@@ -98,7 +111,7 @@ impl CommandTrait for Evaluator {
 		if let Some(val) = args.values_of(key_names::INPUT) {
 			val.map(PathBuf::from)
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(p));
+				.for_each(|p| inputs.push(FileWrapper(p)));
 		};
 
 		// Extract directory inputs
@@ -109,7 +122,7 @@ impl CommandTrait for Evaluator {
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
 					.filter(|f| path_filter(f))
-					.for_each(|p| inputs.push(p))
+					.for_each(|p| inputs.push(FileWrapper(p)))
 			});
 		};
 
@@ -119,7 +132,7 @@ impl CommandTrait for Evaluator {
 				.flatten()
 				.map(|v| v.unwrap().into_path())
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(p));
+				.for_each(|p| inputs.push(FileWrapper(p)));
 		}
 
 		// Read valueless flags
@@ -210,30 +223,23 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Process the files
-		for path in &inputs {
-			if !path.exists() {
-				pbar.println(format!("Skipping {}, does not exist!", path.to_string_lossy()));
+		for wrapper in &mut inputs {
+			if !wrapper.0.exists() {
+				pbar.println(format!("Skipping {}, does not exist!", wrapper.0.to_string_lossy()));
 
 				pbar.inc(1);
 
 				continue;
 			}
 
-			let id = path
+			let id = wrapper
+				.0
 				.to_string_lossy()
 				.trim_start_matches("./")
 				.trim_start_matches(".\\")
 				.to_string();
 			pbar.println(format!("Preparing {} for packaging", id));
-
-			match File::open(&path) {
-				Ok(file) => {
-					if let Err(e) = builder.add(file, &id) {
-						pbar.println(format!("Couldn't add file: {}. {}", path.to_string_lossy(), e))
-					}
-				},
-				Err(e) => pbar.println(format!("Couldn't open file {}: {}", path.to_string_lossy(), e)),
-			}
+			builder.add(wrapper, &id)?;
 		}
 
 		// Inform of success in input queue
@@ -245,9 +251,9 @@ impl CommandTrait for Evaluator {
 
 		// Truncate original files
 		if truncate {
-			for entry in inputs {
-				std::fs::remove_file(&entry)?;
-				pbar.println(format!("Truncated original file @ {}", entry.to_string_lossy()));
+			for wrapper in inputs {
+				std::fs::remove_file(&wrapper.0)?;
+				pbar.println(format!("Truncated original file @ {}", wrapper.0.to_string_lossy()));
 			}
 
 			pbar.inc(3);
