@@ -313,6 +313,13 @@ fn builder_with_encryption() -> InternalResult<()> {
 	build_config.load_keypair(KEYPAIR.as_slice())?;
 
 	builder.add_dir("test_data", None)?;
+	builder.add_leaf(
+		Leaf::from_handle(b"Snitches get stitches, iOS sucks" as &[u8])
+			.sign(false)
+			.compression_algo(CompressionAlgorithm::Brotli(11))
+			.compress(CompressMode::Always)
+			.id("stitches.snitches"),
+	)?;
 
 	let mut target = File::create(ENCRYPTED_TARGET)?;
 	println!(
