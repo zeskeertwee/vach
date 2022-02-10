@@ -289,7 +289,5 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.number_of_values(1),
 	);
 
-	assert_eq!(map.len(), 19);
-
 	map
 }
