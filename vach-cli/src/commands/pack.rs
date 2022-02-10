@@ -1,7 +1,7 @@
 use std::fs::OpenOptions;
 use std::{
 	fs::File,
-	io::{Write, Read},
+	io::{Write, Read, self},
 };
 use std::path::PathBuf;
 use std::convert::TryInto;
@@ -17,12 +17,28 @@ use crate::keys::key_names;
 
 pub const VERSION: &str = "0.0.5";
 
-struct FileWrapper(PathBuf);
+struct FileWrapper(PathBuf, Option<File>);
 
 impl Read for FileWrapper {
-	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-		let mut file = File::open(&self.0)?;
-		file.read(buf)
+	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+		// If no file is defined open it
+		let file = match self.1.as_mut() {
+			Some(file) => file,
+			None => {
+				self.1 = Some(File::open(&self.0)?);
+				self.1.as_mut().unwrap()
+			},
+		};
+		let result = file.read(buf);
+
+
+		// If a file has finished reading it returns an `Ok(0)` so we know no more calls to `io::Read` are going to be made
+		// Meaning we can safely drop the `fs::File` stored in this file wrapper
+		if let Ok(0) = result {
+			self.1.take();
+		};
+
+		result
 	}
 }
 
@@ -111,7 +127,7 @@ impl CommandTrait for Evaluator {
 		if let Some(val) = args.values_of(key_names::INPUT) {
 			val.map(PathBuf::from)
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(FileWrapper(p)));
+				.for_each(|p| inputs.push(FileWrapper(p, None)));
 		};
 
 		// Extract directory inputs
@@ -122,7 +138,7 @@ impl CommandTrait for Evaluator {
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
 					.filter(|f| path_filter(f))
-					.for_each(|p| inputs.push(FileWrapper(p)))
+					.for_each(|p| inputs.push(FileWrapper(p, None)))
 			});
 		};
 
@@ -132,7 +148,7 @@ impl CommandTrait for Evaluator {
 				.flatten()
 				.map(|v| v.unwrap().into_path())
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(FileWrapper(p)));
+				.for_each(|p| inputs.push(FileWrapper(p, None)));
 		}
 
 		// Read valueless flags
