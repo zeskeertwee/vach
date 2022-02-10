@@ -4,7 +4,6 @@ use std::collections::HashMap;
 pub mod key_names {
 	pub(crate) const OUTPUT: &str = "OUTPUT";
 	pub(crate) const INPUT: &str = "INPUT";
-	pub(crate) const SOURCE: &str = "SOURCE";
 
 	pub(crate) const DIR_INPUT: &str = "DIR_INPUT";
 	pub(crate) const DIR_INPUT_REC: &str = "DIR_INPUT_REC";
@@ -108,19 +107,6 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.help("Exclude the given paths from the input queue")
 			.required(false)
 			.takes_value(false),
-	);
-
-	// treats the entries in a .vach file like regular files, but with metadata from the archive
-	map.insert(
-		key_names::SOURCE,
-		Arg::new(key_names::SOURCE)
-			.long("source")
-			.short('z')
-			.value_name(key_names::SOURCE)
-			.help("Treats the entries in a .vach file like regular files and adds them to the input queue")
-			.required(false)
-			.takes_value(false)
-			.number_of_values(1),
 	);
 
 	// treats the entries in a .vach file like regular files, but with metadata from the archive
