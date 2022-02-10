@@ -208,7 +208,7 @@ impl<'a> Builder<'a> {
 		};
 
 		// Define all arc-mutexes
-		let leaf_offset_arc = Arc::new(Mutex::new(&mut leaf_offset_sync));
+		let leaf_offset_arc = Arc::new(AtomicUsize::new(leaf_offset_sync));
 		let total_arc = Arc::new(AtomicUsize::new(total_sync));
 		let wtr_arc = Arc::new(Mutex::new(wtr_sync));
 		let reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
@@ -299,15 +299,15 @@ impl<'a> Builder<'a> {
 				let mut wtr = wtr_arc.lock().unwrap();
 
 				// Lock leaf_offset
-				let leaf_arc = Arc::clone(&leaf_offset_arc);
-				let mut leaf_offset = leaf_arc.lock().unwrap();
+				let leaf_offset_arc = Arc::clone(&leaf_offset_arc);
+				let leaf_offset = leaf_offset_arc.load(Ordering::SeqCst);
 
-				wtr.seek(SeekFrom::Start(**leaf_offset as u64))?;
+				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
 				wtr.write_all(&raw)?;
 
 				// Update offset locations
-				entry.location = **leaf_offset as u64;
-				**leaf_offset += glob_length;
+				entry.location = leaf_offset as u64;
+				leaf_offset_arc.fetch_add(glob_length, Ordering::SeqCst);
 
 				// Update number of bytes written
 				total_arc.fetch_add(glob_length, Ordering::SeqCst);
