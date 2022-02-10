@@ -273,7 +273,7 @@ impl<'a> Builder<'a> {
 				leaf.handle.read_to_end(&mut raw)?;
 			}
 
-			// Encryption comes after
+			// Encryption comes second
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
 					raw = match ex.encrypt(&raw) {
@@ -290,7 +290,7 @@ impl<'a> Builder<'a> {
 				}
 			}
 
-			// Write leaf-contents accordingly and update offsets within MutexGuard protection
+			// Write processed leaf-contents and update offsets within `MutexGuard` protection
 			let glob_length = raw.len();
 
 			{
@@ -313,6 +313,7 @@ impl<'a> Builder<'a> {
 				total_arc.fetch_add(glob_length, Ordering::SeqCst);
 			};
 
+			// Update the offset of the entry to be the length of the glob
 			entry.offset = glob_length as u64;
 
 			if leaf.sign {
