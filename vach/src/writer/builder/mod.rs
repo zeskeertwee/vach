@@ -1,7 +1,5 @@
 use std::io::{BufWriter, Write, Seek, SeekFrom};
 use std::collections::HashSet;
-
-#[cfg(feature = "multithreaded")]
 use std::sync::{
 	Arc, Mutex,
 	atomic::{Ordering, AtomicUsize},
@@ -120,9 +118,9 @@ impl<'a> Builder<'a> {
 
 	/// Avoid unnecessary boilerplate by auto-templating all [`Leaf`]s added with `Builder::add(--)` with the given template
 	/// ```
-	/// use vach::builder::{Builder, Leaf, CompressMode};
+	/// use vach::builder::{Builder, Leaf};
 	///
-	/// let template = Leaf::default().compress(CompressMode::Always).version(12);
+	/// let template = Leaf::default().encrypt(false).version(12);
 	/// let mut builder = Builder::new().template(template);
 	///
 	/// builder.add(b"JEB" as &[u8], "JEB_NAME").unwrap();
@@ -209,38 +207,25 @@ impl<'a> Builder<'a> {
 			None
 		};
 
+		// Define all arc-mutexes
+		let leaf_offset_arc = Arc::new(Mutex::new(&mut leaf_offset_sync));
+		let total_arc = Arc::new(AtomicUsize::new(total_sync));
+		let wtr_arc = Arc::new(Mutex::new(wtr_sync));
+		let reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
+
 		#[allow(unused_mut)]
 		let mut iter_mut;
 
-		// All these arc-mutexes are used only during multithreaded execution
-		#[cfg(feature = "multithreaded")]
-		let leaf_offset_arc;
-		#[cfg(feature = "multithreaded")]
-		let total_arc;
-		#[cfg(feature = "multithreaded")]
-		let wtr_arc;
-		#[cfg(feature = "multithreaded")]
-		let reg_buffer_arc;
-
+		// Conditionally define iterator
 		#[cfg(feature = "multithreaded")]
 		{
 			iter_mut = self.leafs.as_mut_slice().par_iter_mut();
-
-			// Define all arc-mutexes
-			leaf_offset_arc = Arc::new(Mutex::new(&mut leaf_offset_sync));
-			total_arc = Arc::new(AtomicUsize::new(total_sync));
-			wtr_arc = Arc::new(Mutex::new(wtr_sync));
-			reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
 		}
 
 		#[cfg(not(feature = "multithreaded"))]
 		{
 			iter_mut = self.leafs.iter_mut();
 		}
-
-		/* ========== MULTI-THREADED EXECUTION MAY START HERE ================= */
-		// NOTE: Variables with *_sync cannot be accessed in the multithreaded context only the single threaded context
-		// NOTE: In the multithreaded context they have been wrapped in arc-mutexes for thread safety
 
 		// Populate the archive glob
 		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult<()> {
@@ -307,7 +292,7 @@ impl<'a> Builder<'a> {
 
 			// Write leaf-contents accordingly and update offsets within MutexGuard protection
 			let glob_length = raw.len();
-			#[cfg(feature = "multithreaded")]
+
 			{
 				// Lock writer
 				let wtr_arc = Arc::clone(&wtr_arc);
@@ -327,14 +312,6 @@ impl<'a> Builder<'a> {
 				// Update number of bytes written
 				total_arc.fetch_add(glob_length, Ordering::SeqCst);
 			};
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				wtr_sync.seek(SeekFrom::Start(leaf_offset_sync as u64))?;
-				wtr_sync.write_all(&raw)?;
-				total_sync += glob_length;
-				entry.location = leaf_offset_sync as u64;
-				leaf_offset_sync += glob_length;
-			}
 
 			entry.offset = glob_length as u64;
 
@@ -365,18 +342,12 @@ impl<'a> Builder<'a> {
 			entry_bytes.extend(leaf.id.as_bytes());
 
 			// Write to the registry-buffer and update total number of bytes written
-			#[cfg(feature = "multithreaded")]
 			{
 				let arc = Arc::clone(&reg_buffer_arc);
 				let mut reg_buffer = arc.lock().unwrap();
 
 				reg_buffer.write_all(&entry_bytes)?;
 				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
-			};
-			#[cfg(not(feature = "multithreaded"))]
-			{
-				reg_buffer_sync.write_all(&entry_bytes)?;
-				total_sync += entry_bytes.len();
 			}
 
 			// Call the progress callback bound within the [`BuilderConfig`]
@@ -388,7 +359,6 @@ impl<'a> Builder<'a> {
 		})?;
 
 		// Write out the contents of the registry
-		#[cfg(feature = "multithreaded")]
 		{
 			let arc = Arc::clone(&wtr_arc);
 			let mut wtr = arc.lock().unwrap();
@@ -399,19 +369,8 @@ impl<'a> Builder<'a> {
 			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
 			wtr.write_all(reg_buffer.as_slice())?;
 		};
-		#[cfg(not(feature = "multithreaded"))]
-		{
-			wtr_sync.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
-			wtr_sync.write_all(reg_buffer_sync.as_slice())?;
-		}
 
-		#[cfg(feature = "multithreaded")]
-		{
-			Ok(total_arc.load(Ordering::SeqCst))
-		}
-		#[cfg(not(feature = "multithreaded"))]
-		{
-			Ok(total_sync)
-		}
+		// Return total number of bytes written
+		Ok(total_arc.load(Ordering::SeqCst))
 	}
 }

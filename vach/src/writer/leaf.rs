@@ -100,14 +100,14 @@ impl<'a> Leaf<'a> {
 	/// Meant to be used like a setter:
 	/// ```rust
 	/// use std::io::Cursor;
-	/// use vach::prelude::{Leaf, CompressMode};
+	/// use vach::prelude::Leaf;
 	/// let template = Leaf::default()
 	///    .version(12)
-	///    .compress(CompressMode::Always);
+	///    .encrypt(false);
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
 	/// assert_eq!(&leaf.content_version, &template.content_version);
-	/// assert_eq!(&leaf.compress, &template.compress);
+	/// assert_eq!(&leaf.encrypt, &template.encrypt);
 	/// ```
 	pub fn template(self, other: &Leaf<'a>) -> Self {
 		Leaf {
