@@ -32,7 +32,7 @@ impl Read for FileWrapper {
 		let result = file.read(buf);
 
 
-		// If a file has finished reading it returns an `Ok(0)` so we know no more calls to `io::Read` are going to be made
+		// Intercepts a file once it's finished reading to drop it, thus avoiding OS filesystem limitations easily
 		// Meaning we can safely drop the `fs::File` stored in this file wrapper
 		if let Ok(0) = result {
 			self.1.take();
