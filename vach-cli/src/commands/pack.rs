@@ -254,7 +254,7 @@ impl CommandTrait for Evaluator {
 				.trim_start_matches("./")
 				.trim_start_matches(".\\")
 				.to_string();
-			pbar.println(format!("Preparing {} for packaging", id));
+			log::info!("Preparing {} for packaging", id);
 			builder.add(wrapper, &id)?;
 		}
 
