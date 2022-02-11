@@ -2,7 +2,7 @@
 
 `vach-cli` is a simple CLI for packing, unpacking and handling `.vach` files.
 
-> For the `vach version 20 LTS` old CLI use [this version](https://crates.io/crates/vach-cli/0.3.3) instead, this CLI version only works with `vach version 30` onwards
+> For the `vach20` use [this version](https://crates.io/crates/vach-cli/0.3.3) of the CLI instead, this version of the CLI only works with `vach30` onwards
 
 ---
 
@@ -80,10 +80,6 @@ vach pack -o hello.vach -r ./hello
 # Inputs can be added in tandem
 vach pack -o hello.vach -i hi.txt bye.txt -d greetings PR -r talks
 
-# Also use another archive as input using the "-z" or "--source" flag
-# The other archive should be standard, meaning no encryption nor custom magic. Tho it can be compressed
-vach pack -z another.vach -o hello.vach -i hello.txt goodbye.txt
-
 # Exclude a given file from the queue
 vach pack -x hello/secret.txt -o hello.vach -d hello
 
@@ -94,11 +90,18 @@ vach pack -s secret_key.sk -o hello.vach -i hello.txt goodbye.txt
 ### MODIFIERS ####
 # Compression: "-c always", "-c never" or "-c detect"
 vach pack -c always -o hello.vach -i hello.txt goodbye.txt
+vach pack -c never -o hello.vach -i hello.txt goodbye.txt
+
+# CompressionAlgorithm: "-g lz4", "-g snappy" or "-g brotli". Both "-g" and "--compress-algo" keys work
+vach pack -g lz4 -c always -o hello.vach -i hello.txt goodbye.txt
+
+# Note compression has been set to never here so setting the compression algorithm to be used has no effect
+vach pack -g snappy -c never -o hello.vach -i hello.txt goodbye.txt
 
 # Hash: "-a" or "--hash"
 # Whether to include signatures in the archive
 # This help to detect if the archive has been tampered with
-# But there are very computationaly intensive so use them sparingly
+# But it's very computationally intensive so use them sparingly
 vach pack -s -o hello.vach -i hello.txt goodbye.txt
 
 # Encrypt: "-e" or "--encrypt"
