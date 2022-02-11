@@ -43,7 +43,7 @@
 
 ### 👄 Terminologies
 
-- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or in memory buffer (`io::Cursor`).
+- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or in memory buffer (`io::Cursor<Vec<u8>>`).
 - **Leaf:** Any actual data endpoint within an archive, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding `leaf`. For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
@@ -79,7 +79,7 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::from_handle(target)?;
+let archive = Archive::from_handle(target)?;
 let resource: Resource = archive.fetch("ambient")?;
 
 // By default all resources are flagged as NOT secure
@@ -149,7 +149,7 @@ let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH] = include_bytes!(PUBLIC
 let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::with_config(target, &config)?;
+let archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
 let resource = archive.fetch("ambient")?;
@@ -182,7 +182,7 @@ builder.dump(&mut target, &config)?;
 
 // Load data
 let config = HeaderConfig::default().magic(*MAGIC);
-let mut archive = Archive::with_config(target, &config)?;
+let archive = Archive::with_config(target, &config)?;
 
 // Quick assertions
 assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);

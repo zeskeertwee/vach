@@ -25,7 +25,7 @@
 ## ⛏ Who is this for?
 
 - You just released some software and don't want your assets pirated or easily read.
-- You want a simple convinient way to manage, decompress, decrypt and authenticate assets in distribution.
+- You want a simple convenient way to manage, decompress, decrypt and authenticate assets in distribution.
 - You want a pure Rust™️ archive format with no C bindings underneath (bindings **for** C may become available in the future).
 - You want your software to be neat, and all your assets to be in one neat secure container.
 - You like orbital cannons.
@@ -38,7 +38,7 @@ use vach::prelude::{Archive, Resource, Flags};
 
 let source = File::open("sounds.vach")?;
 
-let mut archive = Archive::from_handle(source)?;
+let archive = Archive::from_handle(source)?;
 let resource: Resource = archive.fetch("footstep.wav")?;
 
 // By default all resources are flagged as NOT secure
