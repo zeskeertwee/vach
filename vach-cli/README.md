@@ -2,7 +2,7 @@
 
 `vach-cli` is a simple CLI for packing, unpacking and handling `.vach` files.
 
-> For the `vach20` use [this version](https://crates.io/crates/vach-cli/0.3.3) of the CLI instead, this version of the CLI only works with `vach30` onwards
+> For the [`vach20`](https://crates.io/crates/vach/0.2.3) version use [this version](https://crates.io/crates/vach-cli/0.3.3) of the CLI instead, this version of the CLI only works with [`vach30`](https://crates.io/crates/vach/0.3.5) onwards
 
 ---
 
@@ -24,7 +24,7 @@ vach [subcommand] -[key] [...values]
 # List all entries in the archive "source.vach"
 vach list -i source.vach
 
-# Pack the files hello.png, click.wav and dialogue.txt into asssets.vach
+# Pack the files hello.png, click.wav and dialogue.txt into assets.vach
 vach pack -i hello.png click.wav dialogue.tx -o assets.vach
 
 # Pack all the file in the directory textures into textures.vach and apply compression
@@ -140,7 +140,7 @@ vach unpack -i source.vach -o ./output/
 
 # Specify what magic your archive uses
 # Magic: "-m" or "--magic"
-vach unpack -m CMYKX -i source.vach
+vach unpack -m `CMYKX -i source.vach
 
 # Truncate: "-t" or "--truncate"
 # Deletes the original archive after unpacking
