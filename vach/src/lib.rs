@@ -99,7 +99,7 @@ builder.dump(&mut target, &config).unwrap();
 
 ##### > Serialize and de-serialize a `Keypair`, `SecretKey` and `PublicKey`
 
-As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/), you could refer to their docs to read further about them.
+As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/), you could refer to their docs to read further about them.
 
 ```
 use vach::prelude::{Keypair, SecretKey, PublicKey};
