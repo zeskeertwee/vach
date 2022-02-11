@@ -1192,8 +1192,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "843aefa3d71e0d8ddc78279a87fcc9d3485f17e375136a183f6926c5a57d9584"
 dependencies = [
  "aes-gcm",
+ "brotli",
  "ed25519-dalek",
+ "lz4_flex",
+ "num_cpus",
  "rand",
+ "rayon",
+ "snap",
 ]
 
 [[package]]
