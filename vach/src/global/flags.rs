@@ -12,18 +12,18 @@ pub struct Flags {
 // basically just a tiny, scoped version of bitflags
 impl Flags {
 	/// The flags used within the crate, to whom all access is denied.
-	/// Any interaction with set will cause an exception.
+	/// Any interaction with `Flags::set()` will yield an error.
 	pub const RESERVED_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 	/// The size in bytes of any flags entry
 	pub const SIZE: usize = 32 / 8;
 
 	/// This flag shows that the adjacent entry is compressed
 	pub const COMPRESSED_FLAG: u32 = 0b_1000_0000_0000_0000_0000_0000_0000_0000;
-	/// Uses [LZ4](https://crates.io/crates/lz4_flex) for very fast decompression with average compression ratios
+	/// This entry was compressed using the [LZ4](https://crates.io/crates/lz4_flex) scheme for very fast decompression with average compression ratios
 	pub const LZ4_COMPRESSED: u32 = 0b_0100_0000_0000_0000_0000_0000_0000_0000;
-	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced
+	/// This entry was compressed using the [snappy](https://crates.io/crates/snap) scheme for balanced compression properties
 	pub const SNAPPY_COMPRESSED: u32 = 0b_0010_0000_0000_0000_0000_0000_0000_0000;
-	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
+	/// This entry was compressed using the [brotli](https://crates.io/crates/brotli) scheme for higher compression ratios but *much* (depends on the quality of compression) slower compression speed
 	pub const BROTLI_COMPRESSED: u32 = 0b_0001_0000_0000_0000_0000_0000_0000_0000;
 
 	/// The flag that denotes that the archive source has signatures
@@ -34,7 +34,7 @@ impl Flags {
 	pub const MUTABLE_REGISTRY_FLAG: u32 = 0b_0000_0001_0000_0000_0000_0000_0000_0000;
 
 	#[inline(always)]
-	/// Construct a `Flags` struct from a `u16` number
+	/// Construct a `Flags` struct from a `u32` number
 	pub fn from_bits(bits: u32) -> Self {
 		Flags { bits }
 	}
@@ -62,7 +62,7 @@ impl Flags {
 	///
 	/// As the [`Flags`] struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
 	/// are reserved for internal use (ie the first 16 half bits). The good thing is that because of endianness, one can use the remaining 16 bits
-	/// just fine, as seen below. Just using the `0b0000_0000_0000_0000` literal works because `vach` is little endian.
+	/// just fine, as seen below. Just using the `0b0000_0000_0000_0000` literal works because most platforms are little endian.
 	/// ```
 	/// use vach::prelude::Flags;
 	///

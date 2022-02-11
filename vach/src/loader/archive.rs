@@ -23,8 +23,8 @@ use crate::global::compressor::{Compressor, CompressionAlgorithm};
 use ed25519_dalek as esdalek;
 
 /// A wrapper for loading data from archive sources.
-/// It also provides query functions for fetching `Resources` and [`RegistryEntry`]s.
-/// It can be customized with the `HeaderConfig` struct.
+/// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
+/// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`]
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 #[derive(Clone)]
@@ -234,9 +234,7 @@ where
 	}
 
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
-	/// This can be used for debugging, as the [`RegistryEntry`] holds information about some data within a source.
-	/// ### `None` case:
-	/// If no entry with the given ID exists then `None` is returned.
+	/// This can be used for debugging, as the [`RegistryEntry`] holds information on data with the adjacent ID.
 	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
 		match self.entries.get(id) {
 			Some(entry) => Some(entry.clone()),
@@ -319,7 +317,7 @@ where
 	T: Read + Seek + Send + Sync,
 {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
-	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop (rayon if you want) construct otherwise
+	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct ([rayon] if you want) otherwise
 	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
 	pub fn fetch_batch<'a, I, S>(
 		&self, items: I, num_threads: Option<usize>,
