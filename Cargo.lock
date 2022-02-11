@@ -1173,7 +1173,7 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "aes-gcm",
  "brotli",
@@ -1204,7 +1204,7 @@ name = "vach-benchmarks"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "vach 0.3.4",
+ "vach 0.3.5",
 ]
 
 [[package]]
@@ -1217,7 +1217,7 @@ dependencies = [
  "log",
  "pretty_env_logger",
  "tabled",
- "vach 0.3.4",
+ "vach 0.3.5",
  "walkdir",
 ]
 
