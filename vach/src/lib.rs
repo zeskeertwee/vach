@@ -21,7 +21,7 @@
 
 ---
 
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ### 👄 Terminologies
 
@@ -64,7 +64,7 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::from_handle(target)?;
+let archive = Archive::from_handle(target)?;
 let resource: Resource = archive.fetch("ambient")?;
 
 // By default all resources are flagged as NOT secured
@@ -133,7 +133,7 @@ public_key.read_exact(&mut public_key_bytes)?;
 let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::with_config(target, &config)?;
+let archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
 let resource = archive.fetch("ambient")?;
