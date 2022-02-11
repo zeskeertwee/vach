@@ -117,9 +117,9 @@ dependencies = [
 
 [[package]]
 name = "autocfg"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
+checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "bitflags"
@@ -694,9 +694,9 @@ dependencies = [
 
 [[package]]
 name = "papergrid"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daff3d017ba874371c984a4eb5662e446362f13d11ee6bdb7fadbe1e3c223333"
+checksum = "2c2b5b9ea36abb56e4f8a29889e67f878ebc4ab43c918abe32e85a012d27b819"
 dependencies = [
  "unicode-width",
 ]
@@ -1186,6 +1186,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "vach"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "843aefa3d71e0d8ddc78279a87fcc9d3485f17e375136a183f6926c5a57d9584"
+dependencies = [
+ "aes-gcm",
+ "brotli",
+ "ed25519-dalek",
+ "lz4_flex",
+ "num_cpus",
+ "rand",
+ "rayon",
+ "snap",
+]
+
+[[package]]
 name = "vach-assets-manager"
 version = "0.1.0"
 dependencies = [
@@ -1209,7 +1225,7 @@ dependencies = [
 
 [[package]]
 name = "vach-cli"
-version = "0.4.0"
+version = "0.3.6"
 dependencies = [
  "anyhow",
  "clap 3.0.14",
@@ -1217,7 +1233,7 @@ dependencies = [
  "log",
  "pretty_env_logger",
  "tabled",
- "vach 0.3.5",
+ "vach 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir",
 ]
 

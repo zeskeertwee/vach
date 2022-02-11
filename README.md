@@ -20,7 +20,7 @@
 
 ## 👔 The official `vach` crates' repo
 
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for [compression](https://github.com/PSeitz/lz4_flex), [data signing and authentication](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ---
 
@@ -43,7 +43,7 @@
 
 ### 👄 Terminologies
 
-- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or in memory buffer (`io::Cursor`).
+- **Archive Source:** Any source of data. That implements `io::Seek` and `io::Read`, for example a file (`fs::File`) or in memory buffer (`io::Cursor<Vec<u8>>`).
 - **Leaf:** Any actual data endpoint within an archive, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding `leaf`. For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
@@ -79,7 +79,7 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::from_handle(target)?;
+let archive = Archive::from_handle(target)?;
 let resource: Resource = archive.fetch("ambient")?;
 
 // By default all resources are flagged as NOT secure
@@ -117,7 +117,7 @@ builder.dump(&mut target, &config).unwrap();
 
 ##### > Serialize and de-serialize a `Keypair`, `SecretKey` and `PublicKey`
 
-As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/), you could refer to their docs to read further about them.
+As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/), you could refer to their docs to read further about them.
 
 ```rust
 use vach::prelude::{Keypair, SecretKey, PublicKey};
@@ -149,7 +149,7 @@ let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH] = include_bytes!(PUBLIC
 let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::with_config(target, &config)?;
+let archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
 let resource = archive.fetch("ambient")?;
@@ -182,7 +182,7 @@ builder.dump(&mut target, &config)?;
 
 // Load data
 let config = HeaderConfig::default().magic(*MAGIC);
-let mut archive = Archive::with_config(target, &config)?;
+let archive = Archive::with_config(target, &config)?;
 
 // Quick assertions
 assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);

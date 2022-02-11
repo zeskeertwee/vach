@@ -8,7 +8,7 @@ use crate::global::{error::InternalError, result::InternalResult};
 #[cfg(feature = "compression")]
 pub use super::global::compressor::Compressor;
 
-/// Use this function to easily generate a [Keypair](https://docs.rs/ed25519-dalek/1.0.1/ed25519_dalek/struct.Keypair.html) using `OsRng`
+/// Use this function to easily generate a [Keypair](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/struct.Keypair.html) using `OsRng`
 #[inline(always)]
 pub fn gen_keypair() -> esdalek::Keypair {
 	esdalek::Keypair::generate(&mut OsRng)

@@ -20,12 +20,12 @@
 
 ---
 
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing and authentication](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/0.1.5/vach/prelude/struct.Flags.html#), [encryption](https://crates.io/crates/aes-gcm-siv/0.10.3) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and **all** help will be much appreciated, especially proof reading the docs, code contributions and review.
+`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ## ⛏ Who is this for?
 
 - You just released some software and don't want your assets pirated or easily read.
-- You want a simple convinient way to manage, decompress, decrypt and authenticate assets in distribution.
+- You want a simple convenient way to manage, decompress, decrypt and authenticate assets in distribution.
 - You want a pure Rust™️ archive format with no C bindings underneath (bindings **for** C may become available in the future).
 - You want your software to be neat, and all your assets to be in one neat secure container.
 - You like orbital cannons.
@@ -38,7 +38,7 @@ use vach::prelude::{Archive, Resource, Flags};
 
 let source = File::open("sounds.vach")?;
 
-let mut archive = Archive::from_handle(source)?;
+let archive = Archive::from_handle(source)?;
 let resource: Resource = archive.fetch("footstep.wav")?;
 
 // By default all resources are flagged as NOT secure
