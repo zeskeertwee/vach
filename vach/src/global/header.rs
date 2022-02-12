@@ -146,9 +146,9 @@ impl Header {
 			// Read flags, u32 from [u8;4]
 			flags: Flags::from_bits(u32::from_le_bytes(buffer[5..9].try_into().unwrap())),
 			// Read version, u16 from [u8;2]
-			arch_version: u16::from_le_bytes([buffer[9], buffer[10]]),
+			arch_version: u16::from_le_bytes(buffer[9..=10].try_into().unwrap()),
 			// Read the capacity of the archive, u16 from [u8;2]
-			capacity: u16::from_le_bytes([buffer[11], buffer[12]]),
+			capacity: u16::from_le_bytes(buffer[11..=12].try_into().unwrap()),
 		})
 	}
 }

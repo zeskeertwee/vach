@@ -179,7 +179,7 @@ where
 		Header::validate(&header, config)?;
 
 		// Generate and store Registry Entries
-		let mut entries = HashMap::new();
+		let mut entries = HashMap::with_capacity(header.capacity as usize);
 
 		// Construct entries map
 		for _ in 0..header.capacity {
@@ -328,8 +328,14 @@ where
 	{
 		use rayon::prelude::*;
 
+		// Attempt to pre-allocate HashMap
+		let map = match items.size_hint().1 {
+			Some(hint) => HashMap::with_capacity(hint),
+			None => HashMap::new(),
+		};
+
 		// Prepare mutexes
-		let processed = Arc::new(Mutex::new(HashMap::new()));
+		let processed = Arc::new(Mutex::new(map));
 		let queue = Arc::new(Mutex::new(items));
 
 		let num_threads = match num_threads {

@@ -29,7 +29,7 @@ pub mod key_names {
 
 pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 	/* please only use this function once during the lifecycle of the program */
-	let mut map = HashMap::new();
+	let mut map = HashMap::with_capacity(19);
 
 	/* The various keys usable in the CLI */
 	// A general output target

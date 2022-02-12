@@ -20,7 +20,7 @@ pub mod unpack;
 pub mod verify;
 
 pub fn build_commands() -> HashMap<&'static str, Box<dyn CommandTrait>> {
-	let mut map: HashMap<&'static str, Box<dyn CommandTrait>> = HashMap::new();
+	let mut map: HashMap<&'static str, Box<dyn CommandTrait>> = HashMap::with_capacity(6);
 
 	map.insert("keypair", Box::new(keypair::Evaluator));
 	map.insert("split", Box::new(split::Evaluator));
