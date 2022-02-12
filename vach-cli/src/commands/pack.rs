@@ -204,9 +204,20 @@ impl CommandTrait for Evaluator {
 		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
-		let callback = |msg: &str, _: &RegistryEntry| {
+		let callback = |id: &str, _: &RegistryEntry| {
 			pbar.inc(1);
-			pbar.set_message(msg.to_string())
+
+			// Prevent column from wrapping around
+			let mut msg = id.to_string();
+			if let Some((terminal_width, _)) = term_size::dimensions() {
+				// Make sure progress bar never get's longer than terminal size
+				if msg.len() + 115 >= terminal_width {
+					msg.truncate(terminal_width - 115);
+					msg.push_str("...");
+				}
+			};
+
+			pbar.set_message(msg)
 		};
 
 		// Build a builder-config using the above extracted data
@@ -280,9 +291,6 @@ impl CommandTrait for Evaluator {
 		};
 
 		pbar.inc(3);
-
-		// SUCCESS
-		pbar.finish_and_clear();
 
 		Ok(())
 	}

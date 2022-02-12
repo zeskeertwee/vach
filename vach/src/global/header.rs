@@ -25,7 +25,7 @@ impl HeaderConfig {
 	/// let config = HeaderConfig::new(*b"_TEST",  None);
 	/// ```
 	#[inline(always)]
-	pub fn new(magic: [u8; 5], key: Option<esdalek::PublicKey>) -> HeaderConfig {
+	pub const fn new(magic: [u8; 5], key: Option<esdalek::PublicKey>) -> HeaderConfig {
 		HeaderConfig { magic, public_key: key }
 	}
 

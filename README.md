@@ -161,7 +161,7 @@ assert!(resource.secured);
 
 ```rust
 const MAGIC: &[u8; 5] = b"CSDTD";
-let mut target = Cursor::new(Vec::<u8>::new());
+let mut target: Cursor<Vec<u8>> = Cursor::new(Vec::new());
 
 // Data to be written
 let data_1 = b"Around The World, Fatter better stronker" as &[u8];
@@ -190,7 +190,7 @@ assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 ```
 
-> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) And pass by the examples folder (not yet implemented).
+> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) or read the tests, they offer great insight into how the crate works.
 
 ---
 

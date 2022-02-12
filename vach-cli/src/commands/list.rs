@@ -1,6 +1,6 @@
 use std::{convert::TryInto, fs::File};
 
-use tabled::{Style, Table, Tabled};
+use tabled::{Style, Table, Tabled, Modify, Full, MaxWidth, Alignment, Column};
 use vach::{
 	prelude::{HeaderConfig, Archive, Flags},
 	archive::CompressionAlgorithm,
@@ -63,7 +63,15 @@ impl CommandTrait for Evaluator {
 				})
 				.collect();
 
-			let table = Table::new(table_entries).with(Style::PSEUDO_CLEAN);
+			let mut table = Table::new(table_entries)
+				.with(Style::modern().horizontal_off())
+				.with(Modify::new(Column(..1)).with(Alignment::left()));
+
+			// Make sure table fills terminal
+			if let Some((term_width, _)) = term_size::dimensions() {
+				table = table.with(Modify::new(Full).with(MaxWidth::truncating(term_width - 50).suffix("...")));
+			};
+
 			println!("{}", table);
 		}
 
