@@ -202,3 +202,5 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 - [ ] Skynet, (coming _very_ soon).
 - [ ] Some proper benchmarking code. (Call for participation)
 - [ ] `Some(examples)` directory instead of `None`
+
+> If you appreciate the works of this repo, consider dropping a star. It will be much appreciated; 🌟
