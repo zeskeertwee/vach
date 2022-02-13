@@ -1,10 +1,12 @@
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::str::FromStr;
 use std::{convert::TryInto};
-use std::io::{Read, Seek};
+use std::io::{Read, Seek, self};
 use std::path::PathBuf;
 use std::time::Instant;
 
+use vach::archive::RegistryEntry;
 use vach::prelude::{HeaderConfig, Archive, InternalError};
 use vach::utils;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -12,7 +14,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use super::CommandTrait;
 use crate::keys::key_names;
 
-pub const VERSION: &str = "0.0.1";
+pub const VERSION: &str = "0.1.0";
 
 /// This command extracts an archive into the specified output folder
 pub struct Evaluator;
@@ -69,7 +71,7 @@ impl CommandTrait for Evaluator {
 		let header_config = HeaderConfig::new(magic, public_key);
 
 		// Parse then extract archive
-		let mut archive = match Archive::with_config(input_file, &header_config) {
+		let archive = match Archive::with_config(input_file, &header_config) {
 			Ok(archive) => archive,
 			Err(err) => match err {
 				InternalError::NoKeypairError(_) => anyhow::bail!(
@@ -80,7 +82,7 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
-		extract_archive(&mut archive, output_path)?;
+		extract_archive(&archive, output_path)?;
 
 		// Delete original archive
 		if truncate {
@@ -92,10 +94,10 @@ impl CommandTrait for Evaluator {
 	}
 }
 
-fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBuf) -> anyhow::Result<()> {
+fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_folder: PathBuf) -> anyhow::Result<()> {
 	// For measuring the time difference
 	let time = Instant::now();
-	fs::create_dir_all(&save_folder)?;
+	fs::create_dir_all(&target_folder)?;
 
 	let total_size = archive
 		.entries()
@@ -105,25 +107,89 @@ fn extract_archive<T: Read + Seek>(archive: &mut Archive<T>, save_folder: PathBu
 		.unwrap_or(0);
 
 	let pbar = ProgressBar::new(total_size);
+
 	// NOTE: More styling is to come
-	pbar.set_style(ProgressStyle::default_bar().template(super::PROGRESS_BAR_STYLE));
+	pbar.set_style(
+		ProgressStyle::default_bar()
+			.template(super::PROGRESS_BAR_STYLE)
+			.progress_chars("█░-")
+			.tick_strings(&[
+				"⢀ ", "⡀ ", "⠄ ", "⢂ ", "⡂ ", "⠅ ", "⢃ ", "⡃ ", "⠍ ", "⢋ ", "⡋ ", "⠍⠁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉", "⠋⠉",
+				"⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⢈⠩", "⡀⢙", "⠄⡙", "⢂⠩", "⡂⢘", "⠅⡘", "⢃⠨", "⡃⢐", "⠍⡐", "⢋⠠", "⡋⢀", "⠍⡁",
+				"⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉", "⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⠈⠩", " ⢙", " ⡙", " ⠩", " ⢘", " ⡘", " ⠨",
+				" ⢐", " ⡐", " ⠠", " ⢀", " ⡀",
+			]),
+	);
 
-	for (id, entry) in archive.entries() {
-		pbar.set_message(id.to_owned());
+	// Generates window slices from a bigger window based on core count, therefore dispatching work evenly across threads
+	let num_cores = num_cpus::get();
+	let window_size = if num_cores * 2 > archive.entries().len() {
+		1
+	} else {
+		num_cores * 2
+	};
 
-		let mut save_path = save_folder.clone();
-		save_path.push(&id);
+	// Vector to allow us to window later via .as_slice()
+	let entry_vec = archive.entries().iter().collect::<Vec<(&String, &RegistryEntry)>>();
+	let entry_windows = entry_vec
+		.as_slice()
+		.windows(window_size)
+		.collect::<Vec<&[(&String, &RegistryEntry)]>>();
 
-		if let Some(parent_dir) = save_path.ancestors().nth(1) {
-			fs::create_dir_all(parent_dir)?;
-		};
+	// Stores processed values and keeps track of results
+	let mut processed_ids = HashSet::new();
+	let mut processed_resources;
 
-		pbar.println(format!("Extracting {} to {}", id, save_path.to_string_lossy()));
+	// Process entries concurrently
+	for entry_batch in entry_windows {
+		processed_resources = archive.fetch_batch(
+			entry_batch
+				.iter()
+				.filter(|(id, _)| {
+					if !processed_ids.contains(*id) {
+						// Prevent column from wrapping around
+						let mut msg = (**id).clone();
+						if let Some((terminal_width, _)) = term_size::dimensions() {
+							// Make sure progress bar never get's longer than terminal size
+							if msg.len() + 125 >= terminal_width {
+								msg.truncate(terminal_width - 125);
+								msg.push_str("...");
+							}
+						};
 
-		let mut file = File::create(save_path)?;
-		archive.fetch_write(id.as_str(), &mut file)?;
+						pbar.set_message(msg);
+						true
+					} else {
+						false
+					}
+				})
+				.map(|f| f.0.as_str()),
+			Some(num_cores),
+		)?;
 
-		pbar.inc(entry.offset);
+		processed_resources
+			.into_iter()
+			.try_for_each(|(id, data)| -> anyhow::Result<()> {
+				// Process filesystem
+				let mut save_path = target_folder.clone();
+				save_path.push(&id);
+
+				if let Some(parent_dir) = save_path.ancestors().nth(1) {
+					fs::create_dir_all(parent_dir)?;
+				};
+
+				// Write to file and update process queue
+				let resource = data?;
+				let mut file = File::create(save_path)?;
+				io::copy(&mut resource.data.as_slice(), &mut file)?;
+
+				// Increment Progress Bar
+				let entry = archive.fetch_entry(&id).unwrap();
+				pbar.inc(entry.offset);
+				processed_ids.insert(id);
+
+				Ok(())
+			})?;
 	}
 
 	// Finished extracting

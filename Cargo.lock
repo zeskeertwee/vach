@@ -1241,6 +1241,7 @@ dependencies = [
  "clap 3.0.14",
  "indicatif",
  "log",
+ "num_cpus",
  "pretty_env_logger",
  "tabled",
  "term_size",
