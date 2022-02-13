@@ -147,17 +147,21 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 				.iter()
 				.filter(|(id, _)| {
 					if !processed_ids.contains(*id) {
-						// Prevent column from wrapping around
-						let mut msg = (**id).clone();
-						if let Some((terminal_width, _)) = term_size::dimensions() {
-							// Make sure progress bar never get's longer than terminal size
-							if msg.len() + 125 >= terminal_width {
-								msg.truncate(terminal_width - 125);
-								msg.push_str("...");
-							}
-						};
+						{
+							/* Sets message inside the progress bar */
 
-						pbar.set_message(msg);
+							// Prevent column from wrapping around
+							let mut msg = (**id).clone();
+							if let Some((terminal_width, _)) = term_size::dimensions() {
+								// Make sure progress bar never get's longer than terminal size
+								if msg.len() + 125 >= terminal_width {
+									msg.truncate(terminal_width - 125);
+									msg.push_str("...");
+								}
+							};
+
+							pbar.set_message(msg);
+						}
 						true
 					} else {
 						false
