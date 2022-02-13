@@ -154,8 +154,8 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 							let mut msg = (**id).clone();
 							if let Some((terminal_width, _)) = term_size::dimensions() {
 								// Make sure progress bar never get's longer than terminal size
-								if msg.len() + 125 >= terminal_width {
-									msg.truncate(terminal_width - 125);
+								if msg.len() + 140 >= terminal_width {
+									msg.truncate(terminal_width - 140);
 									msg.push_str("...");
 								}
 							};

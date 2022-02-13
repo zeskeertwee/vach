@@ -217,8 +217,8 @@ impl CommandTrait for Evaluator {
 			let mut msg = id.to_string();
 			if let Some((terminal_width, _)) = term_size::dimensions() {
 				// Make sure progress bar never get's longer than terminal size
-				if msg.len() + 115 >= terminal_width {
-					msg.truncate(terminal_width - 115);
+				if msg.len() + 140 >= terminal_width {
+					msg.truncate(terminal_width - 140);
 					msg.push_str("...");
 				}
 			};
