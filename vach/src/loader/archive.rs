@@ -77,18 +77,16 @@ impl<T> Archive<T> {
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
-		{
-			if let Some(pk) = key {
-				let raw_size = raw.len();
+		if let Some(pk) = key {
+			let raw_size = raw.len();
 
-				// If there is an error the data is flagged as invalid
-				raw.extend(id.as_bytes());
-				if let Some(signature) = entry.signature {
-					is_secure = pk.verify_strict(&raw, &signature).is_ok();
-				}
-
-				raw.truncate(raw_size);
+			// If there is an error the data is flagged as invalid
+			raw.extend(id.as_bytes());
+			if let Some(signature) = entry.signature {
+				is_secure = pk.verify_strict(&raw, &signature).is_ok();
 			}
+
+			raw.truncate(raw_size);
 		}
 
 		// Add read layers
