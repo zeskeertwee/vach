@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::fs::{self, File};
 use std::str::FromStr;
-use std::{convert::TryInto};
 use std::io::{Read, Seek, self};
 use std::path::PathBuf;
 use std::time::Instant;

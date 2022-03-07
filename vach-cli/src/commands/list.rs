@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fs::File};
+use std::fs::File;
 
 use tabled::{Style, Table, Tabled, Modify, Full, MaxWidth, Alignment, Column};
 use vach::{

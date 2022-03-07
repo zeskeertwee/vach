@@ -4,7 +4,6 @@ use std::{
 	io::{Write, Read, self},
 };
 use std::path::PathBuf;
-use std::convert::TryInto;
 use std::collections::HashSet;
 
 use vach::prelude::*;

@@ -1,7 +1,6 @@
 use crate::global::flags::Flags;
 
 use std::{io::Read, fmt};
-use std::convert::TryInto;
 use ed25519_dalek as esdalek;
 use super::{error::InternalError, result::InternalResult};
 

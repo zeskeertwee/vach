@@ -1,4 +1,4 @@
-use std::{convert::TryInto, fs::File};
+use std::fs::File;
 
 use vach::archive::{Archive, HeaderConfig};
 
