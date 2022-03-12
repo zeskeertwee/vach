@@ -23,8 +23,6 @@ pub mod key_names {
 	pub(crate) const SECRET_KEY: &str = "SECRET_KEY";
 	pub(crate) const PUBLIC_KEY: &str = "PUBLIC_KEY";
 	pub(crate) const KEYPAIR: &str = "KEYPAIR";
-
-	pub(crate) const QUIET: &str = "QUIET";
 }
 
 pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
@@ -249,18 +247,6 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),
-	);
-
-	// Tells the CLI to not log any messages to the console
-	map.insert(
-		key_names::QUIET,
-		Arg::new(key_names::QUIET)
-			.short('q')
-			.long("quiet")
-			.value_name(key_names::QUIET)
-			.help("Tells the CLI to not log any messages to the console")
-			.required(false)
-			.takes_value(false),
 	);
 
 	// The flags that go into the .vach file header section
