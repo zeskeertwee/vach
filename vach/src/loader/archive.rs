@@ -36,6 +36,12 @@ pub struct Archive<T> {
 	entries: HashMap<String, RegistryEntry>,
 }
 
+impl<T> std::fmt::Display for Archive<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.header.fmt(f)
+	}
+}
+
 impl<T> std::fmt::Debug for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Archive")

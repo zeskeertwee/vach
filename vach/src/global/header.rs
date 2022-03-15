@@ -159,7 +159,7 @@ impl fmt::Display for Header {
 			f,
 			"[Archive Header] Version: {}, Magic: {}, Capacity: {}, Flags: {}",
 			self.arch_version,
-			str::from_utf8(&self.magic).expect("Error constructing str from Header::Magic"),
+			unsafe { str::from_utf8_unchecked(&self.magic) },
 			self.capacity,
 			self.flags
 		)
