@@ -202,8 +202,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 	map.insert(
 		key_names::SPLIT_KEY,
 		Arg::new(key_names::SPLIT_KEY)
-			.short('s')
-			.long("split")
+			.long("split-key")
 			.value_name(key_names::SPLIT_KEY)
 			.help("Used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts")
 			.required(false)
@@ -252,7 +251,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 	// The flags that go into the .vach file header section
 	map.insert(
 		key_names::FLAGS,
-		Arg::new("f")
+		Arg::new(key_names::FLAGS)
 			.long("flags")
 			.short('f')
 			.value_name(key_names::FLAGS)
