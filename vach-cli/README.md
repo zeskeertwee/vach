@@ -111,7 +111,7 @@ vach pack -s -o hello.vach -i hello.txt goodbye.txt
 vach pack -e -o hello.vach -i hello.txt goodbye.txt
 
 # Flags: "-f" or "--flags"
-# Flags for the archive globally
+# Flags set into thr Archive header
 # Here the flags are set to 0b1000_1100_1001_0000
 vach pack -f 35984 -o hello.vach -i hello.txt goodbye.txt
 
@@ -163,6 +163,11 @@ vach list -i textures.vach
 # MAGIC: "-m" or "--magic"
 # If the archive uses a custom magic
 vach list -i textures.vach -m TXTRS
+
+# SORT: "--sort"
+# How to sort the entries inside the table
+# Can either be: size-ascending, size-descending, alphabetical, alphabetical-reversed
+vach list -i textures.vach -m TXTRS --sort size-descending
 ```
 
 ### 4: verify

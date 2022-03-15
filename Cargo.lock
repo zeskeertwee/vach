@@ -1196,22 +1196,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "vach"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "843aefa3d71e0d8ddc78279a87fcc9d3485f17e375136a183f6926c5a57d9584"
-dependencies = [
- "aes-gcm",
- "brotli",
- "ed25519-dalek",
- "lz4_flex",
- "num_cpus",
- "rand",
- "rayon",
- "snap",
-]
-
-[[package]]
 name = "vach-assets-manager"
 version = "0.1.0"
 dependencies = [
@@ -1245,7 +1229,7 @@ dependencies = [
  "pretty_env_logger",
  "tabled",
  "term_size",
- "vach 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vach 0.3.5",
  "walkdir",
 ]
 

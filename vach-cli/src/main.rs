@@ -19,7 +19,7 @@ fn main() {
 	let res = match matches.subcommand() {
 		Some((key, mtx)) => commands.get(key).unwrap().evaluate(mtx),
 		None => {
-			println!("vach-cli: Run `vach --help`");
+			println!("vach-cli: Run `vach --help` and refer to crates.io/vach-cli for the manual");
 			Ok(())
 		},
 	};
