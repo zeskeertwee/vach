@@ -3,14 +3,14 @@ use std::fs::File;
 use tabled::{Style, Table, Tabled, Modify, Full, MaxWidth, Alignment, Column};
 use vach::{
 	prelude::{HeaderConfig, Archive, Flags},
-	archive::CompressionAlgorithm,
+	archive::{CompressionAlgorithm, RegistryEntry},
 };
 use indicatif::HumanBytes;
 
 use super::CommandTrait;
 use crate::keys::key_names;
 
-pub const VERSION: &str = "0.0.1";
+pub const VERSION: &str = "0.2.0";
 
 /// This command lists the entries in an archive in tabulated form
 pub struct Evaluator;
@@ -24,6 +24,15 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
+		let sort = match args.value_of(key_names::SORT) {
+			Some("alphabetical") => Sort::Alphabetical,
+			Some("alphabetical-reversed") => Sort::AlphabeticalReversed,
+			Some("size-ascending") => Sort::SizeAscending,
+			Some("size-descending") => Sort::SizeDescending,
+			Some(_) => Sort::None,
+			None => Sort::None,
+		};
+
 		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
 			None => *vach::DEFAULT_MAGIC,
@@ -32,11 +41,31 @@ impl CommandTrait for Evaluator {
 		let file = File::open(archive_path)?;
 		let archive = Archive::with_config(file, &HeaderConfig::new(magic, None))?;
 
+		// Log some additional info about this archive
+		println!("{}", &archive);
+
 		if archive.entries().is_empty() {
 			println!("<EMPTY ARCHIVE> @ {}", archive_path);
 		} else {
-			let table_entries: Vec<FileTableEntry> = archive
+			let mut entries: Vec<(String, RegistryEntry)> = archive
 				.entries()
+				.iter()
+				.map(|(id, entry)| (id.clone(), entry.clone()))
+				.collect();
+
+			//We do not need the archive anymore
+			drop(archive);
+
+			// Sort the entries accordingly
+			match sort {
+				Sort::SizeAscending => entries.sort_by(|a, b| a.1.offset.cmp(&b.1.offset)),
+				Sort::SizeDescending => entries.sort_by(|a, b| b.1.offset.cmp(&a.1.offset)),
+				Sort::Alphabetical => entries.sort_by(|a, b| a.0.cmp(&b.0)),
+				Sort::AlphabeticalReversed => entries.sort_by(|a, b| b.0.cmp(&a.0)),
+				Sort::None => (),
+			};
+
+			let table_entries: Vec<FileTableEntry> = entries
 				.iter()
 				.map(|(id, entry)| {
 					let c_algo = if entry.flags.contains(Flags::LZ4_COMPRESSED) {
@@ -85,4 +114,12 @@ struct FileTableEntry<'a> {
 	size: String,
 	flags: Flags,
 	compression: String,
+}
+
+enum Sort {
+	SizeAscending,
+	SizeDescending,
+	Alphabetical,
+	AlphabeticalReversed,
+	None,
 }

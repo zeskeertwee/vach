@@ -41,7 +41,8 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.version(commands::list::VERSION)
 				.about("Lists all the entries in a .vach archive and their metadata")
 				.arg(key_map.get(key_names::INPUT).unwrap())
-				.arg(key_map.get(key_names::MAGIC).unwrap()),
+				.arg(key_map.get(key_names::MAGIC).unwrap())
+				.arg(key_map.get(key_names::SORT).unwrap()),
 		)
 		.subcommand(
 			Command::new("unpack")

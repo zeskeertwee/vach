@@ -23,6 +23,8 @@ pub mod key_names {
 	pub(crate) const SECRET_KEY: &str = "SECRET_KEY";
 	pub(crate) const PUBLIC_KEY: &str = "PUBLIC_KEY";
 	pub(crate) const KEYPAIR: &str = "KEYPAIR";
+
+	pub(crate) const SORT: &str = "SORT";
 }
 
 pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
@@ -269,6 +271,18 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.short('v')
 			.value_name(key_names::VERSION)
 			.help("the version of the leafs being read or to be written")
+			.required(false)
+			.takes_value(true)
+			.number_of_values(1),
+	);
+
+	// the version of the leafs being read or to be written
+	map.insert(
+		key_names::SORT,
+		Arg::new(key_names::SORT)
+			.long("sort")
+			.value_name(key_names::SORT)
+			.help("How to sort entries within the table, either based on size or alphabetically")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),
