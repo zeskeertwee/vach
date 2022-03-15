@@ -142,8 +142,7 @@ impl CommandTrait for Evaluator {
 
 		// Extract recursive directory inputs
 		if let Some(val) = args.values_of(key_names::DIR_INPUT_REC) {
-			val.map(|dir| walkdir::WalkDir::new(dir).into_iter())
-				.flatten()
+			val.flat_map(|dir| walkdir::WalkDir::new(dir).into_iter())
 				.map(|v| v.unwrap().into_path())
 				.filter(|f| path_filter(f))
 				.for_each(|p| inputs.push(FileWrapper(p, None)));
@@ -249,12 +248,9 @@ impl CommandTrait for Evaluator {
 			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
 		};
 
-		let output_file;
-
-		match OpenOptions::new().write(true).create_new(true).open(output_path) {
-			Ok(file) => output_file = file,
-			#[rustfmt::skip]
-			Err(err) => anyhow::bail!( "Unable to generate archive @ {}: [IO::Error] {}", output_path, err ),
+		let output_file = match OpenOptions::new().write(true).create_new(true).open(output_path) {
+			Ok(file) => file,
+			Err(err) => anyhow::bail!("Unable to generate archive @ {}: [IO::Error] {}", output_path, err),
 		};
 
 		// Process the files

@@ -130,10 +130,7 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 
 	// Vector to allow us to window later via .as_slice()
 	let entry_vec = archive.entries().iter().collect::<Vec<(&String, &RegistryEntry)>>();
-	let entry_windows = entry_vec
-		.as_slice()
-		.windows(window_size)
-		.collect::<Vec<&[(&String, &RegistryEntry)]>>();
+	let entry_windows: Vec<&[(&String, &RegistryEntry)]> = entry_vec.windows(window_size).collect();
 
 	// Stores processed values and keeps track of results
 	let mut processed_ids = HashSet::new();
@@ -144,27 +141,21 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 		processed_resources = archive.fetch_batch(
 			entry_batch
 				.iter()
-				.filter(|(id, _)| {
-					if !processed_ids.contains(*id) {
-						{
-							/* Sets message inside the progress bar */
+				.filter(|(id, _)| !processed_ids.contains(*id))
+				.inspect(|(id, _)| {
+					/* Sets message inside the progress bar */
 
-							// Prevent column from wrapping around
-							let mut msg = (**id).clone();
-							if let Some((terminal_width, _)) = term_size::dimensions() {
-								// Make sure progress bar never get's longer than terminal size
-								if msg.len() + 140 >= terminal_width {
-									msg.truncate(terminal_width - 140);
-									msg.push_str("...");
-								}
-							};
-
-							pbar.set_message(msg);
+					// Prevent column from wrapping around
+					let mut msg = (**id).clone();
+					if let Some((terminal_width, _)) = term_size::dimensions() {
+						// Make sure progress bar never get's longer than terminal size
+						if msg.len() + 140 >= terminal_width {
+							msg.truncate(terminal_width - 140);
+							msg.push_str("...");
 						}
-						true
-					} else {
-						false
-					}
+					};
+
+					pbar.set_message(msg);
 				})
 				.map(|f| f.0.as_str()),
 			Some(num_cores),
