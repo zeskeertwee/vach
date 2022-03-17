@@ -12,6 +12,14 @@ use crate::keys::key_names;
 
 pub const VERSION: &str = "0.2.0";
 
+enum Sort {
+	SizeAscending,
+	SizeDescending,
+	Alphabetical,
+	AlphabeticalReversed,
+	None,
+}
+
 /// This command lists the entries in an archive in tabulated form
 pub struct Evaluator;
 
@@ -41,11 +49,8 @@ impl CommandTrait for Evaluator {
 		let file = File::open(archive_path)?;
 		let archive = Archive::with_config(file, &HeaderConfig::new(magic, None))?;
 
-		// Log some additional info about this archive
-		println!("{}", &archive);
-
 		if archive.entries().is_empty() {
-			println!("<EMPTY ARCHIVE> @ {}", archive_path);
+			println!("<EMPTY ARCHIVE> @ {}", archive);
 		} else {
 			let mut entries: Vec<(String, RegistryEntry)> = archive
 				.entries()
@@ -53,8 +58,8 @@ impl CommandTrait for Evaluator {
 				.map(|(id, entry)| (id.clone(), entry.clone()))
 				.collect();
 
-			//We do not need the archive anymore
-			drop(archive);
+			// Log some additional info about this archive
+			println!("{}", archive);
 
 			// Sort the entries accordingly
 			match sort {
@@ -114,12 +119,4 @@ struct FileTableEntry<'a> {
 	size: String,
 	flags: Flags,
 	compression: String,
-}
-
-enum Sort {
-	SizeAscending,
-	SizeDescending,
-	Alphabetical,
-	AlphabeticalReversed,
-	None,
 }
