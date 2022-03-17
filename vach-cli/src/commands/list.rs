@@ -50,7 +50,7 @@ impl CommandTrait for Evaluator {
 		let archive = Archive::with_config(file, &HeaderConfig::new(magic, None))?;
 
 		if archive.entries().is_empty() {
-			println!("<EMPTY ARCHIVE> @ {}", archive);
+			println!("{}", archive);
 		} else {
 			let mut entries: Vec<(String, RegistryEntry)> = archive
 				.entries()
