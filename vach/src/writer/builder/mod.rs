@@ -1,5 +1,6 @@
 use std::io::{BufWriter, Write, Seek, SeekFrom};
 use std::collections::HashSet;
+use std::path::Path;
 use std::sync::{
 	Arc, Mutex,
 	atomic::{Ordering, AtomicUsize},
@@ -58,8 +59,10 @@ impl<'a> Builder<'a> {
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
-	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: &str) -> InternalResult<()> {
-		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
+	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult<()> {
+		let leaf = Leaf::from_handle(data)
+			.id(id.as_ref().to_string())
+			.template(&self.leaf_template);
 		self.add_leaf(leaf)?;
 		Ok(())
 	}
@@ -76,7 +79,7 @@ impl<'a> Builder<'a> {
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
-	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf<'a>>) -> InternalResult<()> {
+	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;

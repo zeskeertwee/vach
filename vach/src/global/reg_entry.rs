@@ -4,7 +4,7 @@ use std::{io::Read, fmt};
 use ed25519_dalek as esdalek;
 use super::{error::InternalError, result::InternalResult};
 
-/// Stand-alone meta-data from an archive entry(Leaf). This can be parsed without reading data about the leaf.
+/// Stand-alone meta-data for an archive entry(Leaf). This can be fetched without reading from the archive.
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
 	/// The flags extracted from the archive entry and parsed into a accessible struct

@@ -239,8 +239,8 @@ where
 
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
 	/// This can be used for debugging, as the [`RegistryEntry`] holds information on data with the adjacent ID.
-	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
-		match self.entries.get(id) {
+	pub fn fetch_entry(&self, id: impl AsRef<str>) -> Option<RegistryEntry> {
+		match self.entries.get(id.as_ref()) {
 			Some(entry) => Some(entry.clone()),
 			None => None,
 		}
@@ -267,13 +267,13 @@ where
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
 	/// ### Errors:
 	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
-	pub fn fetch(&self, id: &str) -> InternalResult<Resource> {
+	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
-		if let Some(entry) = self.fetch_entry(id) {
+		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
-			let independent = (&entry, id, raw);
+			let independent = (&entry, id.as_ref(), raw);
 			let dependencies = (&self.decryptor, &self.key);
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
@@ -286,7 +286,7 @@ where
 			})
 		} else {
 			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id )));
+			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
 		}
 	}
 
@@ -296,12 +296,12 @@ where
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
 	///  - Other `io` related errors
-	pub fn fetch_write<W: Write>(&self, id: &str, mut target: W) -> InternalResult<(Flags, u8, bool)> {
-		if let Some(entry) = self.fetch_entry(id) {
+	pub fn fetch_write<W: Write>(&self, id: impl AsRef<str>, mut target: W) -> InternalResult<(Flags, u8, bool)> {
+		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
-			let independent = (&entry, id, raw);
+			let independent = (&entry, id.as_ref(), raw);
 			let dependencies = (&self.decryptor, &self.key);
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
@@ -310,7 +310,7 @@ where
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
 			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id )));
+			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
 		}
 	}
 }
@@ -323,12 +323,12 @@ where
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct ([rayon] if you want) otherwise
 	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-	pub fn fetch_batch<'a, I, S>(
+	pub fn fetch_batch<I, S>(
 		&self, items: I, num_threads: Option<usize>,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
 	where
+		S: AsRef<str>,
 		I: Iterator<Item = S> + Send + Sync,
-		S: Into<&'a str>,
 	{
 		use rayon::prelude::*;
 
@@ -355,7 +355,7 @@ where
 
 				// Query next item on queue and process
 				while let Some(id) = queue.lock().unwrap().next() {
-					let id = id.into();
+					let id = id.as_ref();
 					let resource = self.fetch(id);
 
 					let string = id.to_string();
