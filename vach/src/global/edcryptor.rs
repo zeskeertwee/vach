@@ -37,18 +37,20 @@ impl Encryptor {
 
 	// The meat and the mass of this struct
 	pub(crate) fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-		let res = match self.cipher.encrypt(&self.nonce, data.as_ref()) {
+		let res = match self.cipher.encrypt(&self.nonce, data) {
 			Ok(data) => data,
 			Err(err) => return Err(err.to_string()),
 		};
+
 		Ok(res)
 	}
 
 	pub(crate) fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, String> {
-		let res = match self.cipher.decrypt(&self.nonce, data.as_ref()) {
+		let res = match self.cipher.decrypt(&self.nonce, data) {
 			Ok(data) => data,
 			Err(err) => return Err(err.to_string()),
 		};
+
 		Ok(res)
 	}
 }
