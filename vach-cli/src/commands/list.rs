@@ -37,7 +37,7 @@ impl CommandTrait for Evaluator {
 			Some("alphabetical-reversed") => Sort::AlphabeticalReversed,
 			Some("size-ascending") => Sort::SizeAscending,
 			Some("size-descending") => Sort::SizeDescending,
-			Some(_) => Sort::None,
+			Some(sort) => anyhow::bail!("Unknown sort given: {}. Valid sort types are: 'alphabetical' 'alphabetical-descending' 'size-ascending' 'size-descending'", sort),
 			None => Sort::None,
 		};
 
