@@ -510,20 +510,15 @@ fn test_batch_fetching() -> InternalResult<()> {
 	assert!(resources.get("NON_EXISTENT").is_none());
 	assert!(resources.get("ERRORS").is_some());
 
-	match resources.get("ERRORS").unwrap() {
-		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
+	match resources.remove("ERRORS").unwrap() {
+		Ok(_) => return Err(InternalError::OtherError("This should be an error".into())),
 		Err(err) => match err {
-			&InternalError::MissingResourceError(_) => {
+			InternalError::MissingResourceError(_) => {
 				resources.remove("ERRORS");
 				drop(ids);
 			},
 
-			specific => {
-				return Err(InternalError::OtherError(format!(
-					"Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error",
-					specific
-				)))
-			},
+			specific => return Err(specific),
 		},
 	};
 

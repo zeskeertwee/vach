@@ -4,11 +4,15 @@ use std::{error, io, fmt};
 use lz4_flex as lz4;
 
 /// All errors manifestable within `vach` collected into a neat enum
-#[repr(u8)]
 #[derive(Debug)]
 pub enum InternalError {
-	/// Variant that wraps over all other errors, unknown and undocumented
-	OtherError(String),
+	/// Variant that wraps over all other errors, unknown and undocumented.
+	/// ```rust
+	/// use vach::prelude::InternalError;
+	///
+	/// let error = InternalError::OtherError("I love errors, I think they are swell".into());
+	/// ```
+	OtherError(Box<dyn error::Error + Send + Sync>),
 	/// An error that is returned when either a [Keypair](crate::crypto::Keypair), Signature, [PublicKey](crate::crypto::PublicKey) or [SecretKey](crate::crypto::SecretKey) fail to deserialize.
 	ParseError(String),
 	/// A thin wrapper over [io::Error](std::io::Error), captures all IO errors
@@ -44,7 +48,7 @@ impl fmt::Display for InternalError {
 			Self::ValidationError(err) => write!(f, "[VachError::ValidationError] {}", err),
 			Self::CryptoError(err) => write!(f, "[VachError::CryptoError]	{}", err),
 			Self::NoKeypairError(err) => write!(f, "{}", err),
-			Self::IDSizeOverflowError(id_part) => write!(f, "[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID", crate::MAX_ID_LENGTH, id_part),
+			Self::IDSizeOverflowError(id_part) => write!(f, "[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID of length: {}", crate::MAX_ID_LENGTH, id_part, id_part.len()),
 			Self::RestrictedFlagAccessError => write!(f, "[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!"),
 			Self::MissingResourceError(id) => write!(f, "[VachError::MissingResourceError] {}", id),
 			Self::LeafAppendError(id) => write!(f, "[VachError::LeafAppendError] A leaf with the ID: {} already exists. Consider changing the ID to prevent collisions", id),
@@ -58,7 +62,6 @@ impl fmt::Display for InternalError {
 impl PartialEq for InternalError {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
-			(Self::OtherError(l0), Self::OtherError(r0)) => l0 == r0,
 			(Self::ParseError(l0), Self::ParseError(r0)) => l0 == r0,
 			(Self::ValidationError(l0), Self::ValidationError(r0)) => l0 == r0,
 			(Self::MissingResourceError(l0), Self::MissingResourceError(r0)) => l0 == r0,
