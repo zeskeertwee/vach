@@ -199,6 +199,8 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 - [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
 - [x] Data encryption.
 - [x] Benchmarks.
+- [ ] Data sharding, ie. Large endpoints are split into multiple smaller shards, allowing for large entries to be decompressed without consuming insane amounts of memory.
+- [ ] Features to turn off (or to turn on) either the `Builder` or the `Loader` modules.
 - [ ] Skynet, (coming _very_ soon).
 - [ ] Some proper benchmarking code. (Call for participation)
 - [ ] `Some(examples)` directory instead of `None`
