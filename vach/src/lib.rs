@@ -131,7 +131,12 @@ assert!(resource.secured);
 mod tests;
 
 pub(crate) mod global;
+#[cfg(feature = "loader")]
+#[cfg_attr(docsrs, doc(cfg(feature = "loader")))]
 pub(crate) mod loader;
+
+#[cfg(feature = "builder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub(crate) mod writer;
 
 // Re-exports
@@ -181,6 +186,7 @@ pub mod crypto {
 
 /// [`Builder`](crate::builder::Builder) related data structures and logic
 pub mod builder {
+	#[cfg(feature = "loader")]
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
 		leaf::Leaf,
@@ -195,6 +201,7 @@ pub mod builder {
 
 /// Loader-based logic and data-structures
 pub mod archive {
+	#[cfg(feature = "loader")]
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
 		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult, flags::Flags,

@@ -23,6 +23,7 @@ const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 #[test]
+#[cfg(feature = "loader")]
 fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
@@ -73,6 +74,7 @@ fn flags_set_intersects() {
 }
 
 #[test]
+#[cfg(all(feature = "builder", feature = "loader"))]
 fn defaults() {
 	// The reason we are pulling the header directly from global namespace is because it's not exposed to the public API
 	// We still need to conduct tests on them tho.
@@ -188,6 +190,7 @@ fn gen_keypair() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "builder")]
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
@@ -213,6 +216,7 @@ fn builder_with_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "loader")]
 fn fetch_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -255,6 +259,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "loader")]
 fn fetch_write_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -331,6 +336,7 @@ fn builder_with_encryption() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "loader")]
 fn fetch_from_encrypted() -> InternalResult<()> {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
@@ -364,6 +370,7 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(all(feature = "builder", feature = "loader"))]
 fn consolidated_example() -> InternalResult<()> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
