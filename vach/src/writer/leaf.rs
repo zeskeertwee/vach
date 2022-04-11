@@ -206,11 +206,11 @@ impl<'a> Default for Leaf<'a> {
 			handle: Box::<&[u8]>::new(&[]),
 			flags: Flags::empty(),
 			content_version: 0,
-			#[cfg(feature = "compression")]
-			compress: CompressMode::Never,
 			encrypt: false,
 			sign: false,
 
+			#[cfg(feature = "compression")]
+			compress: CompressMode::Never,
 			#[cfg(feature = "compression")]
 			compression_algo: CompressionAlgorithm::LZ4,
 		}
