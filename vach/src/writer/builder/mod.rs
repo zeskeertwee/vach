@@ -7,6 +7,7 @@ use std::sync::{
 };
 
 mod config;
+use aes_gcm::aead::Buffer;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, HandleTrait};
 
@@ -321,7 +322,7 @@ impl<'a> Builder<'a> {
 
 			if leaf.sign {
 				if let Some(keypair) = &config.keypair {
-					raw.extend(leaf.id.as_bytes());
+					raw.extend_from_slice(leaf.id.as_bytes());
 
 					// The reason we include the path in the signature is to prevent mangling in the registry,
 					// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
@@ -343,7 +344,7 @@ impl<'a> Builder<'a> {
 
 			// Fetch bytes
 			let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
-			entry_bytes.extend(leaf.id.as_bytes());
+			entry_bytes.extend_from_slice(leaf.id.as_bytes());
 
 			// Write to the registry-buffer and update total number of bytes written
 			{

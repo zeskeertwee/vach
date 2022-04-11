@@ -87,7 +87,7 @@ impl<T> Archive<T> {
 			let raw_size = raw.len();
 
 			// If there is an error the data is flagged as invalid
-			raw.extend(id.as_bytes());
+			raw.extend_from_slice(id.as_bytes());
 			if let Some(signature) = entry.signature {
 				is_secure = pk.verify_strict(&raw, &signature).is_ok();
 			}
@@ -215,7 +215,7 @@ where
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let mut raw = vec![];
+		let mut buffer = Vec::with_capacity(entry.offset as usize);
 
 		{
 			let mut guard = match self.handle.lock() {
@@ -231,10 +231,10 @@ where
 			let reader_ref = &mut *guard;
 			let mut take = reader_ref.take(entry.offset);
 
-			take.read_to_end(&mut raw)?;
+			take.read_to_end(&mut buffer)?;
 		}
 
-		Ok(raw)
+		Ok(buffer)
 	}
 
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
@@ -246,7 +246,7 @@ where
 		}
 	}
 
-	/// Returns a reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
+	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
@@ -363,10 +363,10 @@ where
 						guard.insert(string, resource);
 
 						// The lock is available, so we pop everything off the queue
-						for _ in 0..produce.len() {
+						(0..produce.len()).for_each(|_| {
 							let (id, res) = produce.pop().unwrap();
 							guard.insert(id, res);
-						}
+						});
 					} else {
 						produce.push((string, resource));
 					}

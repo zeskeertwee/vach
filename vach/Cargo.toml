@@ -37,10 +37,10 @@ num_cpus = { version = "1.13.1", optional = true }
 
 [features]
 default = ["builder", "loader"]
-multithreaded = ["rayon", "num_cpus"]
-compression = ["snap", "lz4_flex", "brotli"]
 loader = []
 builder = []
+multithreaded = ["rayon", "num_cpus"]
+compression = ["snap", "lz4_flex", "brotli"]
 
 [package.metadata.docs.rs]
 all-features = true
