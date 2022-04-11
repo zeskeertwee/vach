@@ -185,8 +185,9 @@ pub mod crypto {
 }
 
 /// [`Builder`](crate::builder::Builder) related data structures and logic
+#[cfg(feature = "builder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub mod builder {
-	#[cfg(feature = "loader")]
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
 		leaf::Leaf,
@@ -200,8 +201,9 @@ pub mod builder {
 }
 
 /// Loader-based logic and data-structures
+#[cfg(feature = "loader")]
+#[cfg_attr(docsrs, doc(cfg(feature = "loader")))]
 pub mod archive {
-	#[cfg(feature = "loader")]
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
 		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult, flags::Flags,

@@ -36,7 +36,7 @@ rayon = { version = "1.5.1", optional = true }
 num_cpus = { version = "1.13.1", optional = true }
 
 [features]
-default = ["builder", "loader", "compression"]
+default = ["builder", "loader"]
 multithreaded = ["rayon", "num_cpus"]
 compression = ["snap", "lz4_flex", "brotli"]
 loader = []
