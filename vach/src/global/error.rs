@@ -13,7 +13,9 @@ pub enum InternalError {
 	/// let error = InternalError::OtherError("I love errors, I think they are swell".into());
 	/// ```
 	OtherError(Box<dyn error::Error + Send + Sync>),
-	/// An error that is returned when either a [Keypair](crate::crypto::Keypair), Signature, [PublicKey](crate::crypto::PublicKey) or [SecretKey](crate::crypto::SecretKey) fail to deserialize.
+	/// Produced when a cargo feature isn't available for a certain action: eg trying to decompress without the compression feature
+	MissingFeatureError(String),
+	/// An error that is returned when either a [Keypair](crate::crypto::Keypair), Signature, [PublicKey](crate::crypto::PublicKey) or [SecretKey](crate::crypto::SecretKey) fails to deserialize.
 	ParseError(String),
 	/// A thin wrapper over [io::Error](std::io::Error), captures all IO errors
 	IOError(io::Error),
@@ -43,6 +45,7 @@ impl fmt::Display for InternalError {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			Self::OtherError(err) => write!(f, "[VachError::GenericError] {}", err),
+			Self::MissingFeatureError(feature) => write!(f, "[VachError::MissingFeatureError] Unable to continue with operation, a cargo feature is missing: {}", feature),
 			Self::ParseError(err) => write!(f, "[VachError::ParseError] {}", err),
 			Self::IOError(err) => write!(f, "[VachError::IOError] {}", err),
 			Self::ValidationError(err) => write!(f, "[VachError::ValidationError] {}", err),

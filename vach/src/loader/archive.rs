@@ -123,9 +123,7 @@ impl<T> Archive<T> {
 
 			#[cfg(not(feature = "crypto"))]
 			{
-				return Err(InternalError::OtherError(
-					"Cannot decrypt data, the `crypto` feature was turned off".into(),
-				));
+				return Err(InternalError::MissingFeatureError("crypto".to_string()));
 			}
 		}
 
@@ -151,7 +149,7 @@ impl<T> Archive<T> {
 			}
 
 			#[cfg(not(feature = "compression"))]
-			return Err(InternalError::DeCompressionError("The -compression- feature was turned off during compilation. To handle (de)compressed data please consider turning it on".to_string()));
+			return Err(InternalError::MissingFeatureError("compression".to_string()));
 		};
 
 		let mut buffer = vec![];
@@ -358,7 +356,8 @@ where
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
 	where
 		S: AsRef<str>,
-		I: Iterator<Item = S> + Send + Sync, {
+		I: Iterator<Item = S> + Send + Sync,
+	{
 		use rayon::prelude::*;
 
 		// Attempt to pre-allocate HashMap
