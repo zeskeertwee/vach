@@ -1,4 +1,5 @@
 #![cfg(feature = "crypto")]
+#![cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 use std::fmt;
 
 use aes_gcm::aead::{Aead, NewAead};

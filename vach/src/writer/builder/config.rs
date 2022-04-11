@@ -27,6 +27,7 @@ pub struct BuilderConfig<'a> {
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
 	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub keypair: Option<crypto::Keypair>,
 	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
 	/// The callback get passed to it: the leaf's id and the generated registry entry. Respectively.

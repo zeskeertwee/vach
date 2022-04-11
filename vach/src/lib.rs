@@ -146,12 +146,15 @@ pub(crate) mod writer;
 
 // Re-export
 #[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub use rand;
 
 #[cfg(feature = "multithreaded")]
+#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
 pub use rayon;
 
 #[cfg(feature = "multithreaded")]
+#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
 pub use num_cpus;
 
 /// Current [`vach`](crate) spec version. increments by ten with every spec change

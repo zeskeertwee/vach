@@ -22,6 +22,7 @@ pub fn gen_keypair() -> crypto::Keypair {
 /// ### Errors
 ///  - If the data can't be parsed into a keypair
 #[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<crypto::Keypair> {
 	let mut keypair_bytes = [0; crate::KEYPAIR_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;
@@ -38,6 +39,7 @@ pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<crypto::Keypair> {
 ///  - If parsing of the public key fails
 ///  - `io` errors
 #[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<crypto::PublicKey> {
 	let mut keypair_bytes = [0; crate::PUBLIC_KEY_LENGTH];
 
@@ -54,6 +56,7 @@ pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<crypto::PublicK
 ///  - If parsing of the secret key fails
 ///  - `io` errors
 #[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub fn read_secret_key<T: Read>(mut handle: T) -> InternalResult<crypto::SecretKey> {
 	let mut secret_bytes = [0; crate::SECRET_KEY_LENGTH];
 

@@ -1,4 +1,5 @@
 #![cfg(feature = "compression")]
+#![cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 
 use std::{
 	fmt::Debug,

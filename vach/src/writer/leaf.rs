@@ -46,11 +46,13 @@ pub struct Leaf<'a> {
 
 	/// Use encryption when writing into the target.
 	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub encrypt: bool,
 	/// Whether to include a signature with this [`Leaf`], defaults to false.
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
 	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub sign: bool,
 }
 
