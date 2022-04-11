@@ -51,14 +51,17 @@ pub struct Leaf<'a> {
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
+
 	/// How a [`Leaf`] should be compressed
 	#[cfg(feature = "compression")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	pub compress: CompressMode,
 	/// The specific compression algorithm to use
+
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	#[cfg(feature = "compression")]
 	pub compression_algo: CompressionAlgorithm,
+
 	/// The flags that will go into the archive write target.
 	pub flags: Flags,
 	/// Use encryption when writing into the target.
@@ -85,10 +88,12 @@ impl<'a> Leaf<'a> {
 			..Default::default()
 		}
 	}
+
 	/// Consume the [Leaf] and return the underlying Boxed handle
 	pub fn into_inner(self) -> Box<dyn HandleTrait + 'a> {
 		self.handle
 	}
+
 	pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
 		let mut entry = RegistryEntry::empty();
 		entry.content_version = self.content_version;
@@ -130,6 +135,7 @@ impl<'a> Leaf<'a> {
 		self.compress = compress;
 		self
 	}
+
 	/// Setter used to set the `content_version` of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf};
@@ -140,6 +146,7 @@ impl<'a> Leaf<'a> {
 		self.content_version = content_version;
 		self
 	}
+
 	/// Setter used to set the `id` field of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf};
@@ -150,6 +157,7 @@ impl<'a> Leaf<'a> {
 		self.id = id.to_string();
 		self
 	}
+
 	/// Setter used to set the [`flags`](crate::builder::Flags) field of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf, Flags};
@@ -160,6 +168,7 @@ impl<'a> Leaf<'a> {
 		self.flags = flags;
 		self
 	}
+
 	/// Setter for the `encrypt` field
 	///```
 	/// use vach::prelude::Leaf;
@@ -220,6 +229,7 @@ impl<'a> fmt::Debug for Leaf<'a> {
 
 		#[cfg(feature = "compression")]
 		d.field("compress", &self.compress);
+
 		#[cfg(feature = "compression")]
 		d.field("compression_algo", &self.compression_algo);
 
