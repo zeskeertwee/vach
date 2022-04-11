@@ -2,7 +2,7 @@
 
 #![cfg(test)]
 // Boring, average every day contemporary imports
-use std::{fs::File, io::Read, str};
+use std::{fs::File, str};
 
 use crate::{global::result::InternalResult, prelude::*};
 
@@ -88,14 +88,18 @@ fn defaults() {
 	let _builder = Builder::new();
 	let _builder_config = BuilderConfig::default();
 	let _flags = Flags::default();
+
+	dbg!(std::mem::size_of::<Archive<()>>());
 }
 
 #[test]
+#[cfg(not(feature = "crypto"))]
 fn header_config() -> InternalResult<()> {
 	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
+	use std::io::Read;
 	use crate::global::header::Header;
 
-	let config = HeaderConfig::new(*b"VfACH", None);
+	let config = HeaderConfig::new(*b"VfACH");
 	println!("{}", &config);
 
 	let mut header_data = [0u8; Header::BASE_SIZE];
@@ -110,7 +114,7 @@ fn header_config() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
+#[cfg(all(feature = "compression", feature = "builder"))]
 fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
@@ -144,7 +148,7 @@ fn builder_no_signature() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
+#[cfg(all(feature = "compression", feature = "loader"))]
 fn fetch_no_signature() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
@@ -174,6 +178,7 @@ fn fetch_no_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "crypto")]
 fn gen_keypair() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
 
@@ -190,7 +195,7 @@ fn gen_keypair() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "builder")]
+#[cfg(all(feature = "builder", feature = "crypto"))]
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
@@ -216,7 +221,7 @@ fn builder_with_signature() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "loader")]
+#[cfg(all(feature = "loader", feature = "crypto"))]
 fn fetch_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -259,7 +264,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "loader")]
+#[cfg(all(feature = "loader", feature = "crypto"))]
 fn fetch_write_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -292,6 +297,7 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "crypto")]
 fn edcryptor_test() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
 	use crate::crypto::Encryptor;
@@ -310,7 +316,7 @@ fn edcryptor_test() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
+#[cfg(all(feature = "compression", feature = "builder", feature = "crypto"))]
 fn builder_with_encryption() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
@@ -336,7 +342,7 @@ fn builder_with_encryption() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "loader")]
+#[cfg(all(feature = "loader", feature = "crypto"))]
 fn fetch_from_encrypted() -> InternalResult<()> {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
@@ -370,7 +376,7 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(all(feature = "builder", feature = "loader"))]
+#[cfg(all(feature = "builder", feature = "loader", feature = "crypto"))]
 fn consolidated_example() -> InternalResult<()> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
@@ -425,7 +431,7 @@ fn consolidated_example() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
+#[cfg(all(feature = "compression", feature = "builder"))]
 fn test_compressors() -> InternalResult<()> {
 	use std::io::Cursor;
 	const INPUT_LEN: usize = 4096;
@@ -484,7 +490,7 @@ fn test_compressors() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "multithreaded")]
+#[cfg(all(feature = "multithreaded", feature = "builder", feature = "loader"))]
 fn test_batch_fetching() -> InternalResult<()> {
 	use std::io::Cursor;
 

@@ -1,3 +1,4 @@
+#![cfg(feature = "crypto")]
 use std::fmt;
 
 use aes_gcm::aead::{Aead, NewAead};

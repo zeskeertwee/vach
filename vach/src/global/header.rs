@@ -1,6 +1,7 @@
 use std::{fmt, io::Read, str};
 
-use crate::{crypto, utils::read_public_key};
+#[cfg(feature = "crypto")]
+use crate::crypto;
 use super::{error::InternalError, result::InternalResult, flags::Flags};
 
 /// Used to configure and give extra information to the [`Archive`](crate::archive::Archive) loader.
@@ -12,6 +13,7 @@ pub struct HeaderConfig {
 	pub magic: [u8; crate::MAGIC_LENGTH],
 	/// An ed25519 public key. **If no key is provided, (is `None`), then signature validation is ignored**. Even if the
 	/// archive source has signatures.
+	#[cfg(feature = "crypto")]
 	pub public_key: Option<crypto::PublicKey>,
 }
 
@@ -22,8 +24,19 @@ impl HeaderConfig {
 	/// let config = HeaderConfig::new(*b"_TEST",  None);
 	/// ```
 	#[inline(always)]
+	#[cfg(feature = "crypto")]
 	pub const fn new(magic: [u8; 5], key: Option<crypto::PublicKey>) -> HeaderConfig {
 		HeaderConfig { magic, public_key: key }
+	}
+
+	/// Construct a new [`HeaderConfig`] struct.
+	/// ```
+	/// use vach::prelude::HeaderConfig;
+	/// let config = HeaderConfig::new(*b"_TEST");
+	/// ```
+	#[cfg(not(feature = "crypto"))]
+	pub const fn new(magic: [u8; 5]) -> HeaderConfig {
+		HeaderConfig { magic }
 	}
 
 	/// Shorthand to load and parse an ed25519 public key from a `Read` handle, into this `HeaderConfig`,
@@ -38,12 +51,16 @@ impl HeaderConfig {
 	///  - If parsing of the public key fails
 	///  - `io` errors
 	#[inline]
+	#[cfg(feature = "crypto")]
 	pub fn load_public_key<T: Read>(&mut self, handle: T) -> InternalResult<()> {
+		use crate::utils::read_public_key;
+
 		self.public_key = Some(read_public_key(handle)?);
 		Ok(())
 	}
 
 	/// Shorthand to load a PublicKey into the HeaderConfig
+	#[cfg(feature = "crypto")]
 	pub fn key(mut self, public_key: crypto::PublicKey) -> HeaderConfig {
 		self.public_key = Some(public_key);
 		self
@@ -58,6 +75,12 @@ impl HeaderConfig {
 
 impl fmt::Display for HeaderConfig {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+		#[rustfmt::skip]
+		let has_pk = {
+			#[cfg(feature = "crypto")] { self.public_key.is_some() }
+			#[cfg(not(feature = "crypto"))] { false }
+		};
+
 		write!(
 			f,
 			"[HeaderConfig] magic: {}, has_public_key: {}",
@@ -69,15 +92,24 @@ impl fmt::Display for HeaderConfig {
 					return fmt::Result::Err(fmt::Error);
 				},
 			},
-			self.public_key.is_some()
+			has_pk
 		)
 	}
 }
 
+#[cfg(feature = "crypto")]
 impl Default for HeaderConfig {
 	#[inline(always)]
 	fn default() -> Self {
 		HeaderConfig::new(*crate::DEFAULT_MAGIC, None)
+	}
+}
+
+#[cfg(not(feature = "crypto"))]
+impl Default for HeaderConfig {
+	#[inline(always)]
+	fn default() -> Self {
+		HeaderConfig::new(*crate::DEFAULT_MAGIC)
 	}
 }
 

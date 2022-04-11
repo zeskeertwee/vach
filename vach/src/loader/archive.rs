@@ -7,7 +7,6 @@ use std::{
 
 use super::resource::Resource;
 use crate::{
-	crypto::Encryptor,
 	global::{
 		error::InternalError,
 		flags::Flags,
@@ -17,9 +16,11 @@ use crate::{
 	},
 };
 
+#[cfg(feature = "crypto")]
+use crate::crypto;
+
 #[cfg(feature = "compression")]
 use crate::global::compressor::{Compressor, CompressionAlgorithm};
-use crate::crypto;
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
@@ -30,9 +31,12 @@ use crate::crypto;
 pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,
-	decryptor: Option<Encryptor>,
-	key: Option<crypto::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
+
+	#[cfg(feature = "crypto")]
+	decryptor: Option<crypto::Encryptor>,
+	#[cfg(feature = "crypto")]
+	key: Option<crypto::PublicKey>,
 }
 
 impl<T> std::fmt::Display for Archive<T> {
@@ -43,14 +47,21 @@ impl<T> std::fmt::Display for Archive<T> {
 
 impl<T> std::fmt::Debug for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Archive")
-			.field("header", &self.header)
-			.field("decryptor", &self.decryptor)
-			.field("key", &self.key)
-			.field("entries", &self.entries)
-			.finish()
+		let mut f = f.debug_struct("Archive");
+		f.field("header", &self.header);
+		f.field("entries", &self.entries);
+
+		#[cfg(feature = "crypto")]
+		f.field("key", &self.key);
+
+		f.finish()
 	}
 }
+
+#[cfg(not(feature = "crypto"))]
+type ProcessDependecies = ();
+#[cfg(feature = "crypto")]
+type ProcessDependecies<'a> = (&'a Option<crypto::Encryptor>, &'a Option<crypto::PublicKey>);
 
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
@@ -72,17 +83,17 @@ impl<T> Archive<T> {
 	/// Helps in parallelized `Resource` fetching
 	#[inline(never)]
 	fn process_raw(
-		dependencies: (&Option<Encryptor>, &Option<crypto::PublicKey>), independent: (&RegistryEntry, &str, Vec<u8>),
+		dependencies: ProcessDependecies, independent: (&RegistryEntry, &str, Vec<u8>),
 	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		let (entry, id, mut raw) = independent;
-		let (decryptor, key) = dependencies;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
-		if let Some(pk) = key {
+		#[cfg(feature = "crypto")]
+		if let Some(pk) = dependencies.1 {
 			let raw_size = raw.len();
 
 			// If there is an error the data is flagged as invalid
@@ -97,7 +108,8 @@ impl<T> Archive<T> {
 		// Add read layers
 		// 1: Decryption layer
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
-			match decryptor {
+			#[cfg(feature = "crypto")]
+			match dependencies.0 {
 				Some(dc) => {
 					raw = dc.decrypt(&raw)?;
 				},
@@ -107,6 +119,13 @@ impl<T> Archive<T> {
 						id
 					)))
 				},
+			}
+
+			#[cfg(not(feature = "crypto"))]
+			{
+				return Err(InternalError::OtherError(
+					"Cannot decrypt data, the `crypto` feature was turned off".into(),
+				));
 			}
 		}
 
@@ -182,26 +201,38 @@ where
 			entries.insert(id, entry);
 		}
 
-		// Build decryptor
-		let use_decryption = entries
-			.iter()
-			.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
+		#[cfg(feature = "crypto")]
+		{
+			// Build decryptor
+			let use_decryption = entries
+				.iter()
+				.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
 
-		// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
-		let mut decryptor = None;
-		if use_decryption {
-			if let Some(pk) = config.public_key {
-				decryptor = Some(Encryptor::new(&pk, config.magic))
+			// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
+			let mut decryptor = None;
+			if use_decryption {
+				if let Some(pk) = config.public_key {
+					decryptor = Some(crypto::Encryptor::new(&pk, config.magic))
+				}
 			}
+
+			Ok(Archive {
+				header,
+				handle: Arc::new(Mutex::new(handle)),
+				key: config.public_key,
+				entries,
+				decryptor,
+			})
 		}
 
-		Ok(Archive {
-			header,
-			handle: Arc::new(Mutex::new(handle)),
-			key: config.public_key,
-			entries,
-			decryptor,
-		})
+		#[cfg(not(feature = "crypto"))]
+		{
+			Ok(Archive {
+				header,
+				handle: Arc::new(Mutex::new(handle)),
+				entries,
+			})
+		}
 	}
 
 	#[inline(always)]
@@ -265,7 +296,11 @@ where
 
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
+
+			#[cfg(feature = "crypto")]
 			let dependencies = (&self.decryptor, &self.key);
+			#[cfg(not(feature = "crypto"))]
+			let dependencies = ();
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
 
@@ -293,7 +328,11 @@ where
 
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
+
+			#[cfg(feature = "crypto")]
 			let dependencies = (&self.decryptor, &self.key);
+			#[cfg(not(feature = "crypto"))]
+			let dependencies = ();
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
 
@@ -319,8 +358,7 @@ where
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
 	where
 		S: AsRef<str>,
-		I: Iterator<Item = S> + Send + Sync,
-	{
+		I: Iterator<Item = S> + Send + Sync, {
 		use rayon::prelude::*;
 
 		// Attempt to pre-allocate HashMap

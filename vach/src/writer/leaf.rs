@@ -32,24 +32,25 @@ pub struct Leaf<'a> {
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
+	/// The flags that will go into the archive write target.
+	pub flags: Flags,
 
 	/// How a [`Leaf`] should be compressed
 	#[cfg(feature = "compression")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	pub compress: CompressMode,
 	/// The specific compression algorithm to use
-
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	#[cfg(feature = "compression")]
 	pub compression_algo: CompressionAlgorithm,
 
-	/// The flags that will go into the archive write target.
-	pub flags: Flags,
 	/// Use encryption when writing into the target.
+	#[cfg(feature = "crypto")]
 	pub encrypt: bool,
 	/// Whether to include a signature with this [`Leaf`], defaults to false.
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
+	#[cfg(feature = "crypto")]
 	pub sign: bool,
 }
 
@@ -87,13 +88,10 @@ impl<'a> Leaf<'a> {
 	/// ```rust
 	/// use std::io::Cursor;
 	/// use vach::prelude::Leaf;
-	/// let template = Leaf::default()
-	///    .version(12)
-	///    .encrypt(false);
+	/// let template = Leaf::default().version(12);
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
 	/// assert_eq!(&leaf.content_version, &template.content_version);
-	/// assert_eq!(&leaf.encrypt, &template.encrypt);
 	/// ```
 	pub fn template(self, other: &Leaf<'a>) -> Self {
 		Leaf {
@@ -155,6 +153,7 @@ impl<'a> Leaf<'a> {
 	/// use vach::prelude::Leaf;
 	/// let config = Leaf::default().encrypt(true);
 	///```
+	#[cfg(feature = "crypto")]
 	pub fn encrypt(mut self, encrypt: bool) -> Self {
 		self.encrypt = encrypt;
 		self
@@ -165,6 +164,7 @@ impl<'a> Leaf<'a> {
 	/// use vach::prelude::Leaf;
 	/// let config = Leaf::default().sign(true);
 	///```
+	#[cfg(feature = "crypto")]
 	pub fn sign(mut self, sign: bool) -> Self {
 		self.sign = sign;
 		self
@@ -187,7 +187,10 @@ impl<'a> Default for Leaf<'a> {
 			handle: Box::<&[u8]>::new(&[]),
 			flags: Flags::empty(),
 			content_version: 0,
+
+			#[cfg(feature = "crypto")]
 			encrypt: false,
+			#[cfg(feature = "crypto")]
 			sign: false,
 
 			#[cfg(feature = "compression")]
@@ -204,9 +207,13 @@ impl<'a> fmt::Debug for Leaf<'a> {
 		d.field("handle", &"[Box<dyn io::Read>]")
 			.field("id", &self.id)
 			.field("content_version", &self.content_version)
-			.field("flags", &self.flags)
-			.field("encrypt", &self.encrypt)
-			.field("sign", &self.sign);
+			.field("flags", &self.flags);
+
+		#[cfg(feature = "crypto")]
+		d.field("encrypt", &self.encrypt);
+
+		#[cfg(feature = "crypto")]
+		d.field("sign", &self.sign);
 
 		#[cfg(feature = "compression")]
 		d.field("compress", &self.compress);

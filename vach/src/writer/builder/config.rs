@@ -2,6 +2,8 @@ use std::io;
 use std::fmt::Debug;
 
 use crate::global::{flags::Flags, result::InternalResult, reg_entry::RegistryEntry};
+
+#[cfg(feature = "crypto")]
 use crate::crypto;
 
 #[cfg(feature = "multithreaded")]
@@ -24,6 +26,7 @@ pub struct BuilderConfig<'a> {
 	/// Flags to be written into the `Header` section of the write target.
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
+	#[cfg(feature = "crypto")]
 	pub keypair: Option<crypto::Keypair>,
 	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
 	/// The callback get passed to it: the leaf's id and the generated registry entry. Respectively.
@@ -39,25 +42,30 @@ pub struct BuilderConfig<'a> {
 
 impl<'a> Debug for BuilderConfig<'a> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("BuilderConfig")
-			.field("magic", &self.magic)
-			.field("flags", &self.flags)
-			.field("keypair", &self.keypair)
-			.field(
-				"progress_callback",
-				if self.progress_callback.is_some() {
-					&"Some(&dyn Fn(id: &str, reg_entry: &RegistryEntry))"
-				} else {
-					&"None"
-				},
-			)
-			.finish()
+		let mut f = f.debug_struct("BuilderConfig");
+
+		f.field("magic", &self.magic);
+		f.field("flags", &self.flags);
+		f.field(
+			"progress_callback",
+			if self.progress_callback.is_some() {
+				&"Some(&dyn Fn(id: &str, reg_entry: &RegistryEntry))"
+			} else {
+				&"None"
+			},
+		);
+
+		#[cfg(feature = "crypto")]
+		f.field("keypair", &self.keypair);
+
+		f.finish()
 	}
 }
 
 impl<'a> BuilderConfig<'a> {
 	// Helper functions
 	/// Setter for the `keypair` field
+	#[cfg(feature = "crypto")]
 	pub fn keypair(mut self, keypair: crypto::Keypair) -> Self {
 		self.keypair = Some(keypair);
 		self
@@ -100,6 +108,7 @@ impl<'a> BuilderConfig<'a> {
 	/// Parses and stores a keypair from a source.
 	/// ### Errors
 	/// If the call to `::utils::read_keypair()` fails to parse the data from the handle
+	#[cfg(feature = "crypto")]
 	pub fn load_keypair<T: io::Read>(&mut self, handle: T) -> InternalResult<()> {
 		self.keypair = Some(crate::utils::read_keypair(handle)?);
 		Ok(())
@@ -110,9 +119,10 @@ impl<'a> Default for BuilderConfig<'a> {
 	fn default() -> BuilderConfig<'a> {
 		BuilderConfig {
 			flags: Flags::default(),
-			keypair: None,
 			magic: *crate::DEFAULT_MAGIC,
 			progress_callback: None,
+			#[cfg(feature = "crypto")]
+			keypair: None,
 		}
 	}
 }

@@ -2,6 +2,8 @@ use crate::global::flags::Flags;
 
 use std::{io::Read, fmt};
 use super::{error::InternalError, result::InternalResult};
+
+#[cfg(feature = "crypto")]
 use crate::crypto;
 
 /// Stand-alone meta-data for an archive entry(Leaf). This can be fetched without reading from the archive.
@@ -12,6 +14,7 @@ pub struct RegistryEntry {
 	/// The content version of the extracted archive entry
 	pub content_version: u8,
 	/// The signature of the data in the archive, used when verifying data authenticity
+	#[cfg(feature = "crypto")]
 	pub signature: Option<crypto::Signature>,
 	/// The location of the file in the archive, as an offset of bytes from the beginning of the file
 	pub location: u64,
@@ -28,9 +31,11 @@ impl RegistryEntry {
 		RegistryEntry {
 			flags: Flags::empty(),
 			content_version: 0,
-			signature: None,
 			location: 0,
 			offset: 0,
+
+			#[cfg(feature = "crypto")]
+			signature: None,
 		}
 	}
 
@@ -50,6 +55,8 @@ impl RegistryEntry {
 		let offset = u64::from_le_bytes(buffer[13..21].try_into().unwrap());
 
 		let id_length = u16::from_le_bytes([buffer[21], buffer[22]]);
+
+		#[cfg(feature = "crypto")]
 		let mut signature = None;
 
 		/* The data after this is dynamically sized, therefore *MUST* be read conditionally */
@@ -58,12 +65,16 @@ impl RegistryEntry {
 			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] = [0u8; crate::SIGNATURE_LENGTH];
 			handle.read_exact(&mut sig_bytes)?;
 
-			let sig: crypto::Signature = match sig_bytes.try_into() {
-				Ok(sig) => sig,
-				Err(err) => return Err(InternalError::ParseError(err.to_string())),
-			};
+			// If the `crypto` feature is turned off then the bytes are just read then discarded
+			#[cfg(feature = "crypto")]
+			{
+				let sig: crypto::Signature = match sig_bytes.try_into() {
+					Ok(sig) => sig,
+					Err(err) => return Err(InternalError::ParseError(err.to_string())),
+				};
 
-			signature = Some(sig);
+				signature = Some(sig);
+			}
 		};
 
 		// Construct ID
@@ -74,9 +85,11 @@ impl RegistryEntry {
 		let entry = RegistryEntry {
 			flags,
 			content_version,
-			signature,
 			location,
 			offset,
+
+			#[cfg(feature = "crypto")]
+			signature,
 		};
 
 		Ok((entry, id))
@@ -92,6 +105,7 @@ impl RegistryEntry {
 		buffer.extend_from_slice(&id_length.to_le_bytes());
 
 		// Only write signature if one exists
+		#[cfg(feature = "crypto")]
 		if let Some(signature) = self.signature {
 			buffer.extend_from_slice(&signature.to_bytes())
 		};

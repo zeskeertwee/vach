@@ -23,9 +23,12 @@ use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
 use crate::{
 	global::{header::Header, reg_entry::RegistryEntry, flags::Flags},
-	crypto::Encryptor,
 };
 
+#[cfg(feature = "crypto")]
+use crate::crypto::Encryptor;
+
+#[cfg(feature = "crypto")]
 use ed25519_dalek::Signer;
 
 /// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
@@ -124,7 +127,7 @@ impl<'a> Builder<'a> {
 	/// ```
 	/// use vach::builder::{Builder, Leaf};
 	///
-	/// let template = Leaf::default().encrypt(false).version(12);
+	/// let template = Leaf::default().version(12);
 	/// let mut builder = Builder::new().template(template);
 	///
 	/// builder.add(b"JEB" as &[u8], "JEB_NAME").unwrap();
@@ -160,13 +163,18 @@ impl<'a> Builder<'a> {
 				.iter()
 				.map(|leaf| {
 					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-					leaf.id.len()
-						+ RegistryEntry::MIN_SIZE
-						+ (if config.keypair.is_some() && leaf.sign {
+					leaf.id.len() + RegistryEntry::MIN_SIZE + {
+						#[cfg(feature = "crypto")]
+						if config.keypair.is_some() && leaf.sign {
 							crate::SIGNATURE_LENGTH
 						} else {
 							0
-						})
+						}
+						#[cfg(not(feature = "crypto"))]
+						{
+							0
+						}
+					}
 				})
 				.reduce(|l1, l2| l1 + l2)
 				.unwrap_or(0) + Header::BASE_SIZE;
@@ -180,6 +188,8 @@ impl<'a> Builder<'a> {
 
 		// INSERT flags
 		let mut temp = config.flags;
+
+		#[cfg(feature = "crypto")]
 		if config.keypair.is_some() {
 			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
@@ -194,8 +204,10 @@ impl<'a> Builder<'a> {
 		total_sync += Header::BASE_SIZE;
 
 		// Configure encryption
+		#[cfg(feature = "crypto")]
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
 
+		#[cfg(feature = "crypto")]
 		if use_encryption && config.keypair.is_none() {
 			return Err(InternalError::NoKeypairError(
 				"Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string(),
@@ -203,6 +215,7 @@ impl<'a> Builder<'a> {
 		};
 
 		// Build encryptor
+		#[cfg(feature = "crypto")]
 		let encryptor = if use_encryption {
 			let keypair = &config.keypair;
 
@@ -278,6 +291,7 @@ impl<'a> Builder<'a> {
 			}
 
 			// Encryption comes second
+			#[cfg(feature = "crypto")]
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
 					raw = ex.encrypt(&raw)?;
@@ -312,6 +326,7 @@ impl<'a> Builder<'a> {
 			// Update the offset of the entry to be the length of the glob
 			entry.offset = glob_length as u64;
 
+			#[cfg(feature = "crypto")]
 			if leaf.sign {
 				if let Some(keypair) = &config.keypair {
 					raw.extend_from_slice(leaf.id.as_bytes());

@@ -22,12 +22,13 @@
 
 - The `compression` feature pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
 - The `loader` and `builder` features are turned on by default, turning them off turns off their respective modules. For example a game only needs the `loader` feature but a tool for asset packing would only need the `builder` feature.
+- The `crypto` feature enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
 
 ### 🀄 Show me some code _dang it!_
 
 ##### > Building a basic unsigned `.vach` file
 
-```
+```ignore
 use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig};
 
@@ -66,7 +67,7 @@ let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buf
 
 ##### > Build a signed `.vach` file
 
-```
+```ignore
 use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig, Keypair};
 use vach::utils::gen_keypair;
@@ -90,7 +91,7 @@ builder.dump(&mut target, &config).unwrap();
 
 As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/), you could refer to their docs to read further about them.
 
-```
+```ignore
 use vach::prelude::{Keypair, SecretKey, PublicKey};
 use vach::utils::gen_keypair;
 
@@ -143,7 +144,8 @@ pub(crate) mod loader;
 #[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub(crate) mod writer;
 
-// Re-exports
+// Re-export
+#[cfg(feature = "crypto")]
 pub use rand;
 
 #[cfg(feature = "multithreaded")]
@@ -178,12 +180,16 @@ pub const MAGIC_LENGTH: usize = 5;
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
-	pub use crate::global::{error::InternalError, result::InternalResult};
+	pub use crate::global::{
+		error::InternalError, result::InternalResult, flags::Flags, header::HeaderConfig, reg_entry::RegistryEntry,
+	};
 
+	#[cfg(feature = "crypto")]
 	pub use crate::crypto::*;
 
 	#[cfg(feature = "loader")]
 	pub use crate::archive::*;
+
 	#[cfg(feature = "builder")]
 	pub use crate::builder::*;
 }
