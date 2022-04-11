@@ -4,29 +4,9 @@ use crate::{
 
 #[cfg(feature = "compression")]
 use crate::global::compressor::CompressionAlgorithm;
+use super::compress_mode::CompressMode;
 
 use std::{io::Read, fmt};
-
-/// Configures how [`Leaf`]s should be compressed.
-/// Default is `CompressMode::Never`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "compression")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
-pub enum CompressMode {
-	/// The data will always be compressed
-	Always,
-	/// The compressed data is used, only if it is smaller than the original data.
-	Detect,
-	/// The data is never compressed and is embedded as is.
-	Never,
-}
-
-#[cfg(feature = "compression")]
-impl Default for CompressMode {
-	fn default() -> CompressMode {
-		CompressMode::Never
-	}
-}
 
 #[cfg(feature = "multithreaded")]
 /// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
@@ -69,7 +49,7 @@ pub struct Leaf<'a> {
 	/// Whether to include a signature with this [`Leaf`], defaults to false.
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
-	pub sign: bool,
+	pub sign: bool
 }
 
 impl<'a> Leaf<'a> {

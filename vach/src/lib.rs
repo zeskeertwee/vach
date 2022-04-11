@@ -195,7 +195,7 @@ pub mod builder {
 	pub use crate::global::{error::InternalError, result::InternalResult, flags::Flags};
 
 	#[cfg(feature = "compression")]
-	pub use crate::writer::leaf::CompressMode;
+	pub use crate::writer::compress_mode::CompressMode;
 	#[cfg(feature = "compression")]
 	pub use crate::global::compressor::CompressionAlgorithm;
 }

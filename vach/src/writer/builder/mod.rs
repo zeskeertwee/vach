@@ -14,7 +14,7 @@ use super::leaf::{Leaf, HandleTrait};
 use crate::global::compressor::Compressor;
 
 #[cfg(feature = "compression")]
-use super::leaf::CompressMode;
+use super::compress_mode::CompressMode;
 
 #[cfg(feature = "compression")]
 use std::io::Read;
