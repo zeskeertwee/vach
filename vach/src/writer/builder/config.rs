@@ -1,7 +1,8 @@
-use crate::global::{flags::Flags, result::InternalResult, reg_entry::RegistryEntry};
 use std::io;
-use ed25519_dalek as esdalek;
 use std::fmt::Debug;
+
+use crate::global::{flags::Flags, result::InternalResult, reg_entry::RegistryEntry};
+use crate::crypto;
 
 #[cfg(feature = "multithreaded")]
 /// A toggle blanket-trait that allows for seamless switching between single and multithreaded execution
@@ -23,7 +24,7 @@ pub struct BuilderConfig<'a> {
 	/// Flags to be written into the `Header` section of the write target.
 	pub flags: Flags,
 	/// An optional keypair. If a key is provided, then the write target will have signatures for tamper verification.
-	pub keypair: Option<esdalek::Keypair>,
+	pub keypair: Option<crypto::Keypair>,
 	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
 	/// The callback get passed to it: the leaf's id and the generated registry entry. Respectively.
 	/// > **To avoid** the `implementation of "FnOnce" is not general enough` error consider adding types to the closure's parameters, as this is a type inference error. Rust somehow cannot infer enough information, [link](https://www.reddit.com/r/rust/comments/ntqu68/implementation_of_fnonce_is_not_general_enough/).
@@ -57,7 +58,7 @@ impl<'a> Debug for BuilderConfig<'a> {
 impl<'a> BuilderConfig<'a> {
 	// Helper functions
 	/// Setter for the `keypair` field
-	pub fn keypair(mut self, keypair: esdalek::Keypair) -> Self {
+	pub fn keypair(mut self, keypair: crypto::Keypair) -> Self {
 		self.keypair = Some(keypair);
 		self
 	}

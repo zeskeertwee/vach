@@ -22,7 +22,8 @@ use std::io::Read;
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
 use crate::{
-	global::{edcryptor::Encryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
+	global::{header::Header, reg_entry::RegistryEntry, flags::Flags},
+	crypto::Encryptor,
 };
 
 use ed25519_dalek::Signer;
@@ -279,15 +280,7 @@ impl<'a> Builder<'a> {
 			// Encryption comes second
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
-					raw = match ex.encrypt(&raw) {
-						Ok(bytes) => bytes,
-						Err(err) => {
-							return Err(InternalError::CryptoError(format!(
-								"Unable to encrypt leaf: {}. Error: {}",
-								leaf.id, err
-							)))
-						}
-					};
+					raw = ex.encrypt(&raw)?;
 
 					entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
 				}

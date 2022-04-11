@@ -1,10 +1,12 @@
 use std::fmt;
 
-use ed25519_dalek::PublicKey;
-
 use aes_gcm::aead::{Aead, NewAead};
 use aes_gcm::aes::cipher::consts::U12;
 use aes_gcm::{Aes256Gcm, Key, Nonce};
+
+pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
+
+use crate::prelude::{InternalResult, InternalError};
 
 // Encryption - Decryption, A convenient wrapper around aes encryption and decryption
 #[derive(Clone)]
@@ -36,19 +38,19 @@ impl Encryptor {
 	}
 
 	// The meat and the mass of this struct
-	pub(crate) fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>, String> {
+	pub(crate) fn encrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
 		let res = match self.cipher.encrypt(&self.nonce, data) {
 			Ok(data) => data,
-			Err(err) => return Err(err.to_string()),
+			Err(err) => return Err(InternalError::CryptoError(err.to_string())),
 		};
 
 		Ok(res)
 	}
 
-	pub(crate) fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, String> {
+	pub(crate) fn decrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
 		let res = match self.cipher.decrypt(&self.nonce, data) {
 			Ok(data) => data,
-			Err(err) => return Err(err.to_string()),
+			Err(err) => return Err(InternalError::CryptoError(err.to_string())),
 		};
 
 		Ok(res)

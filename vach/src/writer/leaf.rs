@@ -4,6 +4,7 @@ use crate::{
 
 #[cfg(feature = "compression")]
 use crate::global::compressor::CompressionAlgorithm;
+#[cfg(feature = "compression")]
 use super::compress_mode::CompressMode;
 
 use std::{io::Read, fmt};
@@ -49,7 +50,7 @@ pub struct Leaf<'a> {
 	/// Whether to include a signature with this [`Leaf`], defaults to false.
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
-	pub sign: bool
+	pub sign: bool,
 }
 
 impl<'a> Leaf<'a> {

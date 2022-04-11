@@ -7,8 +7,8 @@ use std::{
 
 use super::resource::Resource;
 use crate::{
+	crypto::Encryptor,
 	global::{
-		edcryptor::Encryptor,
 		error::InternalError,
 		flags::Flags,
 		header::{Header, HeaderConfig},
@@ -19,8 +19,7 @@ use crate::{
 
 #[cfg(feature = "compression")]
 use crate::global::compressor::{Compressor, CompressionAlgorithm};
-
-use ed25519_dalek as esdalek;
+use crate::crypto;
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
@@ -32,7 +31,7 @@ pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,
 	decryptor: Option<Encryptor>,
-	key: Option<esdalek::PublicKey>,
+	key: Option<crypto::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
 }
 
@@ -73,7 +72,7 @@ impl<T> Archive<T> {
 	/// Helps in parallelized `Resource` fetching
 	#[inline(never)]
 	fn process_raw(
-		dependencies: (&Option<Encryptor>, &Option<esdalek::PublicKey>), independent: (&RegistryEntry, &str, Vec<u8>),
+		dependencies: (&Option<Encryptor>, &Option<crypto::PublicKey>), independent: (&RegistryEntry, &str, Vec<u8>),
 	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
@@ -100,15 +99,7 @@ impl<T> Archive<T> {
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
 			match decryptor {
 				Some(dc) => {
-					raw = match dc.decrypt(&raw) {
-						Ok(bytes) => bytes,
-						Err(err) => {
-							return Err(InternalError::CryptoError(format!(
-								"Unable to decrypt resource: {}. Error: {}",
-								id, err
-							)));
-						},
-					};
+					raw = dc.decrypt(&raw)?;
 				},
 				None => {
 					return Err(InternalError::NoKeypairError(format!(

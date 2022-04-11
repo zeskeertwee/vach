@@ -1,8 +1,8 @@
 use crate::global::flags::Flags;
 
 use std::{io::Read, fmt};
-use ed25519_dalek as esdalek;
 use super::{error::InternalError, result::InternalResult};
+use crate::crypto;
 
 /// Stand-alone meta-data for an archive entry(Leaf). This can be fetched without reading from the archive.
 #[derive(Debug, Clone)]
@@ -12,7 +12,7 @@ pub struct RegistryEntry {
 	/// The content version of the extracted archive entry
 	pub content_version: u8,
 	/// The signature of the data in the archive, used when verifying data authenticity
-	pub signature: Option<esdalek::Signature>,
+	pub signature: Option<crypto::Signature>,
 	/// The location of the file in the archive, as an offset of bytes from the beginning of the file
 	pub location: u64,
 	/// The offset|size of the [`Leaf`](crate::builder::Leaf), in bytes. This is the actual number of bytes in the leaf endpoint. But the size of the data may vary once processed, ie when decompressed
@@ -58,7 +58,7 @@ impl RegistryEntry {
 			let mut sig_bytes: [u8; crate::SIGNATURE_LENGTH] = [0u8; crate::SIGNATURE_LENGTH];
 			handle.read_exact(&mut sig_bytes)?;
 
-			let sig: esdalek::Signature = match sig_bytes.try_into() {
+			let sig: crypto::Signature = match sig_bytes.try_into() {
 				Ok(sig) => sig,
 				Err(err) => return Err(InternalError::ParseError(err.to_string())),
 			};

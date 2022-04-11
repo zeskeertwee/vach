@@ -1,10 +1,7 @@
 use std::{fmt, io::Read, str};
 
-use crate::{global::flags::Flags, utils::read_public_key};
-
-use ed25519_dalek as esdalek;
-
-use super::{error::InternalError, result::InternalResult};
+use crate::{crypto, utils::read_public_key};
+use super::{error::InternalError, result::InternalResult, flags::Flags};
 
 /// Used to configure and give extra information to the [`Archive`](crate::archive::Archive) loader.
 /// Used exclusively in archive source and integrity validation.
@@ -15,7 +12,7 @@ pub struct HeaderConfig {
 	pub magic: [u8; crate::MAGIC_LENGTH],
 	/// An ed25519 public key. **If no key is provided, (is `None`), then signature validation is ignored**. Even if the
 	/// archive source has signatures.
-	pub public_key: Option<esdalek::PublicKey>,
+	pub public_key: Option<crypto::PublicKey>,
 }
 
 impl HeaderConfig {
@@ -25,7 +22,7 @@ impl HeaderConfig {
 	/// let config = HeaderConfig::new(*b"_TEST",  None);
 	/// ```
 	#[inline(always)]
-	pub const fn new(magic: [u8; 5], key: Option<esdalek::PublicKey>) -> HeaderConfig {
+	pub const fn new(magic: [u8; 5], key: Option<crypto::PublicKey>) -> HeaderConfig {
 		HeaderConfig { magic, public_key: key }
 	}
 
@@ -47,7 +44,7 @@ impl HeaderConfig {
 	}
 
 	/// Shorthand to load a PublicKey into the HeaderConfig
-	pub fn key(mut self, public_key: esdalek::PublicKey) -> HeaderConfig {
+	pub fn key(mut self, public_key: crypto::PublicKey) -> HeaderConfig {
 		self.public_key = Some(public_key);
 		self
 	}

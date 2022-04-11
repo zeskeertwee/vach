@@ -14,10 +14,14 @@
 - **Leaf:** Any actual data endpoint within an archive, what `tar` calls archive members, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
-### 🔫 Extra Features
-Turning on the `multithreaded` feature pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
-This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
- > Turning on parallelization adds a lot of overhead that would be completely unnecessary for much smaller archives, it only benefits where the **singular data** is very large and the `Arc<Mutex<Y>>` overhead is _relatively minimal_
+### 🔫 Cargo Features
+- The `multithreaded` feature pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
+  This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way	.
+
+  > Turning this feature on adds a several new dependencies that would be completely unnecessary for a smaller scope, its only benefits when several entries are required at one moment there can be fetched simultaneously_
+
+- The `compression` feature pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
+- The `loader` and `builder` features are turned on by default, turning them off turns off their respective modules. For example a game only needs the `loader` feature but a tool for asset packing would only need the `builder` feature.
 
 ### 🀄 Show me some code _dang it!_
 
@@ -174,15 +178,18 @@ pub const MAGIC_LENGTH: usize = 5;
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
+	pub use crate::global::{error::InternalError, result::InternalResult};
+
 	pub use crate::crypto::*;
+
+	#[cfg(feature = "loader")]
 	pub use crate::archive::*;
+	#[cfg(feature = "builder")]
 	pub use crate::builder::*;
 }
 
 /// Import keypairs and signatures from here, mirrors from `ed25519_dalek`
-pub mod crypto {
-	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
-}
+pub mod crypto;
 
 /// [`Builder`](crate::builder::Builder) related data structures and logic
 #[cfg(feature = "builder")]

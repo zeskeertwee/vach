@@ -1,4 +1,4 @@
-/// Configures how [`Leaf`]s should be compressed.
+/// Configures how `Leaf`s should be compressed.
 /// Default is `CompressMode::Never`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg(feature = "compression")]
