@@ -8,7 +8,6 @@ use crate::{global::result::InternalResult, prelude::*};
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
-const KEYPAIR_PATH: &str = "test_data/pair.pub";
 const KEYPAIR: &[u8; crate::KEYPAIR_LENGTH] = include_bytes!("../../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
@@ -173,23 +172,6 @@ fn fetch_no_signature() -> InternalResult<()> {
 	let hello = archive.fetch("greeting")?;
 	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
 	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
-
-	Ok(())
-}
-
-#[test]
-#[cfg(feature = "crypto")]
-fn gen_keypair() -> InternalResult<()> {
-	use crate::utils::gen_keypair;
-
-	// NOTE: regenerating new keys will break some tests
-	let regenerate = false;
-
-	if regenerate {
-		let keypair = gen_keypair();
-
-		std::fs::write(KEYPAIR_PATH, &keypair.to_bytes())?;
-	};
 
 	Ok(())
 }
