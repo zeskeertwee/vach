@@ -7,7 +7,6 @@ use std::sync::{
 };
 
 mod config;
-use aes_gcm::aead::Buffer;
 pub use config::BuilderConfig;
 use super::leaf::{Leaf, HandleTrait};
 
@@ -338,6 +337,7 @@ impl<'a> Builder<'a> {
 			if leaf.id.len() >= u16::MAX.into() {
 				let mut copy = leaf.id.clone();
 				copy.truncate(25);
+				copy.shrink_to_fit();
 
 				return Err(InternalError::IDSizeOverflowError(copy));
 			};
