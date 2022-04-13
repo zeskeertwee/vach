@@ -98,6 +98,7 @@ fn header_config() -> InternalResult<()> {
 	use std::io::Read;
 	use crate::global::header::Header;
 
+	// When "crypto" features is turned off `HeaderConfig::new(*b"VfACH")` takes a single argument
 	let config = HeaderConfig::new(*b"VfACH");
 	println!("{}", &config);
 
@@ -148,10 +149,9 @@ fn builder_no_signature() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "loader"))]
-fn fetch_no_signature() -> InternalResult<()> {
+fn simple_fetch() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
-	dbg!(archive.entries());
 	let resource = archive.fetch("poem")?;
 
 	// Windows bullshit
