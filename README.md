@@ -36,7 +36,6 @@
 ### 🤷 Who is what, when where?
 
 - **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
-- **vach-assets-manager:** Work in progress `asset-manager` integration for `vach`. **WIP 🚧**
 - **vach-cli:** A CLI tool for dealing with `.vach` files.
 
 ---
