@@ -188,7 +188,7 @@ where
 		handle.seek(SeekFrom::Start(0))?;
 
 		let header = Header::from_handle(&mut handle)?;
-		Header::validate(&header, config)?;
+		Header::validate(config, &header)?;
 
 		// Generate and store Registry Entries
 		let mut entries = HashMap::with_capacity(header.capacity as usize);

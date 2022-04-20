@@ -14,6 +14,7 @@ pub struct HeaderConfig {
 	/// An ed25519 public key. **If no key is provided, (is `None`), then signature validation is ignored**. Even if the
 	/// archive source has signatures.
 	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub public_key: Option<crypto::PublicKey>,
 }
 
@@ -25,6 +26,7 @@ impl HeaderConfig {
 	/// ```
 	#[inline(always)]
 	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub const fn new(magic: [u8; 5], key: Option<crypto::PublicKey>) -> HeaderConfig {
 		HeaderConfig { magic, public_key: key }
 	}
@@ -52,6 +54,7 @@ impl HeaderConfig {
 	///  - `io` errors
 	#[inline]
 	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub fn load_public_key<T: Read>(&mut self, handle: T) -> InternalResult<()> {
 		use crate::utils::read_public_key;
 
@@ -61,6 +64,7 @@ impl HeaderConfig {
 
 	/// Shorthand to load a PublicKey into the HeaderConfig
 	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub fn key(mut self, public_key: crypto::PublicKey) -> HeaderConfig {
 		self.public_key = Some(public_key);
 		self
@@ -143,7 +147,7 @@ impl Header {
 	/// Validates a `Header` with a template `HeaderConfig`
 	/// ### Errors
 	///  - (in)validation of magic and archive version
-	pub fn validate(header: &Header, config: &HeaderConfig) -> InternalResult<()> {
+	pub fn validate(config: &HeaderConfig, header: &Header) -> InternalResult<()> {
 		// Validate magic
 		if header.magic != config.magic {
 			return Err(InternalError::ValidationError(format!(
@@ -175,9 +179,9 @@ impl Header {
 			// Read flags, u32 from [u8;4]
 			flags: Flags::from_bits(u32::from_le_bytes(buffer[5..9].try_into().unwrap())),
 			// Read version, u16 from [u8;2]
-			arch_version: u16::from_le_bytes(buffer[9..=10].try_into().unwrap()),
+			arch_version: u16::from_le_bytes(buffer[9..11].try_into().unwrap()),
 			// Read the capacity of the archive, u16 from [u8;2]
-			capacity: u16::from_le_bytes(buffer[11..=12].try_into().unwrap()),
+			capacity: u16::from_le_bytes(buffer[11..13].try_into().unwrap()),
 		})
 	}
 }
