@@ -186,12 +186,8 @@ impl fmt::Display for Header {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		write!(
 			f,
-			"[Archive Header] Version: {}, Magic: {}, Members: {}, Header-Flags: <{:#x} : {:#016b}>",
-			self.arch_version,
-			unsafe { str::from_utf8_unchecked(&self.magic) },
-			self.capacity,
-			self.flags.bits,
-			self.flags.bits,
+			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Header-Flags: <{:#x} : {:#016b}>",
+			self.arch_version, self.magic, self.capacity, self.flags.bits, self.flags.bits,
 		)
 	}
 }
