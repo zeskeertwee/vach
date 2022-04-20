@@ -6,18 +6,6 @@ use crate::global::{flags::Flags, result::InternalResult, reg_entry::RegistryEnt
 #[cfg(feature = "crypto")]
 use crate::crypto;
 
-#[cfg(feature = "multithreaded")]
-/// A toggle blanket-trait that allows for seamless switching between single and multithreaded execution
-pub trait CallbackTrait: Fn(&str, &RegistryEntry) + Send + Sync {}
-#[cfg(feature = "multithreaded")]
-impl<T: Fn(&str, &RegistryEntry) + Send + Sync> CallbackTrait for T {}
-
-#[cfg(not(feature = "multithreaded"))]
-/// A toggle blanket-trait that allows for seamless switching between single and multithreaded execution
-pub trait CallbackTrait: Fn(&str, &RegistryEntry) {}
-#[cfg(not(feature = "multithreaded"))]
-impl<T: Fn(&str, &RegistryEntry)> CallbackTrait for T {}
-
 /// Allows for the customization of valid `vach` archives during their construction.
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
 pub struct BuilderConfig<'a> {
@@ -38,7 +26,7 @@ pub struct BuilderConfig<'a> {
 	///
 	/// let builder_config = BuilderConfig::default();
 	/// ```
-	pub progress_callback: Option<&'a dyn CallbackTrait>,
+	pub progress_callback: Option<&'a (dyn Fn(&str, &RegistryEntry) + Send + Sync)>,
 }
 
 impl<'a> Debug for BuilderConfig<'a> {
@@ -100,7 +88,7 @@ impl<'a> BuilderConfig<'a> {
 	/// let callback = |_: &str,  entry: &RegistryEntry| { println!("Number of bytes written: {}", entry.offset) };
 	/// let config = BuilderConfig::default().callback(&callback);
 	///```
-	pub fn callback(mut self, callback: &'a dyn CallbackTrait) -> BuilderConfig<'a> {
+	pub fn callback(mut self, callback: &'a (dyn Fn(&str, &RegistryEntry) + Send + Sync)) -> BuilderConfig<'a> {
 		self.progress_callback = Some(callback);
 		self
 	}

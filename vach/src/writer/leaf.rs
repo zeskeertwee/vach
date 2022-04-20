@@ -134,7 +134,7 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::default().id("whatzitouya");
 	/// ```
-	pub fn id(mut self, id: impl ToString) -> Self {
+	pub fn id<S: ToString>(mut self, id: S) -> Self {
 		self.id = id.to_string();
 		self
 	}
