@@ -351,12 +351,12 @@ where
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
 	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct ([rayon] if you want) otherwise
 	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-	pub fn fetch_batch<I, S>(
+	pub fn fetch_batch<I>(
 		&self, items: I, num_threads: Option<usize>,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
 	where
-		S: AsRef<str>,
-		I: Iterator<Item = S> + Send + Sync,
+		I: Iterator + Send + Sync,
+		I::Item: AsRef<str>,
 	{
 		use rayon::prelude::*;
 
