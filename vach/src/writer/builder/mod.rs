@@ -11,13 +11,7 @@ pub use config::BuilderConfig;
 use super::leaf::{Leaf, HandleTrait};
 
 #[cfg(feature = "compression")]
-use crate::global::compressor::Compressor;
-
-#[cfg(feature = "compression")]
-use super::compress_mode::CompressMode;
-
-#[cfg(feature = "compression")]
-use std::io::Read;
+use {crate::global::compressor::Compressor, super::compress_mode::CompressMode, std::io::Read};
 
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
@@ -26,10 +20,7 @@ use crate::{
 };
 
 #[cfg(feature = "crypto")]
-use crate::crypto::Encryptor;
-
-#[cfg(feature = "crypto")]
-use ed25519_dalek::Signer;
+use {crate::crypto::Encryptor, ed25519_dalek::Signer};
 
 /// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
 #[cfg(feature = "multithreaded")]
@@ -254,13 +245,13 @@ impl<'a> Builder<'a> {
 			match leaf.compress {
 				CompressMode::Never => {
 					leaf.handle.read_to_end(&mut raw)?;
-				}
+				},
 				CompressMode::Always => {
 					Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
 
 					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 					entry.flags.force_set(leaf.compression_algo.into(), true);
-				}
+				},
 				CompressMode::Detect => {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
@@ -276,9 +267,8 @@ impl<'a> Builder<'a> {
 					} else {
 						buffer.as_slice().read_to_end(&mut raw)?;
 					};
-				}
+				},
 			}
-
 
 			// If the compression feature is turned off, simply reads into buffer
 			#[cfg(not(feature = "compression"))]

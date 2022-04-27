@@ -151,11 +151,7 @@ pub use rand;
 
 #[cfg(feature = "multithreaded")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-pub use rayon;
-
-#[cfg(feature = "multithreaded")]
-#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-pub use num_cpus;
+pub use {rayon, num_cpus};
 
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;

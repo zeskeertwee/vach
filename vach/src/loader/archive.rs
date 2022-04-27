@@ -41,7 +41,23 @@ pub struct Archive<T> {
 
 impl<T> std::fmt::Display for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		self.header.fmt(f)
+		let total_size = self
+			.entries
+			.iter()
+			.map(|(_, entry)| entry.offset)
+			.reduce(|a, b| a + b)
+			.unwrap_or(0);
+
+		write!(
+			f,
+			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {}B, Header-Flags: <{:#x} : {:#016b}>",
+			self.header.arch_version,
+			self.header.magic,
+			self.entries.len(),
+			total_size,
+			self.header.flags.bits,
+			self.header.flags.bits,
+		)
 	}
 }
 
@@ -248,8 +264,7 @@ where
 			};
 
 			guard.seek(SeekFrom::Start(entry.location))?;
-			let reader_ref = &mut *guard;
-			let mut take = reader_ref.take(entry.offset);
+			let mut take = guard.by_ref().take(entry.offset);
 
 			take.read_to_end(&mut buffer)?;
 		}
@@ -285,8 +300,6 @@ where
 {
 	/// Fetch a [`Resource`] with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
-	/// ### Errors:
-	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
 	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
@@ -320,7 +333,7 @@ where
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
 	///  - Other `io` related errors
-	pub fn fetch_write<W: Write>(&self, id: impl AsRef<str>, mut target: W) -> InternalResult<(Flags, u8, bool)> {
+	pub fn fetch_write(&self, id: impl AsRef<str>, mut target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
 

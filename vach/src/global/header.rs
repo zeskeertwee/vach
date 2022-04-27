@@ -81,8 +81,8 @@ impl fmt::Display for HeaderConfig {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		#[rustfmt::skip]
 		let has_pk = {
-			#[cfg(feature = "crypto")] { self.public_key.is_some() }
-			#[cfg(not(feature = "crypto"))] { false }
+			#[cfg(feature = "crypto")] { if self.public_key.is_some() { "true" } else { "false" } }
+			#[cfg(not(feature = "crypto"))] { "(crypto feature disabled)" }
 		};
 
 		write!(
@@ -183,15 +183,5 @@ impl Header {
 			// Read the capacity of the archive, u16 from [u8;2]
 			capacity: u16::from_le_bytes(buffer[11..13].try_into().unwrap()),
 		})
-	}
-}
-
-impl fmt::Display for Header {
-	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-		write!(
-			f,
-			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Header-Flags: <{:#x} : {:#016b}>",
-			self.arch_version, self.magic, self.capacity, self.flags.bits, self.flags.bits,
-		)
 	}
 }

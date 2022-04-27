@@ -3,9 +3,7 @@ use crate::{
 };
 
 #[cfg(feature = "compression")]
-use crate::global::compressor::CompressionAlgorithm;
-#[cfg(feature = "compression")]
-use super::compress_mode::CompressMode;
+use {crate::global::compressor::CompressionAlgorithm, super::compress_mode::CompressMode};
 
 use std::{io::Read, fmt};
 
