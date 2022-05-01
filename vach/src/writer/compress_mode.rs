@@ -1,6 +1,6 @@
 /// Configures how `Leaf`s should be compressed.
 /// Default is `CompressMode::Never`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 #[cfg(feature = "compression")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 pub enum CompressMode {

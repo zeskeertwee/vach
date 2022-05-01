@@ -82,13 +82,10 @@ fn defaults() {
 	let _header_config = HeaderConfig::default();
 	let _header = Header::default();
 	let _registry_entry = RegistryEntry::empty();
-	let _resource = Resource::default();
 	let _leaf = Leaf::default();
 	let _builder = Builder::new();
 	let _builder_config = BuilderConfig::default();
 	let _flags = Flags::default();
-
-	dbg!(std::mem::size_of::<Archive<()>>());
 }
 
 #[test]

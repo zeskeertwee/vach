@@ -27,7 +27,6 @@ use crate::global::compressor::{Compressor, CompressionAlgorithm};
 /// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`]
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
-#[derive(Clone)]
 pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,

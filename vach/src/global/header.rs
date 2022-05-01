@@ -6,7 +6,7 @@ use super::{error::InternalError, result::InternalResult, flags::Flags};
 
 /// Used to configure and give extra information to the [`Archive`](crate::archive::Archive) loader.
 /// Used exclusively in archive source and integrity validation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct HeaderConfig {
 	/// If the archive has a custom magic sequence, pass the custom _MAGIC_ sequence here.
 	/// The custom _MAGIC_ sequence can then be used to validate archive sources.
@@ -117,7 +117,7 @@ impl Default for HeaderConfig {
 	}
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct Header {
 	pub magic: [u8; crate::MAGIC_LENGTH], // VfACH
 	pub flags: Flags,

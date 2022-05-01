@@ -11,7 +11,6 @@ pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
 use crate::prelude::{InternalResult, InternalError};
 
 // Encryption - Decryption, A convenient wrapper around aes encryption and decryption
-#[derive(Clone)]
 pub(crate) struct Encryptor {
 	cipher: Aes256Gcm,
 	nonce: Nonce<U12>,

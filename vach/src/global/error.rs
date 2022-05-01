@@ -48,7 +48,7 @@ pub enum InternalError {
 	/// An error that is thrown when if `Mutex` is poisoned, when a message doesn't go though an `mspc::sync_channel` or other sync related issues
 	#[error("[VachError::SyncError] {0}")]
 	SyncError(String),
-	/// Errors thrown during compression or decompression
+	/// Errors thrown  during compression or decompression
 	#[cfg(feature = "compression")]
 	#[error("[VachError::CompressorDecompressorError]: {0}")]
 	DeCompressionError(String),

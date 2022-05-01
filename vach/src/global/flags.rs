@@ -3,7 +3,7 @@ use super::{error::InternalError, result::InternalResult};
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal bitflags of sorts.
-#[derive(Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, Default)]
 pub struct Flags {
 	pub(crate) bits: u32,
 }

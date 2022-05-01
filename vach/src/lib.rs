@@ -16,7 +16,7 @@
 
 ### 🔫 Cargo Features
 - The `multithreaded` feature pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
-  This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way	.
+  This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
 
   > Turning this feature on adds a several new dependencies that would be completely unnecessary for a smaller scope, its only benefits when several entries are required at one moment there can be fetched simultaneously_
 

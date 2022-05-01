@@ -6,7 +6,7 @@ use crate::{
 /// Basically processed data obtained from an archive.
 /// Contains `data`, `flags` and `content_version` fields.
 /// Is returned by [`archive.fetch(...)`](crate::archive::Archive)
-#[derive(Default)]
+#[non_exhaustive]
 pub struct Resource {
 	/// The processed data, stored as a vector of bytes `Vec<u8>`.
 	pub data: Vec<u8>,
