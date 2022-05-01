@@ -151,7 +151,7 @@ impl Header {
 		// Validate magic
 		if header.magic != config.magic {
 			return Err(InternalError::ValidationError(format!(
-				"Invalid magic found in Header, possible incompatibility with given source.\nMagic found {:?}",
+				"Invalid magic found in Header, possible incompatibility with given source. Magic found {:?}",
 				header.magic
 			)));
 		};

@@ -156,8 +156,8 @@ impl<T> Archive<T> {
 				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
 					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
 				} else {
-					return InternalResult::Err(InternalError::DeCompressionError(
-						"Unspecified compression algorithm bits".to_string(),
+					return InternalResult::Err(InternalError::OtherError(
+						format!("Unable to determine the compression algorithm used for entry with ID: {id}").into(),
 					));
 				};
 

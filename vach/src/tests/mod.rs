@@ -43,7 +43,7 @@ fn flag_restricted_access() {
 
 	// This should return an error
 	if let Err(error) = flag.set(Flags::COMPRESSED_FLAG, true) {
-		assert_eq!(error, InternalError::RestrictedFlagAccessError);
+		assert!(matches!(error, InternalError::RestrictedFlagAccessError));
 	} else {
 		panic!("Access to restricted flags has been allowed, this should not be feasible")
 	};

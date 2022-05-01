@@ -47,8 +47,8 @@ impl<'a, T: Read> Compressor<T> {
 
 				Ok(())
 			},
-			CompressionAlgorithm::Brotli(_) => Err(InternalError::DeCompressionError(
-				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
+			CompressionAlgorithm::Brotli(_) => Err(InternalError::OtherError(
+				"Maximum Brotli compression level is 11 and minimum is 1".into(),
 			)),
 		}
 	}
