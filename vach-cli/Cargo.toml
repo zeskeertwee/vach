@@ -20,16 +20,15 @@ path = "src/main.rs"
 
 [dependencies]
 indicatif = "0.16.2"
-clap = "3.0.5"
-anyhow = "1.0.44"
-tabled = "0.5.0"
-log = "0.4.14"
-vach = { path = "../vach", features = [
-	"compression",
-	"multithreaded",
-	"crypto",
-] }
+clap = "3.1.15"
+anyhow = "1.0.57"
+tabled = "0.6.1"
+log = "0.4.17"
 walkdir = "2.3.2"
 pretty_env_logger = "0.4.0"
 term_size = "0.3.2"
 num_cpus = "1.13.1"
+
+[dependencies.vach]
+path = "../vach"
+features = ["compression", "multithreaded", "crypto"]
