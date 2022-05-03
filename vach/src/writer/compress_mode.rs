@@ -15,6 +15,6 @@ pub enum CompressMode {
 #[cfg(feature = "compression")]
 impl Default for CompressMode {
 	fn default() -> CompressMode {
-		CompressMode::Never
+		CompressMode::Detect
 	}
 }

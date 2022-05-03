@@ -111,7 +111,7 @@ vach pack -s -o hello.vach -i hello.txt goodbye.txt
 vach pack -e -o hello.vach -i hello.txt goodbye.txt
 
 # Flags: "-f" or "--flags"
-# Flags set into thr Archive header
+# Flags set into the Archive header
 # Here the flags are set to 0b1000_1100_1001_0000
 vach pack -f 35984 -o hello.vach -i hello.txt goodbye.txt
 

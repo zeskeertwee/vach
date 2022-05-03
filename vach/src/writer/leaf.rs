@@ -183,20 +183,21 @@ impl<'a> Default for Leaf<'a> {
 	#[inline(always)]
 	fn default() -> Leaf<'a> {
 		Leaf {
-			id: String::new(),
 			handle: Box::<&[u8]>::new(&[]),
-			flags: Flags::empty(),
-			content_version: 0,
+
+			id: Default::default(),
+			flags: Default::default(),
+			content_version: Default::default(),
 
 			#[cfg(feature = "crypto")]
-			encrypt: false,
+			encrypt: Default::default(),
 			#[cfg(feature = "crypto")]
-			sign: false,
+			sign: Default::default(),
 
 			#[cfg(feature = "compression")]
-			compress: CompressMode::Never,
+			compress: Default::default(),
 			#[cfg(feature = "compression")]
-			compression_algo: CompressionAlgorithm::LZ4,
+			compression_algo: Default::default(),
 		}
 	}
 }
