@@ -61,8 +61,9 @@ impl Flags {
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
 	///
 	/// As the [`Flags`] struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
-	/// are reserved for internal use (ie the first 16 half bits). The good thing is that because of endianness, one can use the remaining 16 bits
-	/// just fine, as seen below. Just using the `0b0000_0000_0000_0000` literal works because most platforms are little endian.
+	/// are reserved for internal use (ie the first 16 bits). However one can use the remaining 16 bits just fine, as seen in the example.
+	/// Just using the `0b0000_0000_0000_0000` literal works because most platforms are little endian.
+	/// On big-endian platforms, like ARM (raspberry PI and Apple Silicon), use the full `u32` literal (`0b0000_0000_0000_0000_0000_0000_0000_0000`), since the shorthand literal actually places bytes in the restricted range of bits.
 	/// ```
 	/// use vach::prelude::Flags;
 	///
