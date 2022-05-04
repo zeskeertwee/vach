@@ -1,10 +1,6 @@
 [workspace]
-members = [
-    "vach",
-    "vach-cli",
-    "vach-benchmarks"
-]
-resolver = "2"
+members = ["vach", "vach-cli", "vach-benchmarks"]
+edition = "2021"
 
 [profile.bench]
 debug = true

@@ -8,22 +8,22 @@ use {crate::global::compressor::CompressionAlgorithm, super::compress_mode::Comp
 use std::{io::Read, fmt};
 
 #[cfg(feature = "multithreaded")]
-/// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around [`io::Read`](std::io::Read) allowing for seamless switching between single or multithreaded execution
 pub trait HandleTrait: Read + Send + Sync {}
 #[cfg(feature = "multithreaded")]
 impl<T: Read + Send + Sync> HandleTrait for T {}
 
 #[cfg(not(feature = "multithreaded"))]
-/// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around [`io::Read`](std::io::Read) allowing for seamless switching between single or multithreaded execution
 pub trait HandleTrait: Read {}
 #[cfg(not(feature = "multithreaded"))]
 impl<T: Read> HandleTrait for T {}
 
-/// A wrapper around an `io::Read` handle.
-/// Allows for multiple types of data implementing `io::Read` to be used under one struct.
+/// A wrapper around an [`io::Read`](std::io::Read) handle.
+/// Allows for multiple types of data implementing [`io::Read`](std::io::Read) to be used under one struct.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
-	// The lifetime simply reflects to the [`Builder`]'s lifetime, meaning the handle must live longer than or the same as the Builder
+	/// The lifetime simply reflects to the [`Builder`](crate::builder::Builder)'s lifetime, meaning the handle must live longer than or the same as the Builder
 	pub(crate) handle: Box<dyn HandleTrait + 'a>,
 
 	/// The `ID` under which the embedded data will be referenced
@@ -211,16 +211,16 @@ impl<'a> fmt::Debug for Leaf<'a> {
 			.field("flags", &self.flags);
 
 		#[cfg(feature = "crypto")]
-		d.field("encrypt", &self.encrypt);
-
-		#[cfg(feature = "crypto")]
-		d.field("sign", &self.sign);
-
-		#[cfg(feature = "compression")]
-		d.field("compress", &self.compress);
+		{
+			d.field("encrypt", &self.encrypt);
+			d.field("sign", &self.sign);
+		}
 
 		#[cfg(feature = "compression")]
-		d.field("compression_algo", &self.compression_algo);
+		{
+			d.field("compress", &self.compress);
+			d.field("compression_algo", &self.compression_algo);
+		}
 
 		d.finish()
 	}
