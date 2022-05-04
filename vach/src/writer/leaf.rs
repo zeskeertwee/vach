@@ -3,54 +3,36 @@ use crate::{
 };
 
 #[cfg(feature = "compression")]
-use crate::global::compressor::CompressionAlgorithm;
+use {crate::global::compressor::CompressionAlgorithm, super::compress_mode::CompressMode};
 
 use std::{io::Read, fmt};
 
-/// Configures how [`Leaf`]s should be compressed.
-/// Default is `CompressMode::Never`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[cfg(feature = "compression")]
-#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
-pub enum CompressMode {
-	/// The data will always be compressed
-	Always,
-	/// The compressed data is used, only if it is smaller than the original data.
-	Detect,
-	/// The data is never compressed and is embedded as is.
-	Never,
-}
-
-#[cfg(feature = "compression")]
-impl Default for CompressMode {
-	fn default() -> CompressMode {
-		CompressMode::Never
-	}
-}
-
 #[cfg(feature = "multithreaded")]
-/// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around [`io::Read`](std::io::Read) allowing for seamless switching between single or multithreaded execution
 pub trait HandleTrait: Read + Send + Sync {}
 #[cfg(feature = "multithreaded")]
 impl<T: Read + Send + Sync> HandleTrait for T {}
 
 #[cfg(not(feature = "multithreaded"))]
-/// A toggle blanket-trait wrapping around `io::Read` allowing for seamless switching between single or multithreaded execution
+/// A toggle blanket-trait wrapping around [`io::Read`](std::io::Read) allowing for seamless switching between single or multithreaded execution
 pub trait HandleTrait: Read {}
 #[cfg(not(feature = "multithreaded"))]
 impl<T: Read> HandleTrait for T {}
 
-/// A wrapper around an `io::Read` handle.
-/// Allows for multiple types of data implementing `io::Read` to be used under one struct.
+/// A wrapper around an [`io::Read`](std::io::Read) handle.
+/// Allows for multiple types of data implementing [`io::Read`](std::io::Read) to be used under one struct.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
-	// The lifetime simply reflects to the [`Builder`]'s lifetime, meaning the handle must live longer than or the same as the Builder
+	/// The lifetime simply reflects to the [`Builder`](crate::builder::Builder)'s lifetime, meaning the handle must live longer than or the same as the Builder
 	pub(crate) handle: Box<dyn HandleTrait + 'a>,
 
 	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
+	/// The flags that will go into the archive write target.
+	pub flags: Flags,
+
 	/// How a [`Leaf`] should be compressed
 	#[cfg(feature = "compression")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
@@ -59,13 +41,16 @@ pub struct Leaf<'a> {
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	#[cfg(feature = "compression")]
 	pub compression_algo: CompressionAlgorithm,
-	/// The flags that will go into the archive write target.
-	pub flags: Flags,
+
 	/// Use encryption when writing into the target.
+	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub encrypt: bool,
 	/// Whether to include a signature with this [`Leaf`], defaults to false.
 	/// If set to true then a hash generated and validated when loaded.
 	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, thus preventing brute-forcing of archives.
+	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub sign: bool,
 }
 
@@ -85,10 +70,12 @@ impl<'a> Leaf<'a> {
 			..Default::default()
 		}
 	}
+
 	/// Consume the [Leaf] and return the underlying Boxed handle
 	pub fn into_inner(self) -> Box<dyn HandleTrait + 'a> {
 		self.handle
 	}
+
 	pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
 		let mut entry = RegistryEntry::empty();
 		entry.content_version = self.content_version;
@@ -101,13 +88,10 @@ impl<'a> Leaf<'a> {
 	/// ```rust
 	/// use std::io::Cursor;
 	/// use vach::prelude::Leaf;
-	/// let template = Leaf::default()
-	///    .version(12)
-	///    .encrypt(false);
+	/// let template = Leaf::default().version(12);
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
 	/// assert_eq!(&leaf.content_version, &template.content_version);
-	/// assert_eq!(&leaf.encrypt, &template.encrypt);
 	/// ```
 	pub fn template(self, other: &Leaf<'a>) -> Self {
 		Leaf {
@@ -130,6 +114,7 @@ impl<'a> Leaf<'a> {
 		self.compress = compress;
 		self
 	}
+
 	/// Setter used to set the `content_version` of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf};
@@ -140,16 +125,18 @@ impl<'a> Leaf<'a> {
 		self.content_version = content_version;
 		self
 	}
+
 	/// Setter used to set the `id` field of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf};
 	///
 	/// let leaf = Leaf::default().id("whatzitouya");
 	/// ```
-	pub fn id(mut self, id: &str) -> Self {
+	pub fn id<S: ToString>(mut self, id: S) -> Self {
 		self.id = id.to_string();
 		self
 	}
+
 	/// Setter used to set the [`flags`](crate::builder::Flags) field of a [`Leaf`]
 	/// ```rust
 	/// use vach::prelude::{Leaf, Flags};
@@ -160,11 +147,13 @@ impl<'a> Leaf<'a> {
 		self.flags = flags;
 		self
 	}
+
 	/// Setter for the `encrypt` field
 	///```
 	/// use vach::prelude::Leaf;
 	/// let config = Leaf::default().encrypt(true);
 	///```
+	#[cfg(feature = "crypto")]
 	pub fn encrypt(mut self, encrypt: bool) -> Self {
 		self.encrypt = encrypt;
 		self
@@ -175,6 +164,7 @@ impl<'a> Leaf<'a> {
 	/// use vach::prelude::Leaf;
 	/// let config = Leaf::default().sign(true);
 	///```
+	#[cfg(feature = "crypto")]
 	pub fn sign(mut self, sign: bool) -> Self {
 		self.sign = sign;
 		self
@@ -193,17 +183,21 @@ impl<'a> Default for Leaf<'a> {
 	#[inline(always)]
 	fn default() -> Leaf<'a> {
 		Leaf {
-			id: String::new(),
 			handle: Box::<&[u8]>::new(&[]),
-			flags: Flags::empty(),
-			content_version: 0,
-			#[cfg(feature = "compression")]
-			compress: CompressMode::Never,
-			encrypt: false,
-			sign: false,
+
+			id: Default::default(),
+			flags: Default::default(),
+			content_version: Default::default(),
+
+			#[cfg(feature = "crypto")]
+			encrypt: Default::default(),
+			#[cfg(feature = "crypto")]
+			sign: Default::default(),
 
 			#[cfg(feature = "compression")]
-			compression_algo: CompressionAlgorithm::LZ4,
+			compress: Default::default(),
+			#[cfg(feature = "compression")]
+			compression_algo: Default::default(),
 		}
 	}
 }
@@ -214,14 +208,19 @@ impl<'a> fmt::Debug for Leaf<'a> {
 		d.field("handle", &"[Box<dyn io::Read>]")
 			.field("id", &self.id)
 			.field("content_version", &self.content_version)
-			.field("flags", &self.flags)
-			.field("encrypt", &self.encrypt)
-			.field("sign", &self.sign);
+			.field("flags", &self.flags);
+
+		#[cfg(feature = "crypto")]
+		{
+			d.field("encrypt", &self.encrypt);
+			d.field("sign", &self.sign);
+		}
 
 		#[cfg(feature = "compression")]
-		d.field("compress", &self.compress);
-		#[cfg(feature = "compression")]
-		d.field("compression_algo", &self.compression_algo);
+		{
+			d.field("compress", &self.compress);
+			d.field("compression_algo", &self.compression_algo);
+		}
 
 		d.finish()
 	}

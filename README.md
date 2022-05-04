@@ -20,7 +20,7 @@
 
 ## 👔 The official `vach` crates' repo
 
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ---
 
@@ -36,7 +36,6 @@
 ### 🤷 Who is what, when where?
 
 - **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
-- **vach-assets-manager:** Work in progress `asset-manager` integration for `vach`. **WIP 🚧**
 - **vach-cli:** A CLI tool for dealing with `.vach` files.
 
 ---
@@ -161,7 +160,7 @@ assert!(resource.secured);
 
 ```rust
 const MAGIC: &[u8; 5] = b"CSDTD";
-let mut target = Cursor::new(Vec::<u8>::new());
+let mut target: Cursor<Vec<u8>> = Cursor::new(Vec::new());
 
 // Data to be written
 let data_1 = b"Around The World, Fatter better stronker" as &[u8];
@@ -190,7 +189,7 @@ assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
 assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 ```
 
-> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) And pass by the examples folder (not yet implemented).
+> For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) or read the tests, they offer great insight into how the crate works.
 
 ---
 
@@ -199,6 +198,9 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 - [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
 - [x] Data encryption.
 - [x] Benchmarks.
+- [x] Features to turn off (or to turn on) either the `Builder` or the `Loader` modules.
 - [ ] Skynet, (coming _very_ soon).
 - [ ] Some proper benchmarking code. (Call for participation)
 - [ ] `Some(examples)` directory instead of `None`
+
+> If you appreciate the works of this repo, consider dropping a star. It will be much appreciated; 🌟

@@ -1,5 +1,6 @@
 use std::io::{BufWriter, Write, Seek, SeekFrom};
 use std::collections::HashSet;
+use std::path::Path;
 use std::sync::{
 	Arc, Mutex,
 	atomic::{Ordering, AtomicUsize},
@@ -10,21 +11,16 @@ pub use config::BuilderConfig;
 use super::leaf::{Leaf, HandleTrait};
 
 #[cfg(feature = "compression")]
-use crate::global::compressor::Compressor;
-
-#[cfg(feature = "compression")]
-use super::leaf::CompressMode;
-
-#[cfg(feature = "compression")]
-use std::io::Read;
+use {crate::global::compressor::Compressor, super::compress_mode::CompressMode, std::io::Read};
 
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
 use crate::{
-	global::{edcryptor::Encryptor, header::Header, reg_entry::RegistryEntry, flags::Flags},
+	global::{header::Header, reg_entry::RegistryEntry, flags::Flags},
 };
 
-use ed25519_dalek::Signer;
+#[cfg(feature = "crypto")]
+use {crate::crypto::Encryptor, ed25519_dalek::Signer};
 
 /// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
 #[cfg(feature = "multithreaded")]
@@ -58,8 +54,10 @@ impl<'a> Builder<'a> {
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
-	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: &str) -> InternalResult<()> {
-		let leaf = Leaf::from_handle(data).id(id).template(&self.leaf_template);
+	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult<()> {
+		let leaf = Leaf::from_handle(data)
+			.id(id.as_ref().to_string())
+			.template(&self.leaf_template);
 		self.add_leaf(leaf)?;
 		Ok(())
 	}
@@ -76,7 +74,7 @@ impl<'a> Builder<'a> {
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
-	pub fn add_dir(&mut self, path: &str, template: Option<&Leaf<'a>>) -> InternalResult<()> {
+	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult<()> {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -120,7 +118,7 @@ impl<'a> Builder<'a> {
 	/// ```
 	/// use vach::builder::{Builder, Leaf};
 	///
-	/// let template = Leaf::default().encrypt(false).version(12);
+	/// let template = Leaf::default().version(12);
 	/// let mut builder = Builder::new().template(template);
 	///
 	/// builder.add(b"JEB" as &[u8], "JEB_NAME").unwrap();
@@ -156,13 +154,18 @@ impl<'a> Builder<'a> {
 				.iter()
 				.map(|leaf| {
 					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-					leaf.id.len()
-						+ RegistryEntry::MIN_SIZE
-						+ (if config.keypair.is_some() && leaf.sign {
+					leaf.id.len() + RegistryEntry::MIN_SIZE + {
+						#[cfg(feature = "crypto")]
+						if config.keypair.is_some() && leaf.sign {
 							crate::SIGNATURE_LENGTH
 						} else {
 							0
-						})
+						}
+						#[cfg(not(feature = "crypto"))]
+						{
+							0
+						}
+					}
 				})
 				.reduce(|l1, l2| l1 + l2)
 				.unwrap_or(0) + Header::BASE_SIZE;
@@ -176,6 +179,8 @@ impl<'a> Builder<'a> {
 
 		// INSERT flags
 		let mut temp = config.flags;
+
+		#[cfg(feature = "crypto")]
 		if config.keypair.is_some() {
 			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
@@ -190,8 +195,10 @@ impl<'a> Builder<'a> {
 		total_sync += Header::BASE_SIZE;
 
 		// Configure encryption
+		#[cfg(feature = "crypto")]
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
 
+		#[cfg(feature = "crypto")]
 		if use_encryption && config.keypair.is_none() {
 			return Err(InternalError::NoKeypairError(
 				"Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string(),
@@ -199,6 +206,7 @@ impl<'a> Builder<'a> {
 		};
 
 		// Build encryptor
+		#[cfg(feature = "crypto")]
 		let encryptor = if use_encryption {
 			let keypair = &config.keypair;
 
@@ -237,13 +245,13 @@ impl<'a> Builder<'a> {
 			match leaf.compress {
 				CompressMode::Never => {
 					leaf.handle.read_to_end(&mut raw)?;
-				}
+				},
 				CompressMode::Always => {
 					Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
 
 					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 					entry.flags.force_set(leaf.compression_algo.into(), true);
-				}
+				},
 				CompressMode::Detect => {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
@@ -259,32 +267,24 @@ impl<'a> Builder<'a> {
 					} else {
 						buffer.as_slice().read_to_end(&mut raw)?;
 					};
-				}
+				},
 			}
-
 
 			// If the compression feature is turned off, simply reads into buffer
 			#[cfg(not(feature = "compression"))]
 			{
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					return Err(InternalError::DeCompressionError("The -compression- feature was turned off during compilation. To handle compressed data please consider turning it on".to_string()));
+					return Err(InternalError::MissingFeatureError("compression".to_string()));
 				};
 
 				leaf.handle.read_to_end(&mut raw)?;
 			}
 
 			// Encryption comes second
+			#[cfg(feature = "crypto")]
 			if leaf.encrypt {
 				if let Some(ex) = &encryptor {
-					raw = match ex.encrypt(&raw) {
-						Ok(bytes) => bytes,
-						Err(err) => {
-							return Err(InternalError::CryptoError(format!(
-								"Unable to encrypt leaf: {}. Error: {}",
-								leaf.id, err
-							)))
-						}
-					};
+					raw = ex.encrypt(&raw)?;
 
 					entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
 				}
@@ -316,9 +316,10 @@ impl<'a> Builder<'a> {
 			// Update the offset of the entry to be the length of the glob
 			entry.offset = glob_length as u64;
 
+			#[cfg(feature = "crypto")]
 			if leaf.sign {
 				if let Some(keypair) = &config.keypair {
-					raw.extend(leaf.id.as_bytes());
+					raw.extend_from_slice(leaf.id.as_bytes());
 
 					// The reason we include the path in the signature is to prevent mangling in the registry,
 					// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
@@ -334,13 +335,14 @@ impl<'a> Builder<'a> {
 			if leaf.id.len() >= u16::MAX.into() {
 				let mut copy = leaf.id.clone();
 				copy.truncate(25);
+				copy.shrink_to_fit();
 
 				return Err(InternalError::IDSizeOverflowError(copy));
 			};
 
 			// Fetch bytes
 			let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16));
-			entry_bytes.extend(leaf.id.as_bytes());
+			entry_bytes.extend_from_slice(leaf.id.as_bytes());
 
 			// Write to the registry-buffer and update total number of bytes written
 			{

@@ -4,7 +4,6 @@ use std::{
 	io::{Write, Read, self},
 };
 use std::path::PathBuf;
-use std::convert::TryInto;
 use std::collections::HashSet;
 
 use vach::prelude::*;
@@ -143,8 +142,7 @@ impl CommandTrait for Evaluator {
 
 		// Extract recursive directory inputs
 		if let Some(val) = args.values_of(key_names::DIR_INPUT_REC) {
-			val.map(|dir| walkdir::WalkDir::new(dir).into_iter())
-				.flatten()
+			val.flat_map(|dir| walkdir::WalkDir::new(dir).into_iter())
 				.map(|v| v.unwrap().into_path())
 				.filter(|f| path_filter(f))
 				.for_each(|p| inputs.push(FileWrapper(p, None)));
@@ -200,13 +198,30 @@ impl CommandTrait for Evaluator {
 		pbar.set_style(
 			ProgressStyle::default_bar()
 				.template(super::PROGRESS_BAR_STYLE)
-				.progress_chars("█░-"),
+				.progress_chars("█░-")
+				.tick_strings(&[
+					"⢀ ", "⡀ ", "⠄ ", "⢂ ", "⡂ ", "⠅ ", "⢃ ", "⡃ ", "⠍ ", "⢋ ", "⡋ ", "⠍⠁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉",
+					"⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⢈⠩", "⡀⢙", "⠄⡙", "⢂⠩", "⡂⢘", "⠅⡘", "⢃⠨", "⡃⢐", "⠍⡐", "⢋⠠",
+					"⡋⢀", "⠍⡁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉", "⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⠈⠩", " ⢙", " ⡙", " ⠩",
+					" ⢘", " ⡘", " ⠨", " ⢐", " ⡐", " ⠠", " ⢀", " ⡀",
+				]),
 		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
-		let callback = |msg: &str, _: &RegistryEntry| {
+		let callback = |id: &str, _: &RegistryEntry| {
 			pbar.inc(1);
-			pbar.set_message(msg.to_string())
+
+			// Prevent column from wrapping around
+			let mut msg = id.to_string();
+			if let Some((terminal_width, _)) = term_size::dimensions() {
+				// Make sure progress bar never get's longer than terminal size
+				if msg.len() + 140 >= terminal_width {
+					msg.truncate(terminal_width - 140);
+					msg.push_str("...");
+				}
+			};
+
+			pbar.set_message(msg)
 		};
 
 		// Build a builder-config using the above extracted data
@@ -233,12 +248,9 @@ impl CommandTrait for Evaluator {
 			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
 		};
 
-		let output_file;
-
-		match OpenOptions::new().write(true).create_new(true).open(output_path) {
-			Ok(file) => output_file = file,
-			#[rustfmt::skip]
-			Err(err) => anyhow::bail!( "Unable to generate archive @ {}: [IO::Error] {}", output_path, err ),
+		let output_file = match OpenOptions::new().write(true).create_new(true).open(output_path) {
+			Ok(file) => file,
+			Err(err) => anyhow::bail!("Unable to generate archive @ {}: [IO::Error] {}", output_path, err),
 		};
 
 		// Process the files
@@ -280,9 +292,6 @@ impl CommandTrait for Evaluator {
 		};
 
 		pbar.inc(3);
-
-		// SUCCESS
-		pbar.finish_and_clear();
 
 		Ok(())
 	}

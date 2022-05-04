@@ -2,13 +2,12 @@
 
 #![cfg(test)]
 // Boring, average every day contemporary imports
-use std::{fs::File, io::Read, str};
+use std::{fs::File, str};
 
 use crate::{global::result::InternalResult, prelude::*};
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
-const KEYPAIR_PATH: &str = "test_data/pair.pub";
 const KEYPAIR: &[u8; crate::KEYPAIR_LENGTH] = include_bytes!("../../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
@@ -23,6 +22,7 @@ const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 #[test]
+#[cfg(feature = "loader")]
 fn custom_bitflags() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
@@ -43,7 +43,7 @@ fn flag_restricted_access() {
 
 	// This should return an error
 	if let Err(error) = flag.set(Flags::COMPRESSED_FLAG, true) {
-		assert_eq!(error, InternalError::RestrictedFlagAccessError);
+		assert!(matches!(error, InternalError::RestrictedFlagAccessError));
 	} else {
 		panic!("Access to restricted flags has been allowed, this should not be feasible")
 	};
@@ -73,6 +73,7 @@ fn flags_set_intersects() {
 }
 
 #[test]
+#[cfg(all(feature = "builder", feature = "loader"))]
 fn defaults() {
 	// The reason we are pulling the header directly from global namespace is because it's not exposed to the public API
 	// We still need to conduct tests on them tho.
@@ -81,7 +82,6 @@ fn defaults() {
 	let _header_config = HeaderConfig::default();
 	let _header = Header::default();
 	let _registry_entry = RegistryEntry::empty();
-	let _resource = Resource::default();
 	let _leaf = Leaf::default();
 	let _builder = Builder::new();
 	let _builder_config = BuilderConfig::default();
@@ -89,11 +89,14 @@ fn defaults() {
 }
 
 #[test]
+#[cfg(not(feature = "crypto"))]
 fn header_config() -> InternalResult<()> {
 	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
+	use std::io::Read;
 	use crate::global::header::Header;
 
-	let config = HeaderConfig::new(*b"VfACH", None);
+	// When "crypto" features is turned off `HeaderConfig::new(*b"VfACH")` takes a single argument
+	let config = HeaderConfig::new(*b"VfACH");
 	println!("{}", &config);
 
 	let mut header_data = [0u8; Header::BASE_SIZE];
@@ -108,7 +111,7 @@ fn header_config() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
+#[cfg(all(feature = "compression", feature = "builder"))]
 fn builder_no_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
@@ -142,11 +145,10 @@ fn builder_no_signature() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
-fn fetch_no_signature() -> InternalResult<()> {
+#[cfg(all(feature = "compression", feature = "loader"))]
+fn simple_fetch() -> InternalResult<()> {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
-	dbg!(archive.entries());
 	let resource = archive.fetch("poem")?;
 
 	// Windows bullshit
@@ -172,22 +174,7 @@ fn fetch_no_signature() -> InternalResult<()> {
 }
 
 #[test]
-fn gen_keypair() -> InternalResult<()> {
-	use crate::utils::gen_keypair;
-
-	// NOTE: regenerating new keys will break some tests
-	let regenerate = false;
-
-	if regenerate {
-		let keypair = gen_keypair();
-
-		std::fs::write(KEYPAIR_PATH, &keypair.to_bytes())?;
-	};
-
-	Ok(())
-}
-
-#[test]
+#[cfg(all(feature = "builder", feature = "crypto"))]
 fn builder_with_signature() -> InternalResult<()> {
 	let mut builder = Builder::default();
 
@@ -213,6 +200,7 @@ fn builder_with_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(all(feature = "loader", feature = "crypto"))]
 fn fetch_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -255,6 +243,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(all(feature = "loader", feature = "crypto"))]
 fn fetch_write_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -287,17 +276,18 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(feature = "crypto")]
 fn edcryptor_test() -> InternalResult<()> {
 	use crate::utils::gen_keypair;
-	use crate::global::edcryptor::Encryptor;
+	use crate::crypto::Encryptor;
 
 	let pk = gen_keypair().public;
 
 	let crypt = Encryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
 	let data = vec![12, 12, 12, 12];
 
-	let ciphertext = crypt.encrypt(&data).unwrap();
-	let plaintext = crypt.decrypt(&ciphertext).unwrap();
+	let ciphertext = crypt.encrypt(&data)?;
+	let plaintext = crypt.decrypt(&ciphertext)?;
 
 	assert_ne!(&plaintext, &ciphertext);
 	assert_eq!(&plaintext, &data);
@@ -305,7 +295,7 @@ fn edcryptor_test() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
+#[cfg(all(feature = "compression", feature = "builder", feature = "crypto"))]
 fn builder_with_encryption() -> InternalResult<()> {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
@@ -331,6 +321,7 @@ fn builder_with_encryption() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(all(feature = "loader", feature = "crypto"))]
 fn fetch_from_encrypted() -> InternalResult<()> {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
@@ -364,6 +355,7 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 }
 
 #[test]
+#[cfg(all(feature = "builder", feature = "loader", feature = "crypto"))]
 fn consolidated_example() -> InternalResult<()> {
 	use crate::utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
@@ -418,7 +410,7 @@ fn consolidated_example() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "compression")]
+#[cfg(all(feature = "compression", feature = "builder"))]
 fn test_compressors() -> InternalResult<()> {
 	use std::io::Cursor;
 	const INPUT_LEN: usize = 4096;
@@ -477,7 +469,7 @@ fn test_compressors() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(feature = "multithreaded")]
+#[cfg(all(feature = "multithreaded", feature = "builder", feature = "loader"))]
 fn test_batch_fetching() -> InternalResult<()> {
 	use std::io::Cursor;
 
@@ -510,20 +502,15 @@ fn test_batch_fetching() -> InternalResult<()> {
 	assert!(resources.get("NON_EXISTENT").is_none());
 	assert!(resources.get("ERRORS").is_some());
 
-	match resources.get("ERRORS").unwrap() {
-		Ok(_) => return Err(InternalError::OtherError("This should be an error".to_string())),
+	match resources.remove("ERRORS").unwrap() {
+		Ok(_) => return Err(InternalError::OtherError("This should be an error".into())),
 		Err(err) => match err {
-			&InternalError::MissingResourceError(_) => {
+			InternalError::MissingResourceError(_) => {
 				resources.remove("ERRORS");
 				drop(ids);
 			},
 
-			specific => {
-				return Err(InternalError::OtherError(format!(
-					"Unrecognized error: {}, it should be a `InternalError::MissingResourceError` error",
-					specific
-				)))
-			},
+			specific => return Err(specific),
 		},
 	};
 

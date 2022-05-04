@@ -1,16 +1,24 @@
-use std::{convert::TryInto, fs::File};
+use std::fs::File;
 
-use tabled::{Style, Table, Tabled};
+use tabled::{Style, Table, Tabled, Modify, Full, MaxWidth, Alignment, Columns};
 use vach::{
 	prelude::{HeaderConfig, Archive, Flags},
-	archive::CompressionAlgorithm,
+	archive::{CompressionAlgorithm, RegistryEntry},
 };
 use indicatif::HumanBytes;
 
 use super::CommandTrait;
 use crate::keys::key_names;
 
-pub const VERSION: &str = "0.0.1";
+pub const VERSION: &str = "0.2.0";
+
+enum Sort {
+	SizeAscending,
+	SizeDescending,
+	Alphabetical,
+	AlphabeticalReversed,
+	None,
+}
 
 /// This command lists the entries in an archive in tabulated form
 pub struct Evaluator;
@@ -24,6 +32,15 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
+		let sort = match args.value_of(key_names::SORT) {
+			Some("alphabetical") => Sort::Alphabetical,
+			Some("alphabetical-reversed") => Sort::AlphabeticalReversed,
+			Some("size-ascending") => Sort::SizeAscending,
+			Some("size-descending") => Sort::SizeDescending,
+			Some(sort) => anyhow::bail!("Unknown sort given: {}. Valid sort types are: 'alphabetical' 'alphabetical-descending' 'size-ascending' 'size-descending'", sort),
+			None => Sort::None,
+		};
+
 		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
 			Some(magic) => magic.as_bytes().try_into()?,
 			None => *vach::DEFAULT_MAGIC,
@@ -33,10 +50,27 @@ impl CommandTrait for Evaluator {
 		let archive = Archive::with_config(file, &HeaderConfig::new(magic, None))?;
 
 		if archive.entries().is_empty() {
-			println!("<EMPTY ARCHIVE> @ {}", archive_path);
+			println!("{}", archive);
 		} else {
-			let table_entries: Vec<FileTableEntry> = archive
+			let mut entries: Vec<(String, RegistryEntry)> = archive
 				.entries()
+				.iter()
+				.map(|(id, entry)| (id.clone(), entry.clone()))
+				.collect();
+
+			// Log some additional info about this archive
+			println!("{}", archive);
+
+			// Sort the entries accordingly
+			match sort {
+				Sort::SizeAscending => entries.sort_by(|a, b| a.1.offset.cmp(&b.1.offset)),
+				Sort::SizeDescending => entries.sort_by(|a, b| b.1.offset.cmp(&a.1.offset)),
+				Sort::Alphabetical => entries.sort_by(|a, b| a.0.cmp(&b.0)),
+				Sort::AlphabeticalReversed => entries.sort_by(|a, b| b.0.cmp(&a.0)),
+				Sort::None => (),
+			};
+
+			let table_entries: Vec<FileTableEntry> = entries
 				.iter()
 				.map(|(id, entry)| {
 					let c_algo = if entry.flags.contains(Flags::LZ4_COMPRESSED) {
@@ -63,7 +97,15 @@ impl CommandTrait for Evaluator {
 				})
 				.collect();
 
-			let table = Table::new(table_entries).with(Style::PSEUDO_CLEAN);
+			let mut table = Table::new(table_entries)
+				.with(Style::modern().horizontal_off())
+				.with(Modify::new(Columns::new(..1)).with(Alignment::left()));
+
+			// Make sure table fills terminal
+			if let Some((term_width, _)) = term_size::dimensions() {
+				table = table.with(Modify::new(Full).with(MaxWidth::truncating(term_width - 50).suffix("...")));
+			};
+
 			println!("{}", table);
 		}
 

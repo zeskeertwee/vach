@@ -4,7 +4,7 @@ use clap::ArgMatches;
 use anyhow::Result;
 
 // A common progress bar style for all commands
-const PROGRESS_BAR_STYLE: &str = "[{elapsed_precise}] {spinner} {bar:80.cyan/blue} {pos:>7}/{len:7} {msg}";
+const PROGRESS_BAR_STYLE: &str = "[{elapsed_precise}] {spinner} {bar:50.cyan/blue} {pos:>7}/{len:7} {msg}";
 
 // Trait that must be implemented by all subcommands
 pub trait CommandTrait: Sync {
@@ -20,7 +20,7 @@ pub mod unpack;
 pub mod verify;
 
 pub fn build_commands() -> HashMap<&'static str, Box<dyn CommandTrait>> {
-	let mut map: HashMap<&'static str, Box<dyn CommandTrait>> = HashMap::new();
+	let mut map: HashMap<&'static str, Box<dyn CommandTrait>> = HashMap::with_capacity(6);
 
 	map.insert("keypair", Box::new(keypair::Evaluator));
 	map.insert("split", Box::new(split::Evaluator));

@@ -8,7 +8,6 @@ use std::{
 use super::resource::Resource;
 use crate::{
 	global::{
-		edcryptor::Encryptor,
 		error::InternalError,
 		flags::Flags,
 		header::{Header, HeaderConfig},
@@ -17,35 +16,67 @@ use crate::{
 	},
 };
 
+#[cfg(feature = "crypto")]
+use crate::crypto;
+
 #[cfg(feature = "compression")]
 use crate::global::compressor::{Compressor, CompressionAlgorithm};
 
-use ed25519_dalek as esdalek;
-
 /// A wrapper for loading data from archive sources.
-/// It also provides query functions for fetching `Resources` and [`RegistryEntry`]s.
-/// It can be customized with the `HeaderConfig` struct.
+/// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
+/// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`]
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
-#[derive(Clone)]
 pub struct Archive<T> {
 	header: Header,
 	handle: Arc<Mutex<T>>,
-	decryptor: Option<Encryptor>,
-	key: Option<esdalek::PublicKey>,
 	entries: HashMap<String, RegistryEntry>,
+
+	#[cfg(feature = "crypto")]
+	decryptor: Option<crypto::Encryptor>,
+	#[cfg(feature = "crypto")]
+	key: Option<crypto::PublicKey>,
+}
+
+impl<T> std::fmt::Display for Archive<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		let total_size = self
+			.entries
+			.iter()
+			.map(|(_, entry)| entry.offset)
+			.reduce(|a, b| a + b)
+			.unwrap_or(0);
+
+		write!(
+			f,
+			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {}B, Header-Flags: <{:#x} : {:#016b}>",
+			self.header.arch_version,
+			self.header.magic,
+			self.entries.len(),
+			total_size,
+			self.header.flags.bits,
+			self.header.flags.bits,
+		)
+	}
 }
 
 impl<T> std::fmt::Debug for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.debug_struct("Archive")
-			.field("header", &self.header)
-			.field("decryptor", &self.decryptor)
-			.field("key", &self.key)
-			.field("entries", &self.entries)
-			.finish()
+		let mut f = f.debug_struct("Archive");
+		f.field("header", &self.header);
+		f.field("entries", &self.entries);
+
+		#[cfg(feature = "crypto")]
+		f.field("key", &self.key);
+
+		f.finish()
 	}
 }
+
+#[cfg(not(feature = "crypto"))]
+type ProcessDependecies = ();
+#[cfg(feature = "crypto")]
+type ProcessDependecies<'a> = (&'a Option<crypto::Encryptor>, &'a Option<crypto::PublicKey>);
 
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
@@ -67,44 +98,35 @@ impl<T> Archive<T> {
 	/// Helps in parallelized `Resource` fetching
 	#[inline(never)]
 	fn process_raw(
-		dependencies: (&Option<Encryptor>, &Option<esdalek::PublicKey>), independent: (&RegistryEntry, &str, Vec<u8>),
+		dependencies: ProcessDependecies, independent: (&RegistryEntry, &str, Vec<u8>),
 	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		let (entry, id, mut raw) = independent;
-		let (decryptor, key) = dependencies;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
-		{
-			if let Some(pk) = key {
-				let raw_size = raw.len();
+		#[cfg(feature = "crypto")]
+		if let Some(pk) = dependencies.1 {
+			let raw_size = raw.len();
 
-				// If there is an error the data is flagged as invalid
-				raw.extend(id.as_bytes());
-				if let Some(signature) = entry.signature {
-					is_secure = pk.verify_strict(&raw, &signature).is_ok();
-				}
-
-				raw.truncate(raw_size);
+			// If there is an error the data is flagged as invalid
+			raw.extend_from_slice(id.as_bytes());
+			if let Some(signature) = entry.signature {
+				is_secure = pk.verify_strict(&raw, &signature).is_ok();
 			}
+
+			raw.truncate(raw_size);
 		}
 
 		// Add read layers
 		// 1: Decryption layer
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
-			match decryptor {
+			#[cfg(feature = "crypto")]
+			match dependencies.0 {
 				Some(dc) => {
-					raw = match dc.decrypt(&raw) {
-						Ok(bytes) => bytes,
-						Err(err) => {
-							return Err(InternalError::CryptoError(format!(
-								"Unable to decrypt resource: {}. Error: {}",
-								id, err
-							)));
-						},
-					};
+					raw = dc.decrypt(&raw)?;
 				},
 				None => {
 					return Err(InternalError::NoKeypairError(format!(
@@ -112,6 +134,11 @@ impl<T> Archive<T> {
 						id
 					)))
 				},
+			}
+
+			#[cfg(not(feature = "crypto"))]
+			{
+				return Err(InternalError::MissingFeatureError("crypto".to_string()));
 			}
 		}
 
@@ -128,8 +155,8 @@ impl<T> Archive<T> {
 				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
 					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
 				} else {
-					return InternalResult::Err(InternalError::DeCompressionError(
-						"Unspecified compression algorithm bits".to_string(),
+					return InternalResult::Err(InternalError::OtherError(
+						format!("Unable to determine the compression algorithm used for entry with ID: {id}").into(),
 					));
 				};
 
@@ -137,7 +164,7 @@ impl<T> Archive<T> {
 			}
 
 			#[cfg(not(feature = "compression"))]
-			return Err(InternalError::DeCompressionError("The -compression- feature was turned off during compilation. To handle (de)compressed data please consider turning it on".to_string()));
+			return Err(InternalError::MissingFeatureError("compression".to_string()));
 		};
 
 		let mut buffer = vec![];
@@ -176,10 +203,10 @@ where
 		handle.seek(SeekFrom::Start(0))?;
 
 		let header = Header::from_handle(&mut handle)?;
-		Header::validate(&header, config)?;
+		Header::validate(config, &header)?;
 
 		// Generate and store Registry Entries
-		let mut entries = HashMap::new();
+		let mut entries = HashMap::with_capacity(header.capacity as usize);
 
 		// Construct entries map
 		for _ in 0..header.capacity {
@@ -187,31 +214,43 @@ where
 			entries.insert(id, entry);
 		}
 
-		// Build decryptor
-		let use_decryption = entries
-			.iter()
-			.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
+		#[cfg(feature = "crypto")]
+		{
+			// Build decryptor
+			let use_decryption = entries
+				.iter()
+				.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
 
-		// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
-		let mut decryptor = None;
-		if use_decryption {
-			if let Some(pk) = config.public_key {
-				decryptor = Some(Encryptor::new(&pk, config.magic))
+			// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
+			let mut decryptor = None;
+			if use_decryption {
+				if let Some(pk) = config.public_key {
+					decryptor = Some(crypto::Encryptor::new(&pk, config.magic))
+				}
 			}
+
+			Ok(Archive {
+				header,
+				handle: Arc::new(Mutex::new(handle)),
+				key: config.public_key,
+				entries,
+				decryptor,
+			})
 		}
 
-		Ok(Archive {
-			header,
-			handle: Arc::new(Mutex::new(handle)),
-			key: config.public_key,
-			entries,
-			decryptor,
-		})
+		#[cfg(not(feature = "crypto"))]
+		{
+			Ok(Archive {
+				header,
+				handle: Arc::new(Mutex::new(handle)),
+				entries,
+			})
+		}
 	}
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let mut raw = vec![];
+		let mut buffer = Vec::with_capacity(entry.offset as usize);
 
 		{
 			let mut guard = match self.handle.lock() {
@@ -224,27 +263,24 @@ where
 			};
 
 			guard.seek(SeekFrom::Start(entry.location))?;
-			let reader_ref = &mut *guard;
-			let mut take = reader_ref.take(entry.offset);
+			let mut take = guard.by_ref().take(entry.offset);
 
-			take.read_to_end(&mut raw)?;
+			take.read_to_end(&mut buffer)?;
 		}
 
-		Ok(raw)
+		Ok(buffer)
 	}
 
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
-	/// This can be used for debugging, as the [`RegistryEntry`] holds information about some data within a source.
-	/// ### `None` case:
-	/// If no entry with the given ID exists then `None` is returned.
-	pub fn fetch_entry(&self, id: &str) -> Option<RegistryEntry> {
-		match self.entries.get(id) {
+	/// This can be used for debugging, as the [`RegistryEntry`] holds information on data with the adjacent ID.
+	pub fn fetch_entry(&self, id: impl AsRef<str>) -> Option<RegistryEntry> {
+		match self.entries.get(id.as_ref()) {
 			Some(entry) => Some(entry.clone()),
 			None => None,
 		}
 	}
 
-	/// Returns a reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
+	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
 	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
@@ -263,16 +299,18 @@ where
 {
 	/// Fetch a [`Resource`] with the given `ID`.
 	/// If the `ID` does not exist within the source, `Err(---)` is returned.
-	/// ### Errors:
-	///  - If the internal call to `Archive::fetch_write()` returns an Error, then it is hoisted and returned
-	pub fn fetch(&self, id: &str) -> InternalResult<Resource> {
+	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
-		if let Some(entry) = self.fetch_entry(id) {
+		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
-			let independent = (&entry, id, raw);
+			let independent = (&entry, id.as_ref(), raw);
+
+			#[cfg(feature = "crypto")]
 			let dependencies = (&self.decryptor, &self.key);
+			#[cfg(not(feature = "crypto"))]
+			let dependencies = ();
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
 
@@ -284,7 +322,7 @@ where
 			})
 		} else {
 			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id )));
+			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
 		}
 	}
 
@@ -294,13 +332,17 @@ where
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
 	///  - Other `io` related errors
-	pub fn fetch_write<W: Write>(&self, id: &str, mut target: W) -> InternalResult<(Flags, u8, bool)> {
-		if let Some(entry) = self.fetch_entry(id) {
+	pub fn fetch_write(&self, id: impl AsRef<str>, mut target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
+		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
-			let independent = (&entry, id, raw);
+			let independent = (&entry, id.as_ref(), raw);
+
+			#[cfg(feature = "crypto")]
 			let dependencies = (&self.decryptor, &self.key);
+			#[cfg(not(feature = "crypto"))]
+			let dependencies = ();
 
 			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
 
@@ -308,7 +350,7 @@ where
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
 			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id )));
+			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
 		}
 	}
 }
@@ -319,19 +361,25 @@ where
 	T: Read + Seek + Send + Sync,
 {
 	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
-	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop (rayon if you want) construct otherwise
+	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct ([rayon] if you want) otherwise
 	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-	pub fn fetch_batch<'a, I, S>(
+	pub fn fetch_batch<I>(
 		&self, items: I, num_threads: Option<usize>,
 	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
 	where
-		I: Iterator<Item = S> + Send + Sync,
-		S: Into<&'a str>,
+		I: Iterator + Send + Sync,
+		I::Item: AsRef<str>,
 	{
 		use rayon::prelude::*;
 
+		// Attempt to pre-allocate HashMap
+		let map = match items.size_hint().1 {
+			Some(hint) => HashMap::with_capacity(hint),
+			None => HashMap::new(),
+		};
+
 		// Prepare mutexes
-		let processed = Arc::new(Mutex::new(HashMap::new()));
+		let processed = Arc::new(Mutex::new(map));
 		let queue = Arc::new(Mutex::new(items));
 
 		let num_threads = match num_threads {
@@ -347,7 +395,7 @@ where
 
 				// Query next item on queue and process
 				while let Some(id) = queue.lock().unwrap().next() {
-					let id = id.into();
+					let id = id.as_ref();
 					let resource = self.fetch(id);
 
 					let string = id.to_string();
@@ -355,10 +403,10 @@ where
 						guard.insert(string, resource);
 
 						// The lock is available, so we pop everything off the queue
-						for _ in 0..produce.len() {
+						(0..produce.len()).for_each(|_| {
 							let (id, res) = produce.pop().unwrap();
 							guard.insert(id, res);
-						}
+						});
 					} else {
 						produce.push((string, resource));
 					}

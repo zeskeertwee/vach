@@ -1,4 +1,5 @@
 #![cfg(feature = "compression")]
+#![cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 
 use std::{
 	fmt::Debug,
@@ -46,13 +47,13 @@ impl<'a, T: Read> Compressor<T> {
 
 				Ok(())
 			},
-			CompressionAlgorithm::Brotli(_) => Err(InternalError::DeCompressionError(
-				"Maximum Brotli compression level is 11 and minimum is 1".to_string(),
+			CompressionAlgorithm::Brotli(_) => Err(InternalError::OtherError(
+				"Maximum Brotli compression level is 11 and minimum is 1".into(),
 			)),
 		}
 	}
 	/// Pass in a compression algorithm to use, sit back and let the decompressor do it's job. That is if the compressed data *is* compressed with the adjacent algorithm
-	pub(crate) fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
+	pub fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut rdr = lz4::frame::FrameDecoder::new(&mut self.data);

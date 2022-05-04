@@ -24,12 +24,12 @@ pub mod key_names {
 	pub(crate) const PUBLIC_KEY: &str = "PUBLIC_KEY";
 	pub(crate) const KEYPAIR: &str = "KEYPAIR";
 
-	pub(crate) const QUIET: &str = "QUIET";
+	pub(crate) const SORT: &str = "SORT";
 }
 
 pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 	/* please only use this function once during the lifecycle of the program */
-	let mut map = HashMap::new();
+	let mut map = HashMap::with_capacity(19);
 
 	/* The various keys usable in the CLI */
 	// A general output target
@@ -204,8 +204,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 	map.insert(
 		key_names::SPLIT_KEY,
 		Arg::new(key_names::SPLIT_KEY)
-			.short('s')
-			.long("split")
+			.long("split-key")
 			.value_name(key_names::SPLIT_KEY)
 			.help("Used in conjunction with the keypair subcommand to split the keypair upon generation into it's two parts")
 			.required(false)
@@ -251,22 +250,10 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.number_of_values(1),
 	);
 
-	// Tells the CLI to not log any messages to the console
-	map.insert(
-		key_names::QUIET,
-		Arg::new(key_names::QUIET)
-			.short('q')
-			.long("quiet")
-			.value_name(key_names::QUIET)
-			.help("Tells the CLI to not log any messages to the console")
-			.required(false)
-			.takes_value(false),
-	);
-
 	// The flags that go into the .vach file header section
 	map.insert(
 		key_names::FLAGS,
-		Arg::new("f")
+		Arg::new(key_names::FLAGS)
 			.long("flags")
 			.short('f')
 			.value_name(key_names::FLAGS)
@@ -284,6 +271,18 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.short('v')
 			.value_name(key_names::VERSION)
 			.help("the version of the leafs being read or to be written")
+			.required(false)
+			.takes_value(true)
+			.number_of_values(1),
+	);
+
+	// the version of the leafs being read or to be written
+	map.insert(
+		key_names::SORT,
+		Arg::new(key_names::SORT)
+			.long("sort")
+			.value_name(key_names::SORT)
+			.help("How to sort entries within the table, either based on size or alphabetically")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),

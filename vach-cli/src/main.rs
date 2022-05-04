@@ -7,7 +7,6 @@ mod utils;
 // NOTE: Unwrapping in a CLI is a no-no. Since throwing Rust developer errors at average users is mental overload
 fn main() {
 	pretty_env_logger::init();
-	use keys::key_names;
 
 	// Build CLI
 	let keys = keys::build_keys();
@@ -17,14 +16,10 @@ fn main() {
 	// Start CLI
 	let matches = app.get_matches();
 
-	if matches.is_present(key_names::QUIET) {
-		std::env::set_var("RUST_LOG", "error");
-	};
-
 	let res = match matches.subcommand() {
 		Some((key, mtx)) => commands.get(key).unwrap().evaluate(mtx),
 		None => {
-			println!("vach-cli: Run `vach --help`");
+			println!("vach-cli: Run `vach --help` and refer to crates.io/vach-cli for the manual");
 			Ok(())
 		},
 	};

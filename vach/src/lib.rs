@@ -4,24 +4,9 @@
 #![deny(missing_docs)]
 
 /*!
-<p align="center">
-  <img src="https://raw.githubusercontent.com/zeskeertwee/virtfs-rs/main/media/logo.png" alt=".vach logo" width="180" height="180">
-</p>
-<p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
-<p align=center>
-  <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="LICENSE: MIT" src="https://img.shields.io/crates/l/vach?style=flat-square"></a>
-  <a href="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml/badge.svg"></a>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
-</p>
-<p align=center>
- <a href="https://docs.rs/vach">Docs</a> | <a href="https://github.com/zeskeertwee/virtfs-rs">Repo</a>
-</p>
+#### A simple archiving format, designed for storing assets in compact secure containers
 
----
-
-`vach`, pronounced like "puck" but with a "v", is a archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ### 👄 Terminologies
 
@@ -29,16 +14,21 @@
 - **Leaf:** Any actual data endpoint within an archive, what `tar` calls archive members, for example `footstep1.wav` in `sounds.vach`.
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
-### 🔫 Extra Features
-Turning on the `multithreaded` feature pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
-This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
- > Turning on parallelization adds a lot of overhead that would be completely unnecessary for much smaller archives, it only benefits where the **singular data** is very large and the `Arc<Mutex<Y>>` overhead is _relatively minimal_
+### 🔫 Cargo Features
+- The `multithreaded` feature pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
+  This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
+
+  > Turning this feature on adds a several new dependencies that would be completely unnecessary for a smaller scope, its only benefits when several entries are required at one moment there can be fetched simultaneously_
+
+- The `compression` feature pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
+- The `loader` and `builder` features are turned on by default, turning them off turns off their respective modules. For example a game only needs the `loader` feature but a tool for asset packing would only need the `builder` feature.
+- The `crypto` feature enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
 
 ### 🀄 Show me some code _dang it!_
 
 ##### > Building a basic unsigned `.vach` file
 
-```
+```ignore
 use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig};
 
@@ -77,7 +67,7 @@ let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buf
 
 ##### > Build a signed `.vach` file
 
-```
+```ignore
 use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig, Keypair};
 use vach::utils::gen_keypair;
@@ -101,7 +91,7 @@ builder.dump(&mut target, &config).unwrap();
 
 As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/), you could refer to their docs to read further about them.
 
-```
+```ignore
 use vach::prelude::{Keypair, SecretKey, PublicKey};
 use vach::utils::gen_keypair;
 
@@ -146,17 +136,22 @@ assert!(resource.secured);
 mod tests;
 
 pub(crate) mod global;
+#[cfg(feature = "loader")]
+#[cfg_attr(docsrs, doc(cfg(feature = "loader")))]
 pub(crate) mod loader;
+
+#[cfg(feature = "builder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub(crate) mod writer;
 
-// Re-exports
+// Re-export
+#[cfg(feature = "crypto")]
+#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub use rand;
 
 #[cfg(feature = "multithreaded")]
-pub use rayon;
-
-#[cfg(feature = "multithreaded")]
-pub use num_cpus;
+#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
+pub use {rayon, num_cpus};
 
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;
@@ -184,17 +179,26 @@ pub const MAGIC_LENGTH: usize = 5;
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
+	pub use crate::global::{
+		error::InternalError, result::InternalResult, flags::Flags, header::HeaderConfig, reg_entry::RegistryEntry,
+	};
+
+	#[cfg(feature = "crypto")]
 	pub use crate::crypto::*;
+
+	#[cfg(feature = "loader")]
 	pub use crate::archive::*;
+
+	#[cfg(feature = "builder")]
 	pub use crate::builder::*;
 }
 
 /// Import keypairs and signatures from here, mirrors from `ed25519_dalek`
-pub mod crypto {
-	pub use ed25519_dalek::{Keypair, PublicKey, SecretKey};
-}
+pub mod crypto;
 
 /// [`Builder`](crate::builder::Builder) related data structures and logic
+#[cfg(feature = "builder")]
+#[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub mod builder {
 	pub use crate::writer::{
 		builder::{Builder, BuilderConfig},
@@ -203,12 +207,14 @@ pub mod builder {
 	pub use crate::global::{error::InternalError, result::InternalResult, flags::Flags};
 
 	#[cfg(feature = "compression")]
-	pub use crate::writer::leaf::CompressMode;
+	pub use crate::writer::compress_mode::CompressMode;
 	#[cfg(feature = "compression")]
 	pub use crate::global::compressor::CompressionAlgorithm;
 }
 
 /// Loader-based logic and data-structures
+#[cfg(feature = "loader")]
+#[cfg_attr(docsrs, doc(cfg(feature = "loader")))]
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
