@@ -104,9 +104,7 @@ fn header_config() -> InternalResult<()> {
 	file.read(&mut header_data)?;
 
 	let header = Header::from_handle(header_data.as_slice())?;
-	println!("{}", header);
-
-	Header::validate(&header, &config)?;
+	Header::validate(&config, &header)?;
 	Ok(())
 }
 
