@@ -30,5 +30,5 @@ term_size = "0.3.2"
 num_cpus = "1.13.1"
 
 [dependencies.vach]
-path = "../vach"
+version = "0.3.6"
 features = ["compression", "multithreaded", "crypto"]
