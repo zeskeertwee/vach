@@ -58,6 +58,7 @@ impl<'a> Builder<'a> {
 		let leaf = Leaf::from_handle(data)
 			.id(id.as_ref().to_string())
 			.template(&self.leaf_template);
+
 		self.add_leaf(leaf)?;
 		Ok(())
 	}

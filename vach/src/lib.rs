@@ -15,14 +15,14 @@
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
 ### 🔫 Cargo Features
-- The `multithreaded` feature pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
-  This allows for the parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
+- `loader` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `loader` feature but a tool for packing assets would only need the `builder` feature.
+- `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
+  This allows for the auto-parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
 
   > Turning this feature on adds a several new dependencies that would be completely unnecessary for a smaller scope, its only benefits when several entries are required at one moment there can be fetched simultaneously_
 
-- The `compression` feature pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
-- The `loader` and `builder` features are turned on by default, turning them off turns off their respective modules. For example a game only needs the `loader` feature but a tool for asset packing would only need the `builder` feature.
-- The `crypto` feature enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
+- `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
+- `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
 
 ### 🀄 Show me some code _dang it!_
 
@@ -36,9 +36,10 @@ let config = BuilderConfig::default();
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-// builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-// builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
+// Adds any data that implements `io::Read`
+builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
+builder.add(&[12, 23, 34, 45, 56, 67, 78, 90, 69], "ftstep").unwrap();
+builder.add(b"Hello, Cassandra!", "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
 let mut target = Cursor::new(Vec::new());
@@ -77,9 +78,9 @@ let config: BuilderConfig = BuilderConfig::default().keypair(keypair);
 let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
-// builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-// builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
+builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
+builder.add(vec![12, 23, 34, 45, 56, 67, 78], "ftstep").unwrap();
+builder.add(b"Hello, Cassandra!" as &[u8], "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
 let mut target = Cursor::new(Vec::new());

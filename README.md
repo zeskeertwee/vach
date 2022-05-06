@@ -61,8 +61,8 @@ let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
 builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
+builder.add(vec![12, 23, 34, 45, 56, 67, 78, 89, 10], "ftstep").unwrap();
+builder.add(b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8], "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
 let mut target = Cursor::new(Vec::new());
@@ -103,7 +103,7 @@ let mut builder:  Builder = Builder::default();
 // Use different data types under the same builder umbrella, uses dynamic dispatch
 let data_1 = vec![12, 23, 45, 56, 67 ,78, 89, 69];
 let data_2 = File::open("test_data/footstep.wav").unwrap();
-let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
+let data_3 = b"Hello, Cassandra!" as &[u8];
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
 builder.add(data_3, "ambient").unwrap();
