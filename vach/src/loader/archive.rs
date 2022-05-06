@@ -139,17 +139,12 @@ impl<T> Archive<T> {
 				Some(dc) => {
 					raw = dc.decrypt(&raw)?;
 				},
-				None => {
-					return Err(InternalError::NoKeypairError(format!(
-						"Encountered encrypted Resource: {} but no decryption key(public key) was provided",
-						id
-					)))
-				},
+				None => return Err(InternalError::NoKeypairError),
 			}
 
 			#[cfg(not(feature = "crypto"))]
 			{
-				return Err(InternalError::MissingFeatureError("crypto".to_string()));
+				return Err(InternalError::MissingFeatureError("crypto"));
 			}
 		}
 
@@ -175,7 +170,7 @@ impl<T> Archive<T> {
 			}
 
 			#[cfg(not(feature = "compression"))]
-			return Err(InternalError::MissingFeatureError("compression".to_string()));
+			return Err(InternalError::MissingFeatureError("compression"));
 		};
 
 		let mut buffer = vec![];
@@ -350,8 +345,7 @@ where
 				secured: is_secure,
 			})
 		} else {
-			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
+			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
 		}
 	}
 
@@ -378,8 +372,7 @@ where
 			io::copy(&mut buffer.as_slice(), &mut target)?;
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
-			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
+			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
 		}
 	}
 }

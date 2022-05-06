@@ -150,10 +150,7 @@ impl Header {
 	pub fn validate(config: &HeaderConfig, header: &Header) -> InternalResult<()> {
 		// Validate magic
 		if header.magic != config.magic {
-			return Err(InternalError::ValidationError(format!(
-				"Invalid magic found in Header, possible incompatibility with given source. Magic found {:?}",
-				header.magic
-			)));
+			return Err(InternalError::InvalidArchive(header.magic));
 		};
 
 		// Validate version

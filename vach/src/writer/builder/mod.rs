@@ -199,19 +199,14 @@ impl<'a> Builder<'a> {
 		#[cfg(feature = "crypto")]
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
 
-		#[cfg(feature = "crypto")]
-		if use_encryption && config.keypair.is_none() {
-			return Err(InternalError::NoKeypairError(
-				"Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string(),
-			));
-		};
-
 		// Build encryptor
 		#[cfg(feature = "crypto")]
 		let encryptor = if use_encryption {
-			let keypair = &config.keypair;
-
-			Some(Encryptor::new(&keypair.as_ref().unwrap().public, config.magic))
+			if let Some(keypair) = config.keypair.as_ref() {
+				Some(Encryptor::new(&keypair.public, config.magic))
+			} else {
+				return Err(InternalError::NoKeypairError);
+			}
 		} else {
 			None
 		};
@@ -275,7 +270,7 @@ impl<'a> Builder<'a> {
 			#[cfg(not(feature = "compression"))]
 			{
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					return Err(InternalError::MissingFeatureError("compression".to_string()));
+					return Err(InternalError::MissingFeatureError("compression"));
 				};
 
 				leaf.handle.read_to_end(&mut raw)?;

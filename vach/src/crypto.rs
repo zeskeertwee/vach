@@ -42,7 +42,7 @@ impl Encryptor {
 	pub(crate) fn encrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
 		let res = match self.cipher.encrypt(&self.nonce, data) {
 			Ok(data) => data,
-			Err(err) => return Err(InternalError::CryptoError(err.to_string())),
+			Err(err) => return Err(InternalError::CryptoError(err)),
 		};
 
 		Ok(res)
@@ -51,7 +51,7 @@ impl Encryptor {
 	pub(crate) fn decrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
 		let res = match self.cipher.decrypt(&self.nonce, data) {
 			Ok(data) => data,
-			Err(err) => return Err(InternalError::CryptoError(err.to_string())),
+			Err(err) => return Err(InternalError::CryptoError(err)),
 		};
 
 		Ok(res)

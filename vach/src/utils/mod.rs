@@ -47,7 +47,7 @@ pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<crypto::PublicK
 
 	match crypto::PublicKey::from_bytes(&keypair_bytes) {
 		Ok(pk) => Ok(pk),
-		Err(err) => Err(InternalError::ValidationError(err.to_string())),
+		Err(err) => Err(InternalError::ParseError(err.to_string())),
 	}
 }
 /// Read and parse a secret key from a read stream
@@ -64,6 +64,6 @@ pub fn read_secret_key<T: Read>(mut handle: T) -> InternalResult<crypto::SecretK
 
 	match crypto::SecretKey::from_bytes(&secret_bytes) {
 		Ok(sk) => Ok(sk),
-		Err(err) => Err(InternalError::ValidationError(err.to_string())),
+		Err(err) => Err(InternalError::ParseError(err.to_string())),
 	}
 }
