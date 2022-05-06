@@ -82,9 +82,10 @@ builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
 builder.add(vec![12, 23, 34, 45, 56, 67, 78], "ftstep").unwrap();
 builder.add(b"Hello, Cassandra!" as &[u8], "hello").unwrap();
 
-// let mut target = File::create("sounds.vach")?;
-let mut target = Cursor::new(Vec::new());
+let mut target = File::create("sounds.vach")?;
+builder.dump(&mut target, &config).unwrap();
 
+let mut target = Cursor::new(Vec::new());
 builder.dump(&mut target, &config).unwrap();
 ```
 
@@ -104,12 +105,12 @@ let public : PublicKey = keypair.public;
 // Serialize
 let public_key_bytes : [u8; vach::PUBLIC_KEY_LENGTH] = public.to_bytes();
 let secret_key_bytes : [u8; vach::SECRET_KEY_LENGTH] = secret.to_bytes();
-// let keypair_bytes : [u8; vach::KEYPAIR_LENGTH]    = keypair.to_bytes();
+let keypair_bytes : [u8; vach::KEYPAIR_LENGTH]    = keypair.to_bytes();
 
 // Deserialize
 let public_key : PublicKey = PublicKey::from_bytes(&public_key_bytes).unwrap();
 let secret_key : SecretKey = SecretKey::from_bytes(&secret_key_bytes).unwrap();
-// let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
+let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 ```
 
 ##### > Load resources from a signed `.vach` source
