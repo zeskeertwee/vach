@@ -29,6 +29,7 @@ pub enum InternalError {
 	#[error("[VachError::NoKeypairError] Unable to continue with cryptographic operation, as no keypair was supplied")]
 	NoKeypairError,
 	/// Thrown when decryption or encryption fails
+	#[cfg(feature = "crypto")]
 	#[error("[VachError::CryptoError] {0}")]
 	CryptoError(aes_gcm::Error),
 	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a [`Flags`](crate::prelude::Flags) instance
