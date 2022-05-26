@@ -469,7 +469,8 @@ fn test_compressors() -> InternalResult<()> {
 #[test]
 #[cfg(all(feature = "multithreaded", feature = "builder", feature = "loader"))]
 fn test_batch_fetching() -> InternalResult<()> {
-	use std::io::Cursor;
+	use std::{io::Cursor, collections::HashMap};
+	use rayon::prelude::*;
 
 	// Define input constants
 	const INPUT_LEN: usize = 8;
@@ -494,7 +495,11 @@ fn test_batch_fetching() -> InternalResult<()> {
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
 	let archive = Archive::from_handle(target)?;
-	let mut resources = archive.fetch_batch(ids.iter().map(|id| id.as_str()), None)?;
+	let mut resources = ids
+		.as_slice()
+		.par_iter()
+		.map(|id| (id.as_str(), archive.fetch(&id)))
+		.collect::<HashMap<_, _>>();
 
 	// Tests and checks
 	assert!(resources.get("NON_EXISTENT").is_none());
@@ -505,7 +510,6 @@ fn test_batch_fetching() -> InternalResult<()> {
 		Err(err) => match err {
 			InternalError::MissingResourceError(_) => {
 				resources.remove("ERRORS");
-				drop(ids);
 			},
 
 			specific => return Err(specific),

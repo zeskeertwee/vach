@@ -2,6 +2,7 @@ use std::{
 	str,
 	io::{self, Read, Seek, SeekFrom, Write},
 	collections::HashMap,
+	sync::Mutex,
 };
 
 use super::resource::Resource;
@@ -12,7 +13,6 @@ use crate::{
 		header::{Header, HeaderConfig},
 		reg_entry::RegistryEntry,
 		result::InternalResult,
-		container::Container,
 	},
 };
 
@@ -23,14 +23,14 @@ use crate::crypto;
 use crate::global::compressor::{Compressor, CompressionAlgorithm};
 
 /// A wrapper for loading data from archive sources.
+/// Wraps it's internal handle for ease of integration into other APIs and easy parallelization, as this is no longer provided in crate.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
 /// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`].
-/// To make [Archive] implement [Sync] turn on the `multithreaded` feature.
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 pub struct Archive<T> {
 	header: Header,
-	handle: Container<T>,
+	handle: Mutex<T>,
 	entries: HashMap<String, RegistryEntry>,
 
 	#[cfg(feature = "crypto")]
@@ -75,41 +75,26 @@ impl<T> std::fmt::Debug for Archive<T> {
 }
 
 #[cfg(not(feature = "crypto"))]
-type ProcessDependecies = ();
+type ProcessDependencies = ();
 #[cfg(feature = "crypto")]
-type ProcessDependecies<'a> = (&'a Option<crypto::Encryptor>, &'a Option<crypto::PublicKey>);
+type ProcessDependencies<'a> = (&'a Option<crypto::Encryptor>, &'a Option<crypto::PublicKey>);
 
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
 	pub fn into_inner(self) -> InternalResult<T> {
-		#[cfg(feature = "multithreaded")]
-		{
-			use std::sync::Arc;
-
-			match Arc::try_unwrap(self.handle) {
-				Ok(mutex) => match mutex.into_inner() {
-					Ok(inner) => Ok(inner),
-					Err(err) => Err(InternalError::SyncError(format!(
-						"Trying to consume a poisoned mutex {}",
-						err
-					))),
-				},
-				Err(_) => Err(InternalError::SyncError(
-					"Cannot consume this archive as other copy-references (ARC) to it exist".to_string(),
-				)),
-			}
-		}
-
-		#[cfg(not(feature = "multithreaded"))]
-		{
-			Ok(self.handle.into_inner())
+		match self.handle.into_inner() {
+			Ok(inner) => Ok(inner),
+			Err(err) => Err(InternalError::SyncError(format!(
+				"Trying to consume a poisoned mutex {}",
+				err
+			))),
 		}
 	}
 
-	/// Helps in parallelized `Resource` fetching
+	/// Prevents redundant function writing
 	#[inline(never)]
 	fn process_raw(
-		dependencies: ProcessDependecies, independent: (&RegistryEntry, &str, Vec<u8>),
+		dependencies: ProcessDependencies, independent: (&RegistryEntry, &str, Vec<u8>),
 	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
@@ -220,20 +205,6 @@ where
 			entries.insert(id, entry);
 		}
 
-		#[cfg(feature = "multithreaded")]
-		let handle = {
-			use std::sync::{Mutex, Arc};
-			Arc::new(Mutex::new(handle))
-		};
-
-		#[cfg(not(feature = "multithreaded"))]
-		let handle = {
-			use std::cell::RefCell;
-			let x = RefCell::new(1);
-			x.borrow_mut();
-			RefCell::new(handle)
-		};
-
 		#[cfg(feature = "crypto")]
 		{
 			// Build decryptor
@@ -251,7 +222,7 @@ where
 
 			Ok(Archive {
 				header,
-				handle,
+				handle: Mutex::new(handle),
 				key: config.public_key,
 				entries,
 				decryptor,
@@ -273,7 +244,6 @@ where
 		let mut buffer = Vec::with_capacity(entry.offset as usize);
 
 		{
-			#[cfg(feature = "multithreaded")]
 			let mut guard = match self.handle.lock() {
 				Ok(guard) => guard,
 				Err(_) => {
@@ -282,9 +252,6 @@ where
 					))
 				},
 			};
-
-			#[cfg(not(feature = "multithreaded"))]
-			let mut guard = self.handle.borrow_mut();
 
 			guard.seek(SeekFrom::Start(entry.location))?;
 			let mut take = guard.by_ref().take(entry.offset);
@@ -373,82 +340,6 @@ where
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
 			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
-		}
-	}
-}
-
-#[cfg(feature = "multithreaded")]
-impl<T> Archive<T>
-where
-	T: Read + Seek + Send + Sync,
-{
-	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
-	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct ([rayon] if you want) otherwise
-	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-	pub fn fetch_batch<I>(
-		&self, items: I, num_threads: Option<usize>,
-	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
-	where
-		I: Iterator + Send + Sync,
-		I::Item: AsRef<str>,
-	{
-		use rayon::prelude::*;
-		use std::sync::{Arc, Mutex};
-
-		// Attempt to pre-allocate HashMap
-		let map = match items.size_hint().1 {
-			Some(hint) => HashMap::with_capacity(hint),
-			None => HashMap::new(),
-		};
-
-		// Prepare mutexes
-		let processed = Arc::new(Mutex::new(map));
-		let queue = Arc::new(Mutex::new(items));
-
-		let num_threads = match num_threads {
-			Some(num) => num,
-			None => num_cpus::get(),
-		};
-
-		// Creates a thread-pool`
-		(0..num_threads)
-			.into_par_iter()
-			.try_for_each(|_| -> InternalResult<()> {
-				let mut produce = vec![];
-
-				// Query next item on queue and process
-				while let Some(id) = queue.lock().unwrap().next() {
-					let id = id.as_ref();
-					let resource = self.fetch(id);
-
-					let string = id.to_string();
-					if let Ok(mut guard) = processed.try_lock() {
-						guard.insert(string, resource);
-
-						// The lock is available, so we pop everything off the queue
-						(0..produce.len()).for_each(|_| {
-							let (id, res) = produce.pop().unwrap();
-							guard.insert(id, res);
-						});
-					} else {
-						produce.push((string, resource));
-					}
-				}
-
-				Ok(())
-			})?;
-
-		match Arc::try_unwrap(processed) {
-			Ok(mutex) => match mutex.into_inner() {
-				Ok(inner) => Ok(inner),
-				Err(err) => Err(InternalError::SyncError(format!(
-					"Mutex<HashMap> has been poisoned! {}",
-					err
-				))),
-			},
-			Err(_) => Err(InternalError::SyncError(
-				"Cannot consume this HashMap as other references (ARC) to it exist".to_string(),
-			)),
 		}
 	}
 }

@@ -16,8 +16,7 @@
 
 ### 🔫 Cargo Features
 - `loader` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `loader` feature but a tool for packing assets would only need the `builder` feature.
-- `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types.
-  This allows for the auto-parallelization of the `Builder::dump(---)` function and adds a new `Archive::fetch_batch(---)` method, with more functions getting parallelization on the way.
+- `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types. This allows for the auto-parallelization of the `Builder::dump(---)` function.
 
   > Turning this feature on adds a several new dependencies that would be completely unnecessary for a smaller scope, its only benefits when several entries are required at one moment there can be fetched simultaneously_
 
@@ -153,7 +152,7 @@ pub use rand;
 
 #[cfg(feature = "multithreaded")]
 #[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-pub use {rayon, num_cpus};
+pub use rayon;
 
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;

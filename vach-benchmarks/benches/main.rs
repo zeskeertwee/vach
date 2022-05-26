@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::io;
 use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 
+use rayon::iter::{ParallelIterator, IntoParallelRefIterator};
 use vach::prelude::*;
 use vach::utils::gen_keypair;
 
@@ -109,15 +111,18 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		});
 	});
 
-	#[cfg(feature = "multithreaded")]
-	{
-		throughput_group.bench_function("Archive::fetch_batch(---)", |b| {
-			// Load data
-			b.iter(|| {
-				archive.fetch_batch(["d2", "d1", "d3"].into_iter(), None).unwrap();
-			});
+	throughput_group.bench_function("Archive::fetch_batch(---)", |b| {
+		// Load data
+		b.iter(|| {
+			let resources = ["d2", "d1", "d3"]
+				.as_slice()
+				.par_iter()
+				.map(|id| (id, archive.fetch(&id)))
+				.collect::<HashMap<_, _>>();
+
+			criterion::black_box(resources)
 		});
-	}
+	});
 
 	drop(throughput_group);
 

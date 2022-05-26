@@ -1,12 +1,11 @@
-use std::collections::HashSet;
 use std::fs::{self, File};
 use std::str::FromStr;
-use std::io::{Read, Seek, self};
+use std::io::{Read, Seek};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vach::archive::RegistryEntry;
 use vach::prelude::{HeaderConfig, Archive, InternalError};
+use vach::rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use vach::utils;
 use indicatif::{ProgressBar, ProgressStyle};
 
@@ -73,10 +72,10 @@ impl CommandTrait for Evaluator {
 		let archive = match Archive::with_config(input_file, &header_config) {
 			Ok(archive) => archive,
 			Err(err) => match err {
-				InternalError::NoKeypairError(_) => anyhow::bail!(
+				InternalError::NoKeypairError => anyhow::bail!(
 					"Please provide a public key or a keypair for use in decryption or signature verification"
 				),
-				InternalError::ValidationError(err) => anyhow::bail!("Unable to validate the archive: {}", err),
+				InternalError::InvalidArchive(_) => anyhow::bail!("Unable to validate the archive: {}", err),
 				err => anyhow::bail!("Encountered an error: {}", err.to_string()),
 			},
 		};
@@ -120,71 +119,43 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 			]),
 	);
 
-	// Generates window slices from a bigger window based on core count, therefore dispatching work evenly across threads
-	let num_cores = num_cpus::get();
-	let window_size = if num_cores * 2 > archive.entries().len() {
-		1
-	} else {
-		num_cores * 2
-	};
-
 	// Vector to allow us to window later via .as_slice()
-	let entry_vec = archive.entries().iter().collect::<Vec<(&String, &RegistryEntry)>>();
-	let entry_windows: Vec<&[(&String, &RegistryEntry)]> = entry_vec.windows(window_size).collect();
+	let entry_vec = archive.entries().iter().map(|a| (a.0, a.1.offset)).collect::<Vec<_>>();
 
-	// Stores processed values and keeps track of results
-	let mut processed_ids = HashSet::new();
-	let mut processed_resources;
+	// ignore the unprofessional match clause
+	match entry_vec.as_slice().par_iter().try_for_each(|(id, offset)| {
+		// Prevent column from wrapping around
+		if let Some((terminal_width, _)) = term_size::dimensions() {
+			let mut msg = id.to_string();
+			// Make sure progress bar never get's longer than terminal size
+			if msg.len() + 140 >= terminal_width {
+				msg.truncate(terminal_width - 140);
+				msg.push_str("...");
+			}
 
-	// Process entries concurrently
-	for entry_batch in entry_windows {
-		processed_resources = archive.fetch_batch(
-			entry_batch
-				.iter()
-				.filter(|(id, _)| !processed_ids.contains(*id))
-				.inspect(|(id, _)| {
-					/* Sets message inside the progress bar */
+			// Set's the Progress Bar message
+			pbar.set_message(msg.to_string());
+		};
 
-					// Prevent column from wrapping around
-					let mut msg = (**id).clone();
-					if let Some((terminal_width, _)) = term_size::dimensions() {
-						// Make sure progress bar never get's longer than terminal size
-						if msg.len() + 140 >= terminal_width {
-							msg.truncate(terminal_width - 140);
-							msg.push_str("...");
-						}
-					};
+		// Process filesystem
+		let mut save_path = target_folder.clone();
+		save_path.push(&id);
 
-					pbar.set_message(msg);
-				})
-				.map(|f| f.0.as_str()),
-			Some(num_cores),
-		)?;
+		if let Some(parent_dir) = save_path.ancestors().nth(1) {
+			fs::create_dir_all(parent_dir)?;
+		};
 
-		processed_resources
-			.into_iter()
-			.try_for_each(|(id, data)| -> anyhow::Result<()> {
-				// Process filesystem
-				let mut save_path = target_folder.clone();
-				save_path.push(&id);
+		// Write to file and update process queue
+		let mut file = File::create(save_path)?;
+		archive.fetch_write(id, &mut file)?;
 
-				if let Some(parent_dir) = save_path.ancestors().nth(1) {
-					fs::create_dir_all(parent_dir)?;
-				};
-
-				// Write to file and update process queue
-				let resource = data?;
-				let mut file = File::create(save_path)?;
-				io::copy(&mut resource.data.as_slice(), &mut file)?;
-
-				// Increment Progress Bar
-				let entry = archive.fetch_entry(&id).unwrap();
-				pbar.inc(entry.offset);
-				processed_ids.insert(id);
-
-				Ok(())
-			})?;
-	}
+		// Increment Progress Bar
+		pbar.inc(*offset);
+		Ok(())
+	}) {
+		Ok(it) => it,
+		Err(err) => return Err(err),
+	};
 
 	// Finished extracting
 	pbar.finish_and_clear();
