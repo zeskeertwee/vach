@@ -1,6 +1,5 @@
 [workspace]
 members = ["vach", "vach-cli", "vach-benchmarks"]
-edition = "2021"
 
 [profile.bench]
 debug = true

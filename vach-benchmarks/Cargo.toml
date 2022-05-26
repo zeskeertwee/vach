@@ -5,12 +5,10 @@ edition = "2021"
 license = "MIT"
 publish = false
 
-[features]
-multithreaded = ["vach/multithreaded"]
-
 [dependencies]
 criterion = "0.3.5"
 vach = { path = "../vach", features = ["compression", "crypto"] }
+rayon = "*"
 
 [[bench]]
 name = "benchmark"
