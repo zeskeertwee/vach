@@ -81,9 +81,9 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	{
 		// Builds an archive source from which to benchmark
 		let template = Leaf::default()
-			.encrypt(true)
+			.encrypt(false)
 			.sign(false)
-			.compress(CompressMode::Always)
+			.compress(CompressMode::Never)
 			.compression_algo(CompressionAlgorithm::LZ4);
 		let mut builder = Builder::new().template(template);
 

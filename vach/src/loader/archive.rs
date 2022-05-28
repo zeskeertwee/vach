@@ -23,16 +23,20 @@ use crate::crypto;
 use crate::global::compressor::{Compressor, CompressionAlgorithm};
 
 /// A wrapper for loading data from archive sources.
-/// Wraps it's internal handle for ease of integration into other APIs and easy parallelization, as this is no longer provided in crate.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
 /// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`].
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 pub struct Archive<T> {
-	header: Header,
+	/// Wrapping `handle` in a Mutex means that we only ever lock when reading from the underlying buffer, thus ensuring maximum performance across threads
+	/// Since all the other work is done per thread
 	handle: Mutex<T>,
+
+	// Archive metadata
+	header: Header,
 	entries: HashMap<String, RegistryEntry>,
 
+	// Optional parts
 	#[cfg(feature = "crypto")]
 	decryptor: Option<crypto::Encryptor>,
 	#[cfg(feature = "crypto")]
@@ -98,22 +102,24 @@ impl<T> Archive<T> {
 	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
-		let (entry, id, mut raw) = independent;
+		// buffer_a originally contains the raw data
+		let (entry, id, mut buffer_a) = independent;
+		let buffer_b;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 		#[cfg(feature = "crypto")]
 		if let Some(pk) = dependencies.1 {
-			let raw_size = raw.len();
+			let raw_size = buffer_a.len();
 
 			// If there is an error the data is flagged as invalid
-			raw.extend_from_slice(id.as_bytes());
+			buffer_a.extend_from_slice(id.as_bytes());
 			if let Some(signature) = entry.signature {
-				is_secure = pk.verify_strict(&raw, &signature).is_ok();
+				is_secure = pk.verify_strict(&buffer_a, &signature).is_ok();
 			}
 
-			raw.truncate(raw_size);
+			buffer_a.truncate(raw_size);
 		}
 
 		// Add read layers
@@ -122,7 +128,7 @@ impl<T> Archive<T> {
 			#[cfg(feature = "crypto")]
 			match dependencies.0 {
 				Some(dc) => {
-					raw = dc.decrypt(&raw)?;
+					buffer_b = dc.decrypt(&buffer_a)?;
 				},
 				None => return Err(InternalError::NoKeypairError),
 			}
@@ -131,37 +137,37 @@ impl<T> Archive<T> {
 			{
 				return Err(InternalError::MissingFeatureError("crypto"));
 			}
+		} else {
+			buffer_b = buffer_a.clone();
 		}
 
 		// 2: Decompression layer
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 			#[cfg(feature = "compression")]
 			{
-				let mut buffer = vec![];
+				// Clear data in buffer_a
+				buffer_a.clear();
 
 				if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
+					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer_a)?
 				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
+					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer_a)?
 				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
+					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer_a)?
 				} else {
 					return InternalResult::Err(InternalError::OtherError(
 						format!("Unable to determine the compression algorithm used for entry with ID: {id}").into(),
 					));
 				};
-
-				raw = buffer
 			}
 
 			#[cfg(not(feature = "compression"))]
 			return Err(InternalError::MissingFeatureError("compression"));
+		} else {
+			buffer_a = buffer_b;
 		};
 
-		let mut buffer = vec![];
-		raw.as_slice().read_to_end(&mut buffer)?;
-
-		Ok((buffer, is_secure))
+		Ok((buffer_a, is_secure))
 	}
 }
 
@@ -265,10 +271,7 @@ where
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
 	/// This can be used for debugging, as the [`RegistryEntry`] holds information on data with the adjacent ID.
 	pub fn fetch_entry(&self, id: impl AsRef<str>) -> Option<RegistryEntry> {
-		match self.entries.get(id.as_ref()) {
-			Some(entry) => Some(entry.clone()),
-			None => None,
-		}
+		self.entries.get(id.as_ref()).cloned()
 	}
 
 	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
