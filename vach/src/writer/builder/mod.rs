@@ -1,9 +1,10 @@
 use std::io::{BufWriter, Write, Seek, SeekFrom};
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::{
 	Arc, Mutex,
-	atomic::{Ordering, AtomicUsize},
+	atomic::{Ordering},
 };
 
 mod config;
@@ -142,15 +143,12 @@ impl<'a> Builder<'a> {
 		#[cfg(feature = "multithreaded")]
 		use rayon::prelude::*;
 
-		// The total amount of bytes written
-		let mut total_sync = 0usize;
-
 		#[allow(unused_mut)]
 		let mut reg_buffer_sync = Vec::new();
 
 		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
 		#[allow(unused_mut)]
-		let mut leaf_offset_sync =
+		let mut leaf_offset_sync = {
 			self.leafs
 				.iter()
 				.map(|leaf| {
@@ -169,7 +167,8 @@ impl<'a> Builder<'a> {
 					}
 				})
 				.reduce(|l1, l2| l1 + l2)
-				.unwrap_or(0) + Header::BASE_SIZE;
+				.unwrap_or(0) + Header::BASE_SIZE
+		} as u64;
 
 		// Start at the very start of the file
 		target.seek(SeekFrom::Start(0))?;
@@ -192,9 +191,6 @@ impl<'a> Builder<'a> {
 		wtr_sync.write_all(&crate::VERSION.to_le_bytes())?;
 		wtr_sync.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
-		// Update how many bytes have been written
-		total_sync += Header::BASE_SIZE;
-
 		// Configure encryption
 		#[cfg(feature = "crypto")]
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
@@ -212,8 +208,8 @@ impl<'a> Builder<'a> {
 		};
 
 		// Define all arc-mutexes
-		let leaf_offset_arc = Arc::new(AtomicUsize::new(leaf_offset_sync));
-		let total_arc = Arc::new(AtomicUsize::new(total_sync));
+		let leaf_offset_arc = Arc::new(AtomicU64::new(leaf_offset_sync));
+		let total_arc = Arc::new(AtomicUsize::new(Header::BASE_SIZE));
 		let wtr_arc = Arc::new(Mutex::new(wtr_sync));
 		let reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
 
@@ -287,30 +283,28 @@ impl<'a> Builder<'a> {
 			}
 
 			// Write processed leaf-contents and update offsets within `MutexGuard` protection
-			let glob_length = raw.len();
+			let glob_length = raw.len() as u64;
 
 			{
 				// Lock writer
-				let wtr_arc = Arc::clone(&wtr_arc);
 				let mut wtr = wtr_arc.lock().unwrap();
 
 				// Lock leaf_offset
-				let leaf_offset_arc = Arc::clone(&leaf_offset_arc);
 				let leaf_offset = leaf_offset_arc.load(Ordering::SeqCst);
 
-				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+				wtr.seek(SeekFrom::Start(leaf_offset))?;
 				wtr.write_all(&raw)?;
 
 				// Update offset locations
-				entry.location = leaf_offset as u64;
+				entry.location = leaf_offset;
 				leaf_offset_arc.fetch_add(glob_length, Ordering::SeqCst);
 
 				// Update number of bytes written
-				total_arc.fetch_add(glob_length, Ordering::SeqCst);
+				total_arc.fetch_add(glob_length as usize, Ordering::SeqCst);
 			};
 
 			// Update the offset of the entry to be the length of the glob
-			entry.offset = glob_length as u64;
+			entry.offset = glob_length;
 
 			#[cfg(feature = "crypto")]
 			if leaf.sign {
@@ -342,8 +336,7 @@ impl<'a> Builder<'a> {
 
 			// Write to the registry-buffer and update total number of bytes written
 			{
-				let arc = Arc::clone(&reg_buffer_arc);
-				let mut reg_buffer = arc.lock().unwrap();
+				let mut reg_buffer = reg_buffer_arc.lock().unwrap();
 
 				reg_buffer.write_all(&entry_bytes)?;
 				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
@@ -359,10 +352,8 @@ impl<'a> Builder<'a> {
 
 		// Write out the contents of the registry
 		{
-			let arc = Arc::clone(&wtr_arc);
-			let mut wtr = arc.lock().unwrap();
+			let mut wtr = wtr_arc.lock().unwrap();
 
-			let reg_buffer_arc = Arc::clone(&reg_buffer_arc);
 			let reg_buffer = reg_buffer_arc.lock().unwrap();
 
 			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
