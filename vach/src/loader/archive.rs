@@ -78,11 +78,6 @@ impl<T> std::fmt::Debug for Archive<T> {
 	}
 }
 
-#[cfg(not(feature = "crypto"))]
-type ProcessDependencies = ();
-#[cfg(feature = "crypto")]
-type ProcessDependencies<'a> = (&'a Option<crypto::Encryptor>, &'a Option<crypto::PublicKey>);
-
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
 	pub fn into_inner(self) -> InternalResult<T> {
@@ -97,20 +92,18 @@ impl<T> Archive<T> {
 
 	/// Prevents redundant function writing
 	#[inline(never)]
-	fn process_raw(
-		dependencies: ProcessDependencies, independent: (&RegistryEntry, &str, Vec<u8>),
-	) -> InternalResult<(Vec<u8>, bool)> {
+	fn process(&self, values: (&RegistryEntry, &str, Vec<u8>)) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		// buffer_a originally contains the raw data
-		let (entry, id, mut buffer_a) = independent;
+		let (entry, id, mut buffer_a) = values;
 		let buffer_b;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 		#[cfg(feature = "crypto")]
-		if let Some(pk) = dependencies.1 {
+		if let Some(pk) = self.key {
 			let raw_size = buffer_a.len();
 
 			// If there is an error the data is flagged as invalid
@@ -126,7 +119,7 @@ impl<T> Archive<T> {
 		// 1: Decryption layer
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
 			#[cfg(feature = "crypto")]
-			match dependencies.0 {
+			match self.decryptor.as_ref() {
 				Some(dc) => {
 					buffer_b = dc.decrypt(&buffer_a)?;
 				},
@@ -301,12 +294,8 @@ where
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
 
-			#[cfg(feature = "crypto")]
-			let dependencies = (&self.decryptor, &self.key);
-			#[cfg(not(feature = "crypto"))]
-			let dependencies = ();
-
-			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
+			// Decompress and|or decrypt the data
+			let (buffer, is_secure) = self.process(independent)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
@@ -332,12 +321,8 @@ where
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
 
-			#[cfg(feature = "crypto")]
-			let dependencies = (&self.decryptor, &self.key);
-			#[cfg(not(feature = "crypto"))]
-			let dependencies = ();
-
-			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
+			// Decompress and|or decrypt the data
+			let (buffer, is_secure) = self.process(independent)?;
 
 			io::copy(&mut buffer.as_slice(), &mut target)?;
 			Ok((entry.flags, entry.content_version, is_secure))
