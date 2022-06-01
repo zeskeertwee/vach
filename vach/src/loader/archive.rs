@@ -45,7 +45,7 @@ pub struct Archive<T> {
 
 impl<T> std::fmt::Display for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let total_size = self
+		let bytes = self
 			.entries
 			.iter()
 			.map(|(_, entry)| entry.offset)
@@ -54,11 +54,10 @@ impl<T> std::fmt::Display for Archive<T> {
 
 		write!(
 			f,
-			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {}B, Header-Flags: <{:#x} : {:#016b}>",
+			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {bytes}B, Header-Flags: <{:#x} : {:#016b}>",
 			self.header.arch_version,
 			self.header.magic,
 			self.entries.len(),
-			total_size,
 			self.header.flags.bits,
 			self.header.flags.bits,
 		)
