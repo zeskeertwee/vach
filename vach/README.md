@@ -42,7 +42,7 @@ let archive = Archive::from_handle(source)?;
 let resource: Resource = archive.fetch("footstep.wav")?;
 
 // By default all resources are flagged as NOT secure
-assert!(!resource.secured);
+assert!(!resource.authenticated);
 
 // Use the data
 use my_crate::Sound;

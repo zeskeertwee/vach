@@ -54,9 +54,9 @@ let target = File::open("sounds.vach")?;
 let archive = Archive::from_handle(target)?;
 let resource: Resource = archive.fetch("ambient")?;
 
-// By default all resources are flagged as NOT secured
+// By default all resources are flagged as NOT authenticated
 println!("{}", Sound::new(&resource.data)?);
-assert!(!resource.secured);
+assert!(!resource.authenticated);
 
 let mut buffer = Vec::new();
 let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
@@ -126,7 +126,7 @@ let archive = Archive::with_config(target, &config)?;
 // Resources are marked as secure (=true) if the signatures match the data
 let resource = archive.fetch("ambient")?;
 println!("{}", Sound::new(&resource.data)?);
-assert!(resource.secured);
+assert!(resource.authenticated);
 ```
 */
 

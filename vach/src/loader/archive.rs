@@ -90,7 +90,7 @@ impl<T> Archive<T> {
 		}
 	}
 
-	/// Prevents redundant function writing
+	// Decompress and|or decrypt the data
 	#[inline(never)]
 	fn process(&self, values: (&RegistryEntry, &str, Vec<u8>)) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
@@ -301,7 +301,7 @@ where
 				content_version: entry.content_version,
 				flags: entry.flags,
 				data: buffer,
-				secured: is_secure,
+				authenticated: is_secure,
 			})
 		} else {
 			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));

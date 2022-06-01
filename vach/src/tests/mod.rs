@@ -159,7 +159,7 @@ fn simple_fetch() -> InternalResult<()> {
 		assert_eq!(resource.data.len(), 345);
 	}
 
-	assert!(!resource.secured);
+	assert!(!resource.authenticated);
 	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
 
 	println!("{}", String::from_utf8(resource.data).unwrap());
@@ -214,12 +214,12 @@ fn fetch_with_signature() -> InternalResult<()> {
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
-	assert!(!not_signed_resource.secured);
+	assert!(!not_signed_resource.authenticated);
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
-	assert!(!not_signed_resource.secured);
+	assert!(!not_signed_resource.authenticated);
 
 	// Check authenticity of retrieved data
 	println!("{}", song);
@@ -234,7 +234,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 		assert_eq!(song.len(), 1977);
 	}
 
-	assert!(resource.secured);
+	assert!(resource.authenticated);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
 	Ok(())
@@ -345,7 +345,7 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 		assert_eq!(song.len(), 1977);
 	}
 
-	assert!(resource.secured);
+	assert!(resource.authenticated);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
 

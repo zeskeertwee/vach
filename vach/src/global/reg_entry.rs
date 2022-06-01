@@ -44,7 +44,6 @@ impl RegistryEntry {
 	/// ### Errors
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(Self, String)> {
-		#![allow(clippy::uninit_assumed_init)]
 		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = [0u8; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
