@@ -270,7 +270,7 @@ where
 	T: Read + Seek,
 {
 	/// Fetch a [`Resource`] with the given `ID`.
-	/// If the `ID` does not exist within the source, `Err(---)` is returned.
+	/// If the `ID` does not exist within the source, [`InternalError::MissingResourceError`] is returned.
 	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
@@ -295,10 +295,7 @@ where
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
 	/// Returns a tuple containing the `Flags`, `content_version` and `authenticity` (boolean) of the data.
-	/// ### Errors
-	///  - If no leaf with the specified `ID` exists
-	///  - Any `io::Seek(-)` errors
-	///  - Other `io` related errors
+	/// If no leaf with the specified `ID` exists, [`InternalError::MissingResourceError`] is returned.
 	pub fn fetch_write(&self, id: impl AsRef<str>, target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
