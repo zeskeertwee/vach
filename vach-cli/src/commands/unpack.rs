@@ -4,7 +4,7 @@ use std::io::{Read, Seek};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use vach::prelude::{HeaderConfig, Archive, InternalError};
+use vach::prelude::{ArchiveConfig, Archive, InternalError};
 use vach::rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use vach::utils;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -65,8 +65,8 @@ impl CommandTrait for Evaluator {
 			Err(err) => anyhow::bail!("IOError: {} @ {}", err, input_path),
 		};
 
-		// Generate HeaderConfig using given magic and public key
-		let header_config = HeaderConfig::new(magic, public_key);
+		// Generate ArchiveConfig using given magic and public key
+		let header_config = ArchiveConfig::new(magic, public_key);
 
 		// Parse then extract archive
 		let archive = match Archive::with_config(input_file, &header_config) {

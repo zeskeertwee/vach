@@ -93,7 +93,7 @@ let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH];
 public_key.read_exact(&mut public_key_bytes)?;
 
 // Build the Loader config
-let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
+let mut config = ArchiveConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
 
 let target = File::open("sounds.vach")?;
 let archive = Archive::with_config(target, &config)?;
@@ -177,7 +177,7 @@ pub const MAGIC_LENGTH: usize = 5;
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
 	pub use crate::global::{
-		error::InternalError, result::InternalResult, flags::Flags, header::HeaderConfig, reg_entry::RegistryEntry,
+		error::InternalError, result::InternalResult, flags::Flags, header::ArchiveConfig, reg_entry::RegistryEntry,
 	};
 
 	#[cfg(feature = "crypto")]
@@ -215,7 +215,7 @@ pub mod builder {
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
-		reg_entry::RegistryEntry, header::HeaderConfig, error::InternalError, result::InternalResult, flags::Flags,
+		reg_entry::RegistryEntry, header::ArchiveConfig, error::InternalError, result::InternalResult, flags::Flags,
 	};
 	#[cfg(feature = "compression")]
 	pub use crate::global::compressor::CompressionAlgorithm;

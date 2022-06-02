@@ -38,7 +38,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut b_config = BuilderConfig::default().magic(*MAGIC);
 	b_config.load_keypair(keypair_bytes).unwrap();
 
-	let mut h_config = HeaderConfig::default().magic(*MAGIC);
+	let mut h_config = ArchiveConfig::default().magic(*MAGIC);
 	h_config.load_public_key(&keypair_bytes[32..]).unwrap();
 
 	/* BUILDER BENCHMARKS */

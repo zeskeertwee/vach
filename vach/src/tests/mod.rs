@@ -79,7 +79,7 @@ fn defaults() {
 	// We still need to conduct tests on them tho.
 	use crate::global::header::Header;
 
-	let _header_config = HeaderConfig::default();
+	let _header_config = ArchiveConfig::default();
 	let _header = Header::default();
 	let _registry_entry = RegistryEntry::empty();
 	let _leaf = Leaf::default();
@@ -95,8 +95,8 @@ fn header_config() -> InternalResult<()> {
 	use std::io::Read;
 	use crate::global::header::Header;
 
-	// When "crypto" features is turned off `HeaderConfig::new(*b"VfACH")` takes a single argument
-	let config = HeaderConfig::new(*b"VfACH");
+	// When "crypto" features is turned off `ArchiveConfig::new(*b"VfACH")` takes a single argument
+	let config = ArchiveConfig::new(*b"VfACH");
 	println!("{}", &config);
 
 	let mut header_data = [0u8; Header::BASE_SIZE];
@@ -203,7 +203,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
-	let mut config = HeaderConfig::default();
+	let mut config = ArchiveConfig::default();
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
@@ -246,7 +246,7 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
-	let mut config = HeaderConfig::default();
+	let mut config = ArchiveConfig::default();
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
@@ -324,7 +324,7 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
 	// Load keypair
-	let mut config = HeaderConfig::default();
+	let mut config = ArchiveConfig::default();
 	let public_key = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(public_key)?;
 
@@ -387,7 +387,7 @@ fn consolidated_example() -> InternalResult<()> {
 	println!("Building took: {}us", then.elapsed().as_micros());
 
 	// Load data
-	let mut config = HeaderConfig::default().magic(*MAGIC);
+	let mut config = ArchiveConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let then = Instant::now();

@@ -2,7 +2,7 @@ use std::fs::File;
 
 use tabled::{Style, Table, Tabled, Modify, Full, MaxWidth, Alignment, Columns};
 use vach::{
-	prelude::{HeaderConfig, Archive, Flags},
+	prelude::{ArchiveConfig, Archive, Flags},
 	archive::{CompressionAlgorithm, RegistryEntry},
 };
 use indicatif::HumanBytes;
@@ -47,7 +47,7 @@ impl CommandTrait for Evaluator {
 		};
 
 		let file = File::open(archive_path)?;
-		let archive = Archive::with_config(file, &HeaderConfig::new(magic, None))?;
+		let archive = Archive::with_config(file, &ArchiveConfig::new(magic, None))?;
 
 		if archive.entries().is_empty() {
 			println!("{}", archive);

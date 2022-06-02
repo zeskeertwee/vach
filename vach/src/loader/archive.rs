@@ -10,7 +10,7 @@ use crate::{
 	global::{
 		error::InternalError,
 		flags::Flags,
-		header::{Header, HeaderConfig},
+		header::{Header, ArchiveConfig},
 		reg_entry::RegistryEntry,
 		result::InternalResult,
 	},
@@ -24,7 +24,7 @@ use crate::global::compressor::{Compressor, CompressionAlgorithm};
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
-/// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`].
+/// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`ArchiveConfig`].
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
 #[derive(Debug)]
@@ -159,23 +159,23 @@ where
 	/// Load an [`Archive`] with the default settings from a source.
 	/// The same as doing:
 	/// ```ignore
-	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
+	/// Archive::with_config(HANDLE, &ArchiveConfig::default())?;
 	/// ```
 	/// ### Errors
 	/// - If the internal call to `Archive::with_config(-)` returns an error
 	#[inline(always)]
 	pub fn from_handle(handle: T) -> InternalResult<Archive<T>> {
-		Archive::with_config(handle, &HeaderConfig::default())
+		Archive::with_config(handle, &ArchiveConfig::default())
 	}
 
 	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
-	/// Pass a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
+	/// Pass a reference to [ArchiveConfig] and it will be used to validate the source and for further configuration.
 	/// ### Errors
 	///  - If parsing fails, an `Err(---)` is returned.
 	///  - The archive fails to validate
 	///  - `io` errors
 	///  - If any `ID`s are not valid UTF-8
-	pub fn with_config(mut handle: T, config: &HeaderConfig) -> InternalResult<Archive<T>> {
+	pub fn with_config(mut handle: T, config: &ArchiveConfig) -> InternalResult<Archive<T>> {
 		// Start reading from the start of the input
 		handle.seek(SeekFrom::Start(0))?;
 
@@ -229,21 +229,19 @@ where
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
 		let mut buffer = Vec::with_capacity(entry.offset as usize);
 
-		{
-			let mut guard = match self.handle.lock() {
-				Ok(guard) => guard,
-				Err(_) => {
-					return Err(InternalError::SyncError(
-						"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
-					))
-				},
-			};
+		let mut guard = match self.handle.lock() {
+			Ok(guard) => guard,
+			Err(_) => {
+				return Err(InternalError::SyncError(
+					"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
+				))
+			},
+		};
 
-			guard.seek(SeekFrom::Start(entry.location))?;
-			let mut take = guard.by_ref().take(entry.offset);
+		guard.seek(SeekFrom::Start(entry.location))?;
+		let mut take = guard.by_ref().take(entry.offset);
 
-			take.read_to_end(&mut buffer)?;
-		}
+		take.read_to_end(&mut buffer)?;
 
 		Ok(buffer)
 	}
@@ -301,7 +299,7 @@ where
 	///  - If no leaf with the specified `ID` exists
 	///  - Any `io::Seek(-)` errors
 	///  - Other `io` related errors
-	pub fn fetch_write(&self, id: impl AsRef<str>, mut target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
+	pub fn fetch_write(&self, id: impl AsRef<str>, target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
 
@@ -311,7 +309,7 @@ where
 			// Decompress and|or decrypt the data
 			let (buffer, is_secure) = self.process(independent)?;
 
-			io::copy(&mut buffer.as_slice(), &mut target)?;
+			io::copy(&mut buffer.as_slice(), target)?;
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
 			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));

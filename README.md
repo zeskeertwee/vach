@@ -145,7 +145,7 @@ let keypair :     Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH] = include_bytes!(PUBLIC_KEY);
 
 // Build the Loader config
-let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
+let mut config = ArchiveConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
 
 let target = File::open("sounds.vach")?;
 let archive = Archive::with_config(target, &config)?;
@@ -180,7 +180,7 @@ builder.add_leaf(Leaf::from_handle(data_3).id("d3").compress(CompressMode::Detec
 builder.dump(&mut target, &config)?;
 
 // Load data
-let config = HeaderConfig::default().magic(*MAGIC);
+let config = ArchiveConfig::default().magic(*MAGIC);
 let archive = Archive::with_config(target, &config)?;
 
 // Quick assertions
