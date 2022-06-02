@@ -27,6 +27,7 @@ use crate::global::compressor::{Compressor, CompressionAlgorithm};
 /// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`].
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
+#[derive(Debug)]
 pub struct Archive<T> {
 	/// Wrapping `handle` in a Mutex means that we only ever lock when reading from the underlying buffer, thus ensuring maximum performance across threads
 	/// Since all the other work is done per thread
@@ -61,19 +62,6 @@ impl<T> std::fmt::Display for Archive<T> {
 			self.header.flags.bits,
 			self.header.flags.bits,
 		)
-	}
-}
-
-impl<T> std::fmt::Debug for Archive<T> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let mut f = f.debug_struct("Archive");
-		f.field("header", &self.header);
-		f.field("entries", &self.entries);
-
-		#[cfg(feature = "crypto")]
-		f.field("key", &self.key);
-
-		f.finish()
 	}
 }
 

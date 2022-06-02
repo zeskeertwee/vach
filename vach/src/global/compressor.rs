@@ -1,10 +1,7 @@
 #![cfg(feature = "compression")]
 #![cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 
-use std::{
-	fmt::Debug,
-	io::{self, Read, Write},
-};
+use std::io::{self, Read, Write};
 use crate::prelude::Flags;
 
 use super::{error::InternalError, result::InternalResult};
