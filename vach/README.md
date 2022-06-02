@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/zeskeertwee/vach/main/media/logo.png" alt=".vach logo" width="180" height="180">
+  <img src="media/logo.png" alt=".vach logo" width="180" height="180">
 </p>
 <h1 align=center>
   <strong>vach</strong>
