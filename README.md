@@ -36,7 +36,7 @@
 ### 🤷 Who is what, when where?
 
 - **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
-- **vach-cli:** A CLI tool for dealing with `.vach` files.
+- **vach-cli:** A CLI tool for dealing with `.vach` files, <a href="https://crates.io/crates/vach-cli"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach-cli?style=flat-square"></a>.
 
 ---
 

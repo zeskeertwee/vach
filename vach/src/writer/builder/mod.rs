@@ -133,7 +133,7 @@ impl<'a> Builder<'a> {
 
 	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
 	/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
-	/// Wraps the `target` in [BufWriter].
+	/// Wraps the `target` in [BufWriter]. Also calls `io::Seek` on the target, so no need for calling it externally for synchronization.
 	/// ### Errors
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
