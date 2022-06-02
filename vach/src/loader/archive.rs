@@ -219,7 +219,7 @@ where
 		{
 			Ok(Archive {
 				header,
-				handle,
+				handle: Mutex::new(handle),
 				entries,
 			})
 		}

@@ -51,7 +51,7 @@ impl<'a> Builder<'a> {
 	}
 
 	/// Appends a read handle wrapped in a [`Leaf`] into the processing queue.
-	/// The `data` is wrapped in the default [`Leaf`].
+	/// The `data` is wrapped in the default [`Leaf`], without cloning the original data.
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
@@ -229,7 +229,7 @@ impl<'a> Builder<'a> {
 
 		// Populate the archive glob
 		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult<()> {
-			let mut entry = leaf.to_registry_entry();
+			let mut entry: RegistryEntry = leaf.into();
 			let mut raw = Vec::new();
 
 			// Compression comes first
@@ -248,7 +248,7 @@ impl<'a> Builder<'a> {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
 
-					let mut compressed_data = vec![];
+					let mut compressed_data = Vec::new();
 					Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
 
 					if compressed_data.len() <= buffer.len() {

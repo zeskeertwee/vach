@@ -29,7 +29,7 @@ impl Encryptor {
 
 		// Build Nonce
 		let key = Key::from_slice(bytes);
-		let mut v = [178, 5, 239, 228, 165, 44, 169].to_vec();
+		let mut v = vec![178, 5, 239, 228, 165, 44, 169];
 		v.extend_from_slice(&magic);
 
 		Encryptor {
