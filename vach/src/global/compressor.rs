@@ -23,7 +23,7 @@ impl<'a, T: Read> Compressor<T> {
 		Compressor { data }
 	}
 	/// Pass in a compression algorithm to use, sit back and let the compressor do it's job
-	pub fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
+	pub fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut compressor = lz4::frame::FrameEncoder::new(output);
@@ -50,7 +50,7 @@ impl<'a, T: Read> Compressor<T> {
 		}
 	}
 	/// Pass in a compression algorithm to use, sit back and let the decompressor do it's job. That is if the compressed data *is* compressed with the adjacent algorithm
-	pub fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult<()> {
+	pub fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut rdr = lz4::frame::FrameDecoder::new(&mut self.data);

@@ -23,7 +23,7 @@ const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 #[test]
 #[cfg(feature = "loader")]
-fn custom_bitflags() -> InternalResult<()> {
+fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
@@ -90,7 +90,7 @@ fn defaults() {
 
 #[test]
 #[cfg(not(feature = "crypto"))]
-fn header_config() -> InternalResult<()> {
+fn header_config() -> InternalResult {
 	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
 	use std::io::Read;
 	use crate::global::header::Header;
@@ -110,7 +110,7 @@ fn header_config() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
-fn builder_no_signature() -> InternalResult<()> {
+fn builder_no_signature() -> InternalResult {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
 
@@ -144,7 +144,7 @@ fn builder_no_signature() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "loader"))]
-fn simple_fetch() -> InternalResult<()> {
+fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
 	let resource = archive.fetch("poem")?;
@@ -173,7 +173,7 @@ fn simple_fetch() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "builder", feature = "crypto"))]
-fn builder_with_signature() -> InternalResult<()> {
+fn builder_with_signature() -> InternalResult {
 	let mut builder = Builder::default();
 
 	let cb = |_: &str, entry: &RegistryEntry| {
@@ -199,7 +199,7 @@ fn builder_with_signature() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "loader", feature = "crypto"))]
-fn fetch_with_signature() -> InternalResult<()> {
+fn fetch_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -242,7 +242,7 @@ fn fetch_with_signature() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "loader", feature = "crypto"))]
-fn fetch_write_with_signature() -> InternalResult<()> {
+fn fetch_write_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
@@ -275,8 +275,8 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 
 #[test]
 #[cfg(feature = "crypto")]
-fn edcryptor_test() -> InternalResult<()> {
-	use crate::utils::gen_keypair;
+fn edcryptor_test() -> InternalResult {
+	use crate::crypto_utils::gen_keypair;
 	use crate::crypto::Encryptor;
 
 	let pk = gen_keypair().public;
@@ -294,7 +294,7 @@ fn edcryptor_test() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "builder", feature = "crypto"))]
-fn builder_with_encryption() -> InternalResult<()> {
+fn builder_with_encryption() -> InternalResult {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
 	let mut build_config = BuilderConfig::default();
@@ -320,7 +320,7 @@ fn builder_with_encryption() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "loader", feature = "crypto"))]
-fn fetch_from_encrypted() -> InternalResult<()> {
+fn fetch_from_encrypted() -> InternalResult {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
 	// Load keypair
@@ -354,8 +354,8 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "builder", feature = "loader", feature = "crypto"))]
-fn consolidated_example() -> InternalResult<()> {
-	use crate::utils::{gen_keypair, read_keypair};
+fn consolidated_example() -> InternalResult {
+	use crate::crypto_utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
 
 	const MAGIC: &[u8; 5] = b"CSDTD";
@@ -409,7 +409,7 @@ fn consolidated_example() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
-fn test_compressors() -> InternalResult<()> {
+fn test_compressors() -> InternalResult {
 	use std::io::Cursor;
 	const INPUT_LEN: usize = 4096;
 
@@ -468,7 +468,7 @@ fn test_compressors() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "multithreaded", feature = "builder", feature = "loader"))]
-fn test_batch_fetching() -> InternalResult<()> {
+fn test_batch_fetching() -> InternalResult {
 	use std::{io::Cursor, collections::HashMap};
 	use rayon::prelude::*;
 

@@ -55,7 +55,7 @@ impl<'a> Builder<'a> {
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
-	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult<()> {
+	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
 		let leaf = Leaf::from_handle(data)
 			.id(id.as_ref().to_string())
 			.template(&self.leaf_template);
@@ -76,7 +76,7 @@ impl<'a> Builder<'a> {
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
-	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult<()> {
+	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -106,7 +106,7 @@ impl<'a> Builder<'a> {
 	/// [`Leaf`]s added directly do not implement data from the [`Builder`]s internal template.
 	/// ### Errors
 	/// - Returns an error if a [`Leaf`] with the specified `ID` exists.
-	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult<()> {
+	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult {
 		// Make sure no two leaves are written with the same ID
 		if !self.id_set.insert(leaf.id.clone()) {
 			return Err(InternalError::LeafAppendError(leaf.id));
@@ -228,7 +228,7 @@ impl<'a> Builder<'a> {
 		}
 
 		// Populate the archive glob
-		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult<()> {
+		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult {
 			let mut entry: RegistryEntry = leaf.into();
 			let mut raw = Vec::new();
 

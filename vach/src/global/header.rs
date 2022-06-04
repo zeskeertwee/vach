@@ -43,7 +43,7 @@ impl ArchiveConfig {
 
 	/// Shorthand to load and parse an ed25519 public key from a [`Read`] handle, into this [`ArchiveConfig`],
 	/// ```
-	/// use vach::{utils::gen_keypair, prelude::ArchiveConfig};
+	/// use vach::{crypto_utils::gen_keypair, prelude::ArchiveConfig};
 	/// let mut config = ArchiveConfig::default();
 	/// let keypair_bytes = gen_keypair().to_bytes();
 	/// config.load_public_key(&keypair_bytes[32..]).unwrap();
@@ -55,8 +55,8 @@ impl ArchiveConfig {
 	#[inline]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-	pub fn load_public_key<T: Read>(&mut self, handle: T) -> InternalResult<()> {
-		use crate::utils::read_public_key;
+	pub fn load_public_key<T: Read>(&mut self, handle: T) -> InternalResult {
+		use crate::crypto_utils::read_public_key;
 
 		self.public_key = Some(read_public_key(handle)?);
 		Ok(())
@@ -147,7 +147,7 @@ impl Header {
 	/// Validates a `Header` with a template [ArchiveConfig]
 	/// ### Errors
 	///  - (in)validation of magic and archive version
-	pub fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult<()> {
+	pub fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult {
 		// Validate magic
 		if header.magic != config.magic {
 			return Err(InternalError::MalformedArchiveSource(header.magic));
