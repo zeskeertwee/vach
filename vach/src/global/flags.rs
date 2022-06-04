@@ -2,7 +2,7 @@ use std::fmt;
 use super::{error::InternalError, result::InternalResult};
 
 /// Abstracted flag access and manipulation `struct`.
-/// A knock-off minimal bitflags of sorts.
+/// A knock-off minimal [bitflags](https://crates.io/crates/bitflags) of sorts.
 #[derive(Copy, Clone, Default, PartialEq)]
 pub struct Flags {
 	pub(crate) bits: u32,

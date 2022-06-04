@@ -1,6 +1,3 @@
-<p align="center">
-  <img src="media/logo.png" alt=".vach logo" width="180" height="180">
-</p>
 <h1 align=center>
   <strong>vach</strong>
 </h1>
