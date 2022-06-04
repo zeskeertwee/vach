@@ -358,7 +358,7 @@ fn consolidated_example() -> InternalResult {
 	use crate::crypto_utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
 
-	const MAGIC: &[u8; 5] = b"CSDTD";
+	const MAGIC: &[u8; crate::MAGIC_LENGTH] = b"CSDTD";
 	let mut target = Cursor::new(Vec::<u8>::new());
 
 	// Data to be written

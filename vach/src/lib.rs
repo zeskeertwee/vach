@@ -168,11 +168,11 @@ pub const SIGNATURE_LENGTH: usize = 64;
 /// Maximum size for any ID
 pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
 
-/// The default MAGIC used by `vach`
-pub const DEFAULT_MAGIC: &[u8; 5] = b"VfACH";
-
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;
+
+/// The default MAGIC used by `vach`
+pub const DEFAULT_MAGIC: &[u8; crate::MAGIC_LENGTH] = b"VfACH";
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
