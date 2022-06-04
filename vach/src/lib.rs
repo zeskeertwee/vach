@@ -15,7 +15,7 @@
 - **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
 
 ### 🔫 Cargo Features
-- `loader` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `loader` feature but a tool for packing assets would only need the `builder` feature.
+- `archive` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `archive` feature but a tool for packing assets would only need the `builder` feature.
 - `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types. This allows for the auto-parallelization of the `Builder::dump(---)` function.
 - `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
 - `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
@@ -133,8 +133,8 @@ let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 mod tests;
 
 pub(crate) mod global;
-#[cfg(feature = "loader")]
-#[cfg_attr(docsrs, doc(cfg(feature = "loader")))]
+#[cfg(feature = "archive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
 pub(crate) mod loader;
 
 #[cfg(feature = "builder")]
@@ -183,7 +183,7 @@ pub mod prelude {
 	#[cfg(feature = "crypto")]
 	pub use crate::crypto::*;
 
-	#[cfg(feature = "loader")]
+	#[cfg(feature = "archive")]
 	pub use crate::archive::*;
 
 	#[cfg(feature = "builder")]
@@ -210,8 +210,8 @@ pub mod builder {
 }
 
 /// Loader-based logic and data-structures
-#[cfg(feature = "loader")]
-#[cfg_attr(docsrs, doc(cfg(feature = "loader")))]
+#[cfg(feature = "archive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{

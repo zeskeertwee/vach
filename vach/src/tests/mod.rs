@@ -22,7 +22,7 @@ const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 #[test]
-#[cfg(feature = "loader")]
+#[cfg(feature = "archive")]
 fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
@@ -73,7 +73,7 @@ fn flags_set_intersects() {
 }
 
 #[test]
-#[cfg(all(feature = "builder", feature = "loader"))]
+#[cfg(all(feature = "builder", feature = "archive"))]
 fn defaults() {
 	// The reason we are pulling the header directly from global namespace is because it's not exposed to the public API
 	// We still need to conduct tests on them tho.
@@ -143,7 +143,7 @@ fn builder_no_signature() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "compression", feature = "loader"))]
+#[cfg(all(feature = "compression", feature = "archive"))]
 fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
@@ -198,7 +198,7 @@ fn builder_with_signature() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "loader", feature = "crypto"))]
+#[cfg(all(feature = "archive", feature = "crypto"))]
 fn fetch_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -241,7 +241,7 @@ fn fetch_with_signature() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "loader", feature = "crypto"))]
+#[cfg(all(feature = "archive", feature = "crypto"))]
 fn fetch_write_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -319,7 +319,7 @@ fn builder_with_encryption() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "loader", feature = "crypto"))]
+#[cfg(all(feature = "archive", feature = "crypto"))]
 fn fetch_from_encrypted() -> InternalResult {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
@@ -353,7 +353,7 @@ fn fetch_from_encrypted() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "builder", feature = "loader", feature = "crypto"))]
+#[cfg(all(feature = "builder", feature = "archive", feature = "crypto"))]
 fn consolidated_example() -> InternalResult {
 	use crate::crypto_utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
@@ -467,7 +467,7 @@ fn test_compressors() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "multithreaded", feature = "builder", feature = "loader"))]
+#[cfg(all(feature = "multithreaded", feature = "builder", feature = "archive"))]
 fn test_batch_fetching() -> InternalResult {
 	use std::{io::Cursor, collections::HashMap};
 	use rayon::prelude::*;
