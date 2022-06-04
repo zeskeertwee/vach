@@ -4,7 +4,7 @@ use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughpu
 
 use rayon::iter::{ParallelIterator, IntoParallelRefIterator};
 use vach::prelude::*;
-use vach::utils::gen_keypair;
+use vach::crypto_utils::gen_keypair;
 
 // Remove io overhead by Sinking data into the void
 struct Sink;

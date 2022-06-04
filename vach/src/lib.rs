@@ -67,7 +67,7 @@ let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buf
 ```ignore
 use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig, Keypair};
-use vach::utils::gen_keypair;
+use vach::crypto_utils::gen_keypair;
 
 let keypair: Keypair = gen_keypair();
 let config: BuilderConfig = BuilderConfig::default().keypair(keypair);
@@ -110,7 +110,7 @@ As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](htt
 
 ```ignore
 use vach::prelude::{Keypair, SecretKey, PublicKey};
-use vach::utils::gen_keypair;
+use vach::crypto_utils::gen_keypair;
 
 // Generate keys
 let keypair : Keypair  = gen_keypair();
@@ -222,4 +222,4 @@ pub mod archive {
 }
 
 /// Some utility functions to keep you happy
-pub mod utils;
+pub mod crypto_utils;

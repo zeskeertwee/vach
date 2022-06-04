@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use vach::prelude::{ArchiveConfig, Archive, InternalError};
 use vach::rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use vach::utils;
+use vach::crypto_utils;
 use indicatif::{ProgressBar, ProgressStyle};
 
 use super::CommandTrait;
@@ -46,12 +46,12 @@ impl CommandTrait for Evaluator {
 					Err(err) => anyhow::bail!("IOError: {} @ {}", err, path),
 				};
 
-				Some(utils::read_keypair(file)?.public)
+				Some(crypto_utils::read_keypair(file)?.public)
 			},
 			None => match args.value_of(key_names::PUBLIC_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(utils::read_public_key(file)?)
+					Some(crypto_utils::read_public_key(file)?)
 				},
 				None => None,
 			},

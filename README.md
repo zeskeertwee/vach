@@ -94,7 +94,7 @@ let (flags, content_version, is_authenticated) = archive.fetch_write("ftstep", &
 ```rust
 use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig, Keypair};
-use vach::utils::gen_keypair;
+use vach::crypto_utils::gen_keypair;
 
 let keypair:      Keypair = gen_keypair();
 let config:       BuilderConfig = BuilderConfig::default().keypair(keypair);
@@ -120,7 +120,7 @@ As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](htt
 
 ```rust
 use vach::prelude::{Keypair, SecretKey, PublicKey};
-use vach::utils::gen_keypair;
+use vach::crypto_utils::gen_keypair;
 
 // Generate keys
 let keypair :   Keypair  = gen_keypair();

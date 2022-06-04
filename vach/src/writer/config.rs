@@ -1,6 +1,7 @@
+use std::io;
 use std::fmt::Debug;
 
-use crate::global::{flags::Flags, reg_entry::RegistryEntry};
+use crate::global::{flags::Flags, result::InternalResult, reg_entry::RegistryEntry};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -95,9 +96,9 @@ impl<'a> BuilderConfig<'a> {
 	// Keypair helpers
 	/// Parses and stores a keypair from a source.
 	/// ### Errors
-	/// If the call to `::utils::read_keypair()` fails to parse the data from the handle
+	/// If the call to `::crypto_utils::read_keypair()` fails to parse the data from the handle
 	#[cfg(feature = "crypto")]
-	pub fn load_keypair<T: std::io::Read>(&mut self, handle: T) -> crate::global::result::InternalResult {
+	pub fn load_keypair<T: io::Read>(&mut self, handle: T) -> InternalResult {
 		self.keypair = Some(crate::crypto_utils::read_keypair(handle)?);
 		Ok(())
 	}
