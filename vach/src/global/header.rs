@@ -150,7 +150,7 @@ impl Header {
 	pub fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult<()> {
 		// Validate magic
 		if header.magic != config.magic {
-			return Err(InternalError::InvalidArchive(header.magic));
+			return Err(InternalError::MalformedArchiveSource(header.magic));
 		};
 
 		// Validate version

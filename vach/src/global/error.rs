@@ -16,9 +16,10 @@ pub enum InternalError {
 	/// A thin wrapper over [io::Error](std::io::Error), captures all IO errors
 	#[error("[VachError::IOError] {0}")]
 	IOError(#[from] io::Error),
-	/// Thrown when the loader fails to validate an archive source, ie it's MAGIC sequence
+	/// Thrown when the archive finds an invalid MAGIC sequence in the given source, hinting at corruption or possible incompatibility with the given source
+	/// You can customize the MAGIC in the [`Builder`](crate::builder::BuilderConfig) and use in the the [`ArchiveConfig`](crate::archive::ArchiveConfig)
 	#[error("[VachError::ValidationError] Invalid magic found in Header, possible incompatibility with given source. Magic found {0:?}")]
-	InvalidArchive([u8; crate::MAGIC_LENGTH]),
+	MalformedArchiveSource([u8; crate::MAGIC_LENGTH]),
 	/// Thrown by `Archive::fetch(---)` when a given resource is not found
 	#[error("[VachError::MissingResourceError] Resource not found: {0}")]
 	MissingResourceError(String),
@@ -38,8 +39,8 @@ pub enum InternalError {
 	/// When a [`Leaf`](crate::builder::Leaf) has an ID that is longer than `crate::MAX_ID_LENGTH`, contains the overflowing `ID`
 	#[error("[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {0} has an overflowing ID of length: {}", crate::MAX_ID_LENGTH, .0.len())]
 	IDSizeOverflowError(String),
-	/// An error that is thrown when the current loader attempts to load an incompatible version, contains the incompatible version
-	#[error("The provided archive source has version: {}. While the loader has a spec-version: {}. The current loader is incompatible!", .0, crate::VERSION)]
+	/// An error that is thrown when the current archive attempts to load an incompatible version, contains the incompatible version
+	#[error("The provided archive source has version: {}. While the current implementation has a spec-version: {}. The provided source is incompatible!", .0, crate::VERSION)]
 	IncompatibleArchiveVersionError(u16),
 	/// An error that is thrown when if `Mutex` is poisoned, when a message doesn't go though an `mspc::sync_channel` or other sync related issues
 	#[error("[VachError::SyncError] {0}")]

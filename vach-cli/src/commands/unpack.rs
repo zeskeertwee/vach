@@ -75,7 +75,7 @@ impl CommandTrait for Evaluator {
 				InternalError::NoKeypairError => anyhow::bail!(
 					"Please provide a public key or a keypair for use in decryption or signature verification"
 				),
-				InternalError::InvalidArchive(_) => anyhow::bail!("Unable to validate the archive: {}", err),
+				InternalError::MalformedArchiveSource(_) => anyhow::bail!("Unable to validate the archive: {}", err),
 				err => anyhow::bail!("Encountered an error: {}", err.to_string()),
 			},
 		};
