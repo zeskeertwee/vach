@@ -1,7 +1,7 @@
 use crate::global::flags::Flags;
 
 use std::{io::Read, fmt};
-use super::{error::InternalError, result::InternalResult};
+use super::result::InternalResult;
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -44,7 +44,6 @@ impl RegistryEntry {
 	/// ### Errors
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(Self, String)> {
-		#![allow(clippy::uninit_assumed_init)]
 		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = [0u8; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
@@ -69,7 +68,9 @@ impl RegistryEntry {
 			// If the `crypto` feature is turned off then the bytes are just read then discarded
 			#[cfg(feature = "crypto")]
 			{
-				let sig: crypto::Signature = match sig_bytes.try_into() {
+				use super::error::InternalError;
+
+				let sig = match crypto::Signature::try_from(sig_bytes) {
 					Ok(sig) => sig,
 					Err(err) => return Err(InternalError::ParseError(err.to_string())),
 				};

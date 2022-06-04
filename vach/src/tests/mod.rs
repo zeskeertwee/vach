@@ -22,8 +22,8 @@ const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 #[test]
-#[cfg(feature = "loader")]
-fn custom_bitflags() -> InternalResult<()> {
+#[cfg(feature = "archive")]
+fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
@@ -73,13 +73,13 @@ fn flags_set_intersects() {
 }
 
 #[test]
-#[cfg(all(feature = "builder", feature = "loader"))]
+#[cfg(all(feature = "builder", feature = "archive"))]
 fn defaults() {
 	// The reason we are pulling the header directly from global namespace is because it's not exposed to the public API
 	// We still need to conduct tests on them tho.
 	use crate::global::header::Header;
 
-	let _header_config = HeaderConfig::default();
+	let _header_config = ArchiveConfig::default();
 	let _header = Header::default();
 	let _registry_entry = RegistryEntry::empty();
 	let _leaf = Leaf::default();
@@ -90,13 +90,13 @@ fn defaults() {
 
 #[test]
 #[cfg(not(feature = "crypto"))]
-fn header_config() -> InternalResult<()> {
+fn header_config() -> InternalResult {
 	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
 	use std::io::Read;
 	use crate::global::header::Header;
 
-	// When "crypto" features is turned off `HeaderConfig::new(*b"VfACH")` takes a single argument
-	let config = HeaderConfig::new(*b"VfACH");
+	// When "crypto" features is turned off `ArchiveConfig::new(*b"VfACH")` takes a single argument
+	let config = ArchiveConfig::new(*b"VfACH");
 	println!("{}", &config);
 
 	let mut header_data = [0u8; Header::BASE_SIZE];
@@ -104,15 +104,13 @@ fn header_config() -> InternalResult<()> {
 	file.read(&mut header_data)?;
 
 	let header = Header::from_handle(header_data.as_slice())?;
-	println!("{}", header);
-
-	Header::validate(&header, &config)?;
+	Header::validate(&config, &header)?;
 	Ok(())
 }
 
 #[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
-fn builder_no_signature() -> InternalResult<()> {
+fn builder_no_signature() -> InternalResult {
 	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
 
@@ -145,8 +143,8 @@ fn builder_no_signature() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(all(feature = "compression", feature = "loader"))]
-fn simple_fetch() -> InternalResult<()> {
+#[cfg(all(feature = "compression", feature = "archive"))]
+fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::from_handle(target)?;
 	let resource = archive.fetch("poem")?;
@@ -161,7 +159,7 @@ fn simple_fetch() -> InternalResult<()> {
 		assert_eq!(resource.data.len(), 345);
 	}
 
-	assert!(!resource.secured);
+	assert!(!resource.authenticated);
 	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
 
 	println!("{}", String::from_utf8(resource.data).unwrap());
@@ -175,7 +173,7 @@ fn simple_fetch() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "builder", feature = "crypto"))]
-fn builder_with_signature() -> InternalResult<()> {
+fn builder_with_signature() -> InternalResult {
 	let mut builder = Builder::default();
 
 	let cb = |_: &str, entry: &RegistryEntry| {
@@ -200,12 +198,12 @@ fn builder_with_signature() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(all(feature = "loader", feature = "crypto"))]
-fn fetch_with_signature() -> InternalResult<()> {
+#[cfg(all(feature = "archive", feature = "crypto"))]
+fn fetch_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
-	let mut config = HeaderConfig::default();
+	let mut config = ArchiveConfig::default();
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
@@ -216,12 +214,12 @@ fn fetch_with_signature() -> InternalResult<()> {
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
-	assert!(!not_signed_resource.secured);
+	assert!(!not_signed_resource.authenticated);
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
-	assert!(!not_signed_resource.secured);
+	assert!(!not_signed_resource.authenticated);
 
 	// Check authenticity of retrieved data
 	println!("{}", song);
@@ -236,19 +234,19 @@ fn fetch_with_signature() -> InternalResult<()> {
 		assert_eq!(song.len(), 1977);
 	}
 
-	assert!(resource.secured);
+	assert!(resource.authenticated);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
 	Ok(())
 }
 
 #[test]
-#[cfg(all(feature = "loader", feature = "crypto"))]
-fn fetch_write_with_signature() -> InternalResult<()> {
+#[cfg(all(feature = "archive", feature = "crypto"))]
+fn fetch_write_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
 	// Load keypair
-	let mut config = HeaderConfig::default();
+	let mut config = ArchiveConfig::default();
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
@@ -277,8 +275,8 @@ fn fetch_write_with_signature() -> InternalResult<()> {
 
 #[test]
 #[cfg(feature = "crypto")]
-fn edcryptor_test() -> InternalResult<()> {
-	use crate::utils::gen_keypair;
+fn edcryptor_test() -> InternalResult {
+	use crate::crypto_utils::gen_keypair;
 	use crate::crypto::Encryptor;
 
 	let pk = gen_keypair().public;
@@ -296,7 +294,7 @@ fn edcryptor_test() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "builder", feature = "crypto"))]
-fn builder_with_encryption() -> InternalResult<()> {
+fn builder_with_encryption() -> InternalResult {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
 
 	let mut build_config = BuilderConfig::default();
@@ -321,12 +319,12 @@ fn builder_with_encryption() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(all(feature = "loader", feature = "crypto"))]
-fn fetch_from_encrypted() -> InternalResult<()> {
+#[cfg(all(feature = "archive", feature = "crypto"))]
+fn fetch_from_encrypted() -> InternalResult {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
 	// Load keypair
-	let mut config = HeaderConfig::default();
+	let mut config = ArchiveConfig::default();
 	let public_key = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(public_key)?;
 
@@ -347,7 +345,7 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 		assert_eq!(song.len(), 1977);
 	}
 
-	assert!(resource.secured);
+	assert!(resource.authenticated);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
 
@@ -355,9 +353,9 @@ fn fetch_from_encrypted() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(all(feature = "builder", feature = "loader", feature = "crypto"))]
-fn consolidated_example() -> InternalResult<()> {
-	use crate::utils::{gen_keypair, read_keypair};
+#[cfg(all(feature = "builder", feature = "archive", feature = "crypto"))]
+fn consolidated_example() -> InternalResult {
+	use crate::crypto_utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
 
 	const MAGIC: &[u8; 5] = b"CSDTD";
@@ -389,7 +387,7 @@ fn consolidated_example() -> InternalResult<()> {
 	println!("Building took: {}us", then.elapsed().as_micros());
 
 	// Load data
-	let mut config = HeaderConfig::default().magic(*MAGIC);
+	let mut config = ArchiveConfig::default().magic(*MAGIC);
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let then = Instant::now();
@@ -411,7 +409,7 @@ fn consolidated_example() -> InternalResult<()> {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
-fn test_compressors() -> InternalResult<()> {
+fn test_compressors() -> InternalResult {
 	use std::io::Cursor;
 	const INPUT_LEN: usize = 4096;
 
@@ -469,9 +467,10 @@ fn test_compressors() -> InternalResult<()> {
 }
 
 #[test]
-#[cfg(all(feature = "multithreaded", feature = "builder", feature = "loader"))]
-fn test_batch_fetching() -> InternalResult<()> {
-	use std::io::Cursor;
+#[cfg(all(feature = "multithreaded", feature = "builder", feature = "archive"))]
+fn test_batch_fetching() -> InternalResult {
+	use std::{io::Cursor, collections::HashMap};
+	use rayon::prelude::*;
 
 	// Define input constants
 	const INPUT_LEN: usize = 8;
@@ -496,7 +495,11 @@ fn test_batch_fetching() -> InternalResult<()> {
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
 	let archive = Archive::from_handle(target)?;
-	let mut resources = archive.fetch_batch(ids.iter().map(|id| id.as_str()), None)?;
+	let mut resources = ids
+		.as_slice()
+		.par_iter()
+		.map(|id| (id.as_str(), archive.fetch(&id)))
+		.collect::<HashMap<_, _>>();
 
 	// Tests and checks
 	assert!(resources.get("NON_EXISTENT").is_none());
@@ -507,7 +510,6 @@ fn test_batch_fetching() -> InternalResult<()> {
 		Err(err) => match err {
 			InternalError::MissingResourceError(_) => {
 				resources.remove("ERRORS");
-				drop(ids);
 			},
 
 			specific => return Err(specific),

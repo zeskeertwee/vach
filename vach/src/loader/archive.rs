@@ -2,7 +2,7 @@ use std::{
 	str,
 	io::{self, Read, Seek, SeekFrom, Write},
 	collections::HashMap,
-	sync::{Arc, Mutex},
+	sync::Mutex,
 };
 
 use super::resource::Resource;
@@ -10,7 +10,7 @@ use crate::{
 	global::{
 		error::InternalError,
 		flags::Flags,
-		header::{Header, HeaderConfig},
+		header::{Header, ArchiveConfig},
 		reg_entry::RegistryEntry,
 		result::InternalResult,
 	},
@@ -24,14 +24,20 @@ use crate::global::compressor::{Compressor, CompressionAlgorithm};
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
-/// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`HeaderConfig`]
+/// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`ArchiveConfig`].
 /// > **A word of advice:**
 /// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
+#[derive(Debug)]
 pub struct Archive<T> {
+	/// Wrapping `handle` in a Mutex means that we only ever lock when reading from the underlying buffer, thus ensuring maximum performance across threads
+	/// Since all the other work is done per thread
+	handle: Mutex<T>,
+
+	// Archive metadata
 	header: Header,
-	handle: Arc<Mutex<T>>,
 	entries: HashMap<String, RegistryEntry>,
 
+	// Optional parts
 	#[cfg(feature = "crypto")]
 	decryptor: Option<crypto::Encryptor>,
 	#[cfg(feature = "crypto")]
@@ -40,7 +46,7 @@ pub struct Archive<T> {
 
 impl<T> std::fmt::Display for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let total_size = self
+		let bytes = self
 			.entries
 			.iter()
 			.map(|(_, entry)| entry.offset)
@@ -49,128 +55,99 @@ impl<T> std::fmt::Display for Archive<T> {
 
 		write!(
 			f,
-			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {}B, Header-Flags: <{:#x} : {:#016b}>",
+			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {bytes}B, Header-Flags: <{:#x} : {:#016b}>",
 			self.header.arch_version,
 			self.header.magic,
 			self.entries.len(),
-			total_size,
 			self.header.flags.bits,
 			self.header.flags.bits,
 		)
 	}
 }
 
-impl<T> std::fmt::Debug for Archive<T> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let mut f = f.debug_struct("Archive");
-		f.field("header", &self.header);
-		f.field("entries", &self.entries);
-
-		#[cfg(feature = "crypto")]
-		f.field("key", &self.key);
-
-		f.finish()
-	}
-}
-
-#[cfg(not(feature = "crypto"))]
-type ProcessDependecies = ();
-#[cfg(feature = "crypto")]
-type ProcessDependecies<'a> = (&'a Option<crypto::Encryptor>, &'a Option<crypto::PublicKey>);
-
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
 	pub fn into_inner(self) -> InternalResult<T> {
-		match Arc::try_unwrap(self.handle) {
-			Ok(mutex) => match mutex.into_inner() {
-				Ok(inner) => Ok(inner),
-				Err(err) => Err(InternalError::SyncError(format!(
-					"Trying to consume a poisoned mutex {}",
-					err
-				))),
-			},
-			Err(_) => Err(InternalError::SyncError(
-				"Cannot consume this archive as other copy-references (ARC) to it exist".to_string(),
-			)),
+		match self.handle.into_inner() {
+			Ok(inner) => Ok(inner),
+			Err(err) => Err(InternalError::SyncError(format!(
+				"Trying to consume a poisoned mutex {}",
+				err
+			))),
 		}
 	}
 
-	/// Helps in parallelized `Resource` fetching
+	// Decompress and|or decrypt the data
 	#[inline(never)]
-	fn process_raw(
-		dependencies: ProcessDependecies, independent: (&RegistryEntry, &str, Vec<u8>),
-	) -> InternalResult<(Vec<u8>, bool)> {
+	fn process(&self, values: (&RegistryEntry, &str, Vec<u8>)) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
-		let (entry, id, mut raw) = independent;
+		// buffer_a originally contains the raw data
+		let (entry, id, mut buffer_a) = values;
+		let buffer_b;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 		#[cfg(feature = "crypto")]
-		if let Some(pk) = dependencies.1 {
-			let raw_size = raw.len();
+		if let Some(pk) = self.key {
+			let raw_size = buffer_a.len();
 
 			// If there is an error the data is flagged as invalid
-			raw.extend_from_slice(id.as_bytes());
+			buffer_a.extend_from_slice(id.as_bytes());
 			if let Some(signature) = entry.signature {
-				is_secure = pk.verify_strict(&raw, &signature).is_ok();
+				is_secure = pk.verify_strict(&buffer_a, &signature).is_ok();
 			}
 
-			raw.truncate(raw_size);
+			buffer_a.truncate(raw_size);
 		}
 
 		// Add read layers
 		// 1: Decryption layer
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
 			#[cfg(feature = "crypto")]
-			match dependencies.0 {
+			match self.decryptor.as_ref() {
 				Some(dc) => {
-					raw = dc.decrypt(&raw)?;
+					buffer_b = dc.decrypt(&buffer_a)?;
 				},
-				None => {
-					return Err(InternalError::NoKeypairError(format!(
-						"Encountered encrypted Resource: {} but no decryption key(public key) was provided",
-						id
-					)))
-				},
+				None => return Err(InternalError::NoKeypairError),
 			}
 
 			#[cfg(not(feature = "crypto"))]
 			{
-				return Err(InternalError::MissingFeatureError("crypto".to_string()));
+				return Err(InternalError::MissingFeatureError("crypto"));
 			}
+		} else {
+			buffer_b = buffer_a.clone();
 		}
 
 		// 2: Decompression layer
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 			#[cfg(feature = "compression")]
 			{
-				let mut buffer = vec![];
+				// Clear data in buffer_a
+				buffer_a.clear();
 
 				if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer)?
+					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer_a)?
 				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer)?
+					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer_a)?
 				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-					Compressor::new(raw.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer)?
+					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer_a)?
 				} else {
 					return InternalResult::Err(InternalError::OtherError(
 						format!("Unable to determine the compression algorithm used for entry with ID: {id}").into(),
 					));
 				};
-
-				raw = buffer
 			}
 
 			#[cfg(not(feature = "compression"))]
-			return Err(InternalError::MissingFeatureError("compression".to_string()));
+			return Err(InternalError::MissingFeatureError("compression"));
+		} else {
+			buffer_a = buffer_b;
 		};
 
-		let mut buffer = vec![];
-		raw.as_slice().read_to_end(&mut buffer)?;
-
-		Ok((buffer, is_secure))
+		Ok((buffer_a, is_secure))
 	}
 }
 
@@ -182,23 +159,23 @@ where
 	/// Load an [`Archive`] with the default settings from a source.
 	/// The same as doing:
 	/// ```ignore
-	/// Archive::with_config(HANDLE, &HeaderConfig::default())?;
+	/// Archive::with_config(HANDLE, &ArchiveConfig::default())?;
 	/// ```
 	/// ### Errors
 	/// - If the internal call to `Archive::with_config(-)` returns an error
 	#[inline(always)]
 	pub fn from_handle(handle: T) -> InternalResult<Archive<T>> {
-		Archive::with_config(handle, &HeaderConfig::default())
+		Archive::with_config(handle, &ArchiveConfig::default())
 	}
 
 	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
-	/// Pass a reference to `HeaderConfig` and it will be used to validate the source and for further configuration.
+	/// Pass a reference to [ArchiveConfig] and it will be used to validate the source and for further configuration.
 	/// ### Errors
 	///  - If parsing fails, an `Err(---)` is returned.
 	///  - The archive fails to validate
 	///  - `io` errors
 	///  - If any `ID`s are not valid UTF-8
-	pub fn with_config(mut handle: T, config: &HeaderConfig) -> InternalResult<Archive<T>> {
+	pub fn with_config(mut handle: T, config: &ArchiveConfig) -> InternalResult<Archive<T>> {
 		// Start reading from the start of the input
 		handle.seek(SeekFrom::Start(0))?;
 
@@ -231,7 +208,7 @@ where
 
 			Ok(Archive {
 				header,
-				handle: Arc::new(Mutex::new(handle)),
+				handle: Mutex::new(handle),
 				key: config.public_key,
 				entries,
 				decryptor,
@@ -242,7 +219,7 @@ where
 		{
 			Ok(Archive {
 				header,
-				handle: Arc::new(Mutex::new(handle)),
+				handle: Mutex::new(handle),
 				entries,
 			})
 		}
@@ -252,21 +229,19 @@ where
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
 		let mut buffer = Vec::with_capacity(entry.offset as usize);
 
-		{
-			let mut guard = match self.handle.lock() {
-				Ok(guard) => guard,
-				Err(_) => {
-					return Err(InternalError::SyncError(
-						"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
-					))
-				},
-			};
+		let mut guard = match self.handle.lock() {
+			Ok(guard) => guard,
+			Err(_) => {
+				return Err(InternalError::SyncError(
+					"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
+				))
+			},
+		};
 
-			guard.seek(SeekFrom::Start(entry.location))?;
-			let mut take = guard.by_ref().take(entry.offset);
+		guard.seek(SeekFrom::Start(entry.location))?;
+		let mut take = guard.by_ref().take(entry.offset);
 
-			take.read_to_end(&mut buffer)?;
-		}
+		take.read_to_end(&mut buffer)?;
 
 		Ok(buffer)
 	}
@@ -274,10 +249,7 @@ where
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
 	/// This can be used for debugging, as the [`RegistryEntry`] holds information on data with the adjacent ID.
 	pub fn fetch_entry(&self, id: impl AsRef<str>) -> Option<RegistryEntry> {
-		match self.entries.get(id.as_ref()) {
-			Some(entry) => Some(entry.clone()),
-			None => None,
-		}
+		self.entries.get(id.as_ref()).cloned()
 	}
 
 	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
@@ -298,7 +270,7 @@ where
 	T: Read + Seek,
 {
 	/// Fetch a [`Resource`] with the given `ID`.
-	/// If the `ID` does not exist within the source, `Err(---)` is returned.
+	/// If the `ID` does not exist within the source, [`InternalError::MissingResourceError`] is returned.
 	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
@@ -307,125 +279,37 @@ where
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
 
-			#[cfg(feature = "crypto")]
-			let dependencies = (&self.decryptor, &self.key);
-			#[cfg(not(feature = "crypto"))]
-			let dependencies = ();
-
-			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
+			// Decompress and|or decrypt the data
+			let (buffer, is_secure) = self.process(independent)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
 				flags: entry.flags,
 				data: buffer,
-				secured: is_secure,
+				authenticated: is_secure,
 			})
 		} else {
-			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
+			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
 		}
 	}
 
 	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
 	/// Returns a tuple containing the `Flags`, `content_version` and `authenticity` (boolean) of the data.
-	/// ### Errors
-	///  - If no leaf with the specified `ID` exists
-	///  - Any `io::Seek(-)` errors
-	///  - Other `io` related errors
-	pub fn fetch_write(&self, id: impl AsRef<str>, mut target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
+	/// If no leaf with the specified `ID` exists, [`InternalError::MissingResourceError`] is returned.
+	pub fn fetch_write(&self, id: impl AsRef<str>, target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = self.fetch_raw(&entry)?;
 
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
 
-			#[cfg(feature = "crypto")]
-			let dependencies = (&self.decryptor, &self.key);
-			#[cfg(not(feature = "crypto"))]
-			let dependencies = ();
+			// Decompress and|or decrypt the data
+			let (buffer, is_secure) = self.process(independent)?;
 
-			let (buffer, is_secure) = Archive::<T>::process_raw(dependencies, independent)?;
-
-			io::copy(&mut buffer.as_slice(), &mut target)?;
+			io::copy(&mut buffer.as_slice(), target)?;
 			Ok((entry.flags, entry.content_version, is_secure))
 		} else {
-			#[rustfmt::skip]
-			return Err(InternalError::MissingResourceError(format!( "Resource not found: {}", id.as_ref() )));
-		}
-	}
-}
-
-#[cfg(feature = "multithreaded")]
-impl<T> Archive<T>
-where
-	T: Read + Seek + Send + Sync,
-{
-	/// Retrieves several resources in parallel. This is much faster than calling `Archive::fetch(---)` in a loop as it utilizes abstracted functionality.
-	/// Use `Archive::fetch(---)` | `Archive::fetch_write(---)` in your own loop construct ([rayon] if you want) otherwise
-	#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-	pub fn fetch_batch<I>(
-		&self, items: I, num_threads: Option<usize>,
-	) -> InternalResult<HashMap<String, InternalResult<Resource>>>
-	where
-		I: Iterator + Send + Sync,
-		I::Item: AsRef<str>,
-	{
-		use rayon::prelude::*;
-
-		// Attempt to pre-allocate HashMap
-		let map = match items.size_hint().1 {
-			Some(hint) => HashMap::with_capacity(hint),
-			None => HashMap::new(),
-		};
-
-		// Prepare mutexes
-		let processed = Arc::new(Mutex::new(map));
-		let queue = Arc::new(Mutex::new(items));
-
-		let num_threads = match num_threads {
-			Some(num) => num,
-			None => num_cpus::get(),
-		};
-
-		// Creates a thread-pool`
-		(0..num_threads)
-			.into_par_iter()
-			.try_for_each(|_| -> InternalResult<()> {
-				let mut produce = vec![];
-
-				// Query next item on queue and process
-				while let Some(id) = queue.lock().unwrap().next() {
-					let id = id.as_ref();
-					let resource = self.fetch(id);
-
-					let string = id.to_string();
-					if let Ok(mut guard) = processed.try_lock() {
-						guard.insert(string, resource);
-
-						// The lock is available, so we pop everything off the queue
-						(0..produce.len()).for_each(|_| {
-							let (id, res) = produce.pop().unwrap();
-							guard.insert(id, res);
-						});
-					} else {
-						produce.push((string, resource));
-					}
-				}
-
-				Ok(())
-			})?;
-
-		match Arc::try_unwrap(processed) {
-			Ok(mutex) => match mutex.into_inner() {
-				Ok(inner) => Ok(inner),
-				Err(err) => Err(InternalError::SyncError(format!(
-					"Mutex<HashMap> has been poisoned! {}",
-					err
-				))),
-			},
-			Err(_) => Err(InternalError::SyncError(
-				"Cannot consume this HashMap as other references (ARC) to it exist".to_string(),
-			)),
+			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
 		}
 	}
 }

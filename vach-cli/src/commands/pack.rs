@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::collections::HashSet;
 
 use vach::prelude::*;
-use vach::utils;
+use vach::crypto_utils;
 use indicatif::{ProgressBar, ProgressStyle};
 use walkdir;
 
@@ -163,12 +163,12 @@ impl CommandTrait for Evaluator {
 		let secret_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = File::open(path)?;
-				Some(utils::read_keypair(file)?.secret)
+				Some(crypto_utils::read_keypair(file)?.secret)
 			},
 			None => match args.value_of(key_names::SECRET_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(utils::read_secret_key(file)?)
+					Some(crypto_utils::read_secret_key(file)?)
 				},
 				None => None,
 			},
@@ -185,7 +185,7 @@ impl CommandTrait for Evaluator {
 
 		// If encrypt is true, and no keypair was found: Generate and write a new keypair to a file
 		if (encrypt || hash) && kp.is_none() {
-			let generated = utils::gen_keypair();
+			let generated = crypto_utils::gen_keypair();
 
 			let mut file = File::create("keypair.kp")?;
 			file.write_all(&generated.to_bytes())?;

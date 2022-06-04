@@ -7,6 +7,7 @@ use crate::{
 /// Contains `data`, `flags` and `content_version` fields.
 /// Is returned by [`archive.fetch(...)`](crate::archive::Archive)
 #[non_exhaustive]
+#[derive(Debug)]
 pub struct Resource {
 	/// The processed data, stored as a vector of bytes `Vec<u8>`.
 	pub data: Vec<u8>,
@@ -14,20 +15,9 @@ pub struct Resource {
 	pub flags: Flags,
 	/// The content version of the extracted archive entry
 	pub content_version: u8,
-	/// If a [`Resource`] signature has checked for authenticity, corruption or obsolescence, then this value becomes false.
-	/// By default a [`Resource`] is insecure
-	pub secured: bool,
-}
-
-impl fmt::Debug for Resource {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		f.debug_struct("Resource")
-			.field("data", &self.data)
-			.field("flags", &self.flags)
-			.field("content_version", &self.content_version)
-			.field("secured", &self.secured)
-			.finish()
-	}
+	/// A [`Resource`] is checked for authenticity, corruption or obsolescence against it's signature.
+	/// If the checks pass, then this becomes true, this is always false if the `crypto` feature is off or if the data had no signature
+	pub authenticated: bool,
 }
 
 impl fmt::Display for Resource {

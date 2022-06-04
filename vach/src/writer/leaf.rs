@@ -76,13 +76,6 @@ impl<'a> Leaf<'a> {
 		self.handle
 	}
 
-	pub(crate) fn to_registry_entry(&self) -> RegistryEntry {
-		let mut entry = RegistryEntry::empty();
-		entry.content_version = self.content_version;
-		entry.flags = self.flags;
-		entry
-	}
-
 	/// Copy all fields from another [`Leaf`], except for `handle` and `id`
 	/// Meant to be used like a setter:
 	/// ```rust
@@ -223,5 +216,14 @@ impl<'a> fmt::Debug for Leaf<'a> {
 		}
 
 		d.finish()
+	}
+}
+
+impl From<&mut Leaf<'_>> for RegistryEntry {
+	fn from(leaf: &mut Leaf<'_>) -> Self {
+		let mut entry = RegistryEntry::empty();
+		entry.content_version = leaf.content_version;
+		entry.flags = leaf.flags;
+		entry
 	}
 }

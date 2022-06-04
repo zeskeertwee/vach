@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/zeskeertwee/virtfs-rs/main/media/logo.png" alt=".vach logo" width="180" height="180">
+  <img src="media/logo.png" alt=".vach logo" width="180" height="180">
 </p>
 <h1 align=center>
   <strong>vach</strong>
@@ -10,17 +10,17 @@
   <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
   <br/>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
+  <a href="https://github.com/zeskeertwee/vach/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/zeskeertwee/vach?style=flat-square"></a>
   <a href="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml/badge.svg"></a>
-  <a href="https://github.com/zeskeertwee/virtfs-rs/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/virtfs-rs?style=flat-square"></a>
+  <a href="https://github.com/zeskeertwee/vach/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/vach?style=flat-square"></a>
 </p>
 <p align=center>
- <a href="https://docs.rs/vach">Docs</a> | <a href="https://github.com/zeskeertwee/virtfs-rs">Repo</a>
+ <a href="https://docs.rs/vach">Docs</a> | <a href="https://github.com/zeskeertwee/vach">Repo</a>
 </p>
 
 ## 👔 The official `vach` crates' repo
 
-`vach`, pronounced like "puck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/virtfs-rs/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "puck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/vach/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ---
 
@@ -36,7 +36,7 @@
 ### 🤷 Who is what, when where?
 
 - **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
-- **vach-cli:** A CLI tool for dealing with `.vach` files.
+- **vach-cli:** <a href="https://crates.io/crates/vach-cli"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach-cli?style=flat-square"></a> A CLI tool for dealing with `.vach` files.
 
 ---
 
@@ -61,8 +61,8 @@ let mut builder = Builder::default();
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
 builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-builder.add(File::open("test_data/footstep.wav")?, "ftstep").unwrap();
-builder.add(Cursor::new(b"Hello, Cassandra!"), "hello").unwrap();
+builder.add(vec![12, 23, 34, 45, 56, 67, 78, 89, 10], "ftstep").unwrap();
+builder.add(b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8], "hello").unwrap();
 
 // let mut target = File::create("sounds.vach")?;
 let mut target = Cursor::new(Vec::new());
@@ -81,12 +81,12 @@ let target = File::open("sounds.vach")?;
 let archive = Archive::from_handle(target)?;
 let resource: Resource = archive.fetch("ambient")?;
 
-// By default all resources are flagged as NOT secure
+// By default all resources are flagged as NOT authenticated
 println!("{}", Sound::new(&resource.data)?);
-assert!(!resource.secured);
+assert!(!resource.authenticated);
 
 let mut buffer = Vec::new();
-let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
+let (flags, content_version, is_authenticated) = archive.fetch_write("ftstep", &mut buffer)?;
 ```
 
 ##### > Build a signed `.vach` file
@@ -94,7 +94,7 @@ let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buf
 ```rust
 use std::{io::Cursor, fs::File};
 use vach::prelude::{Builder, BuilderConfig, Keypair};
-use vach::utils::gen_keypair;
+use vach::crypto_utils::gen_keypair;
 
 let keypair:      Keypair = gen_keypair();
 let config:       BuilderConfig = BuilderConfig::default().keypair(keypair);
@@ -103,7 +103,7 @@ let mut builder:  Builder = Builder::default();
 // Use different data types under the same builder umbrella, uses dynamic dispatch
 let data_1 = vec![12, 23, 45, 56, 67 ,78, 89, 69];
 let data_2 = File::open("test_data/footstep.wav").unwrap();
-let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
+let data_3 = b"Hello, Cassandra!" as &[u8];
 
 // Use `Builder::add( reader, ID )` to add data to the write queue
 builder.add(data_3, "ambient").unwrap();
@@ -120,7 +120,7 @@ As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](htt
 
 ```rust
 use vach::prelude::{Keypair, SecretKey, PublicKey};
-use vach::utils::gen_keypair;
+use vach::crypto_utils::gen_keypair;
 
 // Generate keys
 let keypair :   Keypair  = gen_keypair();
@@ -145,7 +145,7 @@ let keypair :     Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH] = include_bytes!(PUBLIC_KEY);
 
 // Build the Loader config
-let mut config = HeaderConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
+let mut config = ArchiveConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
 
 let target = File::open("sounds.vach")?;
 let archive = Archive::with_config(target, &config)?;
@@ -153,7 +153,7 @@ let archive = Archive::with_config(target, &config)?;
 // Resources are marked as secure (=true) if the signatures match the data
 let resource = archive.fetch("ambient")?;
 println!("{}", Sound::new(&resource.data)?);
-assert!(resource.secured);
+assert!(resource.authenticated);
 ```
 
 ##### > A quick consolidated example
@@ -180,7 +180,7 @@ builder.add_leaf(Leaf::from_handle(data_3).id("d3").compress(CompressMode::Detec
 builder.dump(&mut target, &config)?;
 
 // Load data
-let config = HeaderConfig::default().magic(*MAGIC);
+let config = ArchiveConfig::default().magic(*MAGIC);
 let archive = Archive::with_config(target, &config)?;
 
 // Quick assertions

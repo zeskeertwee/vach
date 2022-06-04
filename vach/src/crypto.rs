@@ -18,7 +18,7 @@ pub(crate) struct Encryptor {
 
 impl fmt::Debug for Encryptor {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "[Vach::Encryptor] cipher: Aes256Gcm, nonce: Nonce",)
+		write!(f, "[Vach::Encryptor] cipher: Aes256Gcm, nonce: {:?}", self.nonce)
 	}
 }
 
@@ -29,7 +29,7 @@ impl Encryptor {
 
 		// Build Nonce
 		let key = Key::from_slice(bytes);
-		let mut v = [178, 5, 239, 228, 165, 44, 169].to_vec();
+		let mut v = vec![178, 5, 239, 228, 165, 44, 169];
 		v.extend_from_slice(&magic);
 
 		Encryptor {
@@ -42,7 +42,7 @@ impl Encryptor {
 	pub(crate) fn encrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
 		let res = match self.cipher.encrypt(&self.nonce, data) {
 			Ok(data) => data,
-			Err(err) => return Err(InternalError::CryptoError(err.to_string())),
+			Err(err) => return Err(InternalError::CryptoError(err)),
 		};
 
 		Ok(res)
@@ -51,7 +51,7 @@ impl Encryptor {
 	pub(crate) fn decrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
 		let res = match self.cipher.decrypt(&self.nonce, data) {
 			Ok(data) => data,
-			Err(err) => return Err(InternalError::CryptoError(err.to_string())),
+			Err(err) => return Err(InternalError::CryptoError(err)),
 		};
 
 		Ok(res)

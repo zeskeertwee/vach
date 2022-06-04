@@ -1,9 +1,10 @@
 use std::io::{BufWriter, Write, Seek, SeekFrom};
 use std::collections::HashSet;
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::{
 	Arc, Mutex,
-	atomic::{Ordering, AtomicUsize},
+	atomic::{Ordering},
 };
 
 mod config;
@@ -50,14 +51,15 @@ impl<'a> Builder<'a> {
 	}
 
 	/// Appends a read handle wrapped in a [`Leaf`] into the processing queue.
-	/// The `data` is wrapped in the default [`Leaf`].
+	/// The `data` is wrapped in the default [`Leaf`], without cloning the original data.
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
-	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult<()> {
+	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
 		let leaf = Leaf::from_handle(data)
 			.id(id.as_ref().to_string())
 			.template(&self.leaf_template);
+
 		self.add_leaf(leaf)?;
 		Ok(())
 	}
@@ -74,7 +76,7 @@ impl<'a> Builder<'a> {
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
 	/// - The internal call to `Builder::add_leaf()` returns an error.
-	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult<()> {
+	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult {
 		use std::fs;
 
 		let directory = fs::read_dir(path)?;
@@ -104,7 +106,7 @@ impl<'a> Builder<'a> {
 	/// [`Leaf`]s added directly do not implement data from the [`Builder`]s internal template.
 	/// ### Errors
 	/// - Returns an error if a [`Leaf`] with the specified `ID` exists.
-	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult<()> {
+	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult {
 		// Make sure no two leaves are written with the same ID
 		if !self.id_set.insert(leaf.id.clone()) {
 			return Err(InternalError::LeafAppendError(leaf.id));
@@ -131,7 +133,7 @@ impl<'a> Builder<'a> {
 
 	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
 	/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
-	/// Wraps the `target` in [BufWriter].
+	/// Wraps the `target` in [BufWriter]. Also calls `io::Seek` on the target, so no need for calling it externally for synchronization.
 	/// ### Errors
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
@@ -141,15 +143,12 @@ impl<'a> Builder<'a> {
 		#[cfg(feature = "multithreaded")]
 		use rayon::prelude::*;
 
-		// The total amount of bytes written
-		let mut total_sync = 0usize;
-
 		#[allow(unused_mut)]
 		let mut reg_buffer_sync = Vec::new();
 
 		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
 		#[allow(unused_mut)]
-		let mut leaf_offset_sync =
+		let mut leaf_offset_sync = {
 			self.leafs
 				.iter()
 				.map(|leaf| {
@@ -168,7 +167,8 @@ impl<'a> Builder<'a> {
 					}
 				})
 				.reduce(|l1, l2| l1 + l2)
-				.unwrap_or(0) + Header::BASE_SIZE;
+				.unwrap_or(0) + Header::BASE_SIZE
+		} as u64;
 
 		// Start at the very start of the file
 		target.seek(SeekFrom::Start(0))?;
@@ -191,33 +191,25 @@ impl<'a> Builder<'a> {
 		wtr_sync.write_all(&crate::VERSION.to_le_bytes())?;
 		wtr_sync.write_all(&(self.leafs.len() as u16).to_le_bytes())?;
 
-		// Update how many bytes have been written
-		total_sync += Header::BASE_SIZE;
-
 		// Configure encryption
 		#[cfg(feature = "crypto")]
 		let use_encryption = self.leafs.iter().any(|leaf| leaf.encrypt);
 
-		#[cfg(feature = "crypto")]
-		if use_encryption && config.keypair.is_none() {
-			return Err(InternalError::NoKeypairError(
-				"Leaf encryption error! A leaf requested for encryption, yet no keypair was provided(None)".to_string(),
-			));
-		};
-
 		// Build encryptor
 		#[cfg(feature = "crypto")]
 		let encryptor = if use_encryption {
-			let keypair = &config.keypair;
-
-			Some(Encryptor::new(&keypair.as_ref().unwrap().public, config.magic))
+			if let Some(keypair) = config.keypair.as_ref() {
+				Some(Encryptor::new(&keypair.public, config.magic))
+			} else {
+				return Err(InternalError::NoKeypairError);
+			}
 		} else {
 			None
 		};
 
 		// Define all arc-mutexes
-		let leaf_offset_arc = Arc::new(AtomicUsize::new(leaf_offset_sync));
-		let total_arc = Arc::new(AtomicUsize::new(total_sync));
+		let leaf_offset_arc = Arc::new(AtomicU64::new(leaf_offset_sync));
+		let total_arc = Arc::new(AtomicUsize::new(Header::BASE_SIZE));
 		let wtr_arc = Arc::new(Mutex::new(wtr_sync));
 		let reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
 
@@ -236,8 +228,8 @@ impl<'a> Builder<'a> {
 		}
 
 		// Populate the archive glob
-		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult<()> {
-			let mut entry = leaf.to_registry_entry();
+		iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult {
+			let mut entry: RegistryEntry = leaf.into();
 			let mut raw = Vec::new();
 
 			// Compression comes first
@@ -256,7 +248,7 @@ impl<'a> Builder<'a> {
 					let mut buffer = Vec::new();
 					leaf.handle.read_to_end(&mut buffer)?;
 
-					let mut compressed_data = vec![];
+					let mut compressed_data = Vec::new();
 					Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
 
 					if compressed_data.len() <= buffer.len() {
@@ -274,7 +266,7 @@ impl<'a> Builder<'a> {
 			#[cfg(not(feature = "compression"))]
 			{
 				if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-					return Err(InternalError::MissingFeatureError("compression".to_string()));
+					return Err(InternalError::MissingFeatureError("compression"));
 				};
 
 				leaf.handle.read_to_end(&mut raw)?;
@@ -291,30 +283,28 @@ impl<'a> Builder<'a> {
 			}
 
 			// Write processed leaf-contents and update offsets within `MutexGuard` protection
-			let glob_length = raw.len();
+			let glob_length = raw.len() as u64;
 
 			{
 				// Lock writer
-				let wtr_arc = Arc::clone(&wtr_arc);
 				let mut wtr = wtr_arc.lock().unwrap();
 
 				// Lock leaf_offset
-				let leaf_offset_arc = Arc::clone(&leaf_offset_arc);
 				let leaf_offset = leaf_offset_arc.load(Ordering::SeqCst);
 
-				wtr.seek(SeekFrom::Start(leaf_offset as u64))?;
+				wtr.seek(SeekFrom::Start(leaf_offset))?;
 				wtr.write_all(&raw)?;
 
 				// Update offset locations
-				entry.location = leaf_offset as u64;
+				entry.location = leaf_offset;
 				leaf_offset_arc.fetch_add(glob_length, Ordering::SeqCst);
 
 				// Update number of bytes written
-				total_arc.fetch_add(glob_length, Ordering::SeqCst);
+				total_arc.fetch_add(glob_length as usize, Ordering::SeqCst);
 			};
 
 			// Update the offset of the entry to be the length of the glob
-			entry.offset = glob_length as u64;
+			entry.offset = glob_length;
 
 			#[cfg(feature = "crypto")]
 			if leaf.sign {
@@ -346,8 +336,7 @@ impl<'a> Builder<'a> {
 
 			// Write to the registry-buffer and update total number of bytes written
 			{
-				let arc = Arc::clone(&reg_buffer_arc);
-				let mut reg_buffer = arc.lock().unwrap();
+				let mut reg_buffer = reg_buffer_arc.lock().unwrap();
 
 				reg_buffer.write_all(&entry_bytes)?;
 				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
@@ -363,10 +352,8 @@ impl<'a> Builder<'a> {
 
 		// Write out the contents of the registry
 		{
-			let arc = Arc::clone(&wtr_arc);
-			let mut wtr = arc.lock().unwrap();
+			let mut wtr = wtr_arc.lock().unwrap();
 
-			let reg_buffer_arc = Arc::clone(&reg_buffer_arc);
 			let reg_buffer = reg_buffer_arc.lock().unwrap();
 
 			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
