@@ -3,9 +3,11 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize};
 use std::sync::{
-	Arc, Mutex,
+	Arc,
 	atomic::{Ordering},
 };
+
+use parking_lot::{Mutex};
 
 mod config;
 pub use config::BuilderConfig;
@@ -287,7 +289,7 @@ impl<'a> Builder<'a> {
 
 			{
 				// Lock writer
-				let mut wtr = wtr_arc.lock().unwrap();
+				let mut wtr = wtr_arc.lock();
 
 				// Lock leaf_offset
 				let leaf_offset = leaf_offset_arc.load(Ordering::SeqCst);
@@ -336,7 +338,7 @@ impl<'a> Builder<'a> {
 
 			// Write to the registry-buffer and update total number of bytes written
 			{
-				let mut reg_buffer = reg_buffer_arc.lock().unwrap();
+				let mut reg_buffer = reg_buffer_arc.lock();
 
 				reg_buffer.write_all(&entry_bytes)?;
 				total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
@@ -352,9 +354,9 @@ impl<'a> Builder<'a> {
 
 		// Write out the contents of the registry
 		{
-			let mut wtr = wtr_arc.lock().unwrap();
+			let mut wtr = wtr_arc.lock();
 
-			let reg_buffer = reg_buffer_arc.lock().unwrap();
+			let reg_buffer = reg_buffer_arc.lock();
 
 			wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
 			wtr.write_all(reg_buffer.as_slice())?;

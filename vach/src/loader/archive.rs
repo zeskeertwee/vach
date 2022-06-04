@@ -2,8 +2,9 @@ use std::{
 	str,
 	io::{self, Read, Seek, SeekFrom, Write},
 	collections::HashMap,
-	sync::Mutex,
 };
+
+use parking_lot::Mutex;
 
 use super::resource::Resource;
 use crate::{
@@ -67,14 +68,8 @@ impl<T> std::fmt::Display for Archive<T> {
 
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
-	pub fn into_inner(self) -> InternalResult<T> {
-		match self.handle.into_inner() {
-			Ok(inner) => Ok(inner),
-			Err(err) => Err(InternalError::SyncError(format!(
-				"Trying to consume a poisoned mutex {}",
-				err
-			))),
-		}
+	pub fn into_inner(self) -> T {
+		self.handle.into_inner()
 	}
 
 	// Decompress and|or decrypt the data
@@ -229,20 +224,11 @@ where
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
 		let mut buffer = Vec::with_capacity(entry.offset as usize);
 
-		let mut guard = match self.handle.lock() {
-			Ok(guard) => guard,
-			Err(_) => {
-				return Err(InternalError::SyncError(
-					"The Mutex in this Archive has been poisoned, an error occurred somewhere".to_string(),
-				))
-			},
-		};
-
+		let mut guard = self.handle.lock();
 		guard.seek(SeekFrom::Start(entry.location))?;
+
 		let mut take = guard.by_ref().take(entry.offset);
-
 		take.read_to_end(&mut buffer)?;
-
 		Ok(buffer)
 	}
 
