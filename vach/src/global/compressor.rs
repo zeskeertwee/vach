@@ -17,7 +17,7 @@ pub struct Compressor<T: Read> {
 	data: T,
 }
 
-impl<'a, T: Read> Compressor<T> {
+impl<T: Read> Compressor<T> {
 	/// Construct a new compressor over a read handle
 	pub fn new(data: T) -> Compressor<T> {
 		Compressor { data }

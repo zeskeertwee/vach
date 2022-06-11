@@ -78,23 +78,23 @@ impl<T> Archive<T> {
 		/* Literally the hottest function in the block (🕶) */
 
 		// buffer_a originally contains the raw data
-		let (entry, id, mut buffer_a) = values;
-		let buffer_b;
+		let (entry, id, mut raw) = values;
+		let mut decrypted = None;
 		let mut is_secure = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 		#[cfg(feature = "crypto")]
 		if let Some(pk) = self.key {
-			let raw_size = buffer_a.len();
+			let raw_size = raw.len();
 
 			// If there is an error the data is flagged as invalid
-			buffer_a.extend_from_slice(id.as_bytes());
+			raw.extend_from_slice(id.as_bytes());
 			if let Some(signature) = entry.signature {
-				is_secure = pk.verify_strict(&buffer_a, &signature).is_ok();
+				is_secure = pk.verify_strict(&raw, &signature).is_ok();
 			}
 
-			buffer_a.truncate(raw_size);
+			raw.truncate(raw_size);
 		}
 
 		// Add read layers
@@ -103,7 +103,7 @@ impl<T> Archive<T> {
 			#[cfg(feature = "crypto")]
 			match self.decryptor.as_ref() {
 				Some(dc) => {
-					buffer_b = dc.decrypt(&buffer_a)?;
+					decrypted = Some(dc.decrypt(&raw)?);
 				},
 				None => return Err(InternalError::NoKeypairError),
 			}
@@ -112,37 +112,48 @@ impl<T> Archive<T> {
 			{
 				return Err(InternalError::MissingFeatureError("crypto"));
 			}
-		} else {
-			buffer_b = buffer_a.clone();
 		}
 
 		// 2: Decompression layer
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 			#[cfg(feature = "compression")]
 			{
-				// Clear data in buffer_a
-				buffer_a.clear();
+				let (source, mut target) = match decrypted {
+					// data was decrypted and stored.
+					Some(vec) => {
+						raw.clear();
+						(vec, raw)
+					},
+					// data was not decrypted nor stored.
+					None => {
+						let capacity = raw.len();
+						(raw, Vec::with_capacity(capacity))
+					},
+				};
 
 				if entry.flags.contains(Flags::LZ4_COMPRESSED) {
-					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut buffer_a)?
+					Compressor::new(source.as_slice()).decompress(CompressionAlgorithm::LZ4, &mut target)?
 				} else if entry.flags.contains(Flags::BROTLI_COMPRESSED) {
-					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut buffer_a)?
+					Compressor::new(source.as_slice()).decompress(CompressionAlgorithm::Brotli(0), &mut target)?
 				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
-					Compressor::new(buffer_b.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut buffer_a)?
+					Compressor::new(source.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut target)?
 				} else {
 					return InternalResult::Err(InternalError::OtherError(
 						format!("Unable to determine the compression algorithm used for entry with ID: {id}").into(),
 					));
 				};
+
+				Ok((target, is_secure))
 			}
 
 			#[cfg(not(feature = "compression"))]
-			return Err(InternalError::MissingFeatureError("compression"));
+			Err(InternalError::MissingFeatureError("compression"))
 		} else {
-			buffer_a = buffer_b;
-		};
-
-		Ok((buffer_a, is_secure))
+			match decrypted {
+				Some(decrypted) => Ok((decrypted, is_secure)),
+				None => Ok((raw, is_secure)),
+			}
+		}
 	}
 }
 
@@ -222,7 +233,7 @@ where
 
 	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let mut buffer = Vec::with_capacity(entry.offset as usize);
+		let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
 
 		let mut guard = self.handle.lock();
 		guard.seek(SeekFrom::Start(entry.location))?;
