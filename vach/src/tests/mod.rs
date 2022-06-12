@@ -3,8 +3,7 @@
 #![cfg(test)]
 // Boring, average every day contemporary imports
 use std::{fs::File, str};
-
-use crate::{global::result::InternalResult, prelude::*};
+use crate::prelude::*;
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -70,42 +69,6 @@ fn flags_set_intersects() {
 
 	flag.force_set(Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG, true);
 	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG | Flags::SIGNED_FLAG);
-}
-
-#[test]
-#[cfg(all(feature = "builder", feature = "archive"))]
-fn defaults() {
-	// The reason we are pulling the header directly from global namespace is because it's not exposed to the public API
-	// We still need to conduct tests on them tho.
-	use crate::global::header::Header;
-
-	let _header_config = ArchiveConfig::default();
-	let _header = Header::default();
-	let _registry_entry = RegistryEntry::empty();
-	let _leaf = Leaf::default();
-	let _builder = Builder::new();
-	let _builder_config = BuilderConfig::default();
-	let _flags = Flags::default();
-}
-
-#[test]
-#[cfg(not(feature = "crypto"))]
-fn header_config() -> InternalResult {
-	// `Header` is a private struct, ie pub(crate). So we need to grab it manually
-	use std::io::Read;
-	use crate::global::header::Header;
-
-	// When "crypto" features is turned off `ArchiveConfig::new(*b"VfACH")` takes a single argument
-	let config = ArchiveConfig::new(*b"VfACH");
-	println!("{}", &config);
-
-	let mut header_data = [0u8; Header::BASE_SIZE];
-	let mut file = File::open("test_data/simple/target.vach")?;
-	file.read(&mut header_data)?;
-
-	let header = Header::from_handle(header_data.as_slice())?;
-	Header::validate(&config, &header)?;
-	Ok(())
 }
 
 #[test]
@@ -277,7 +240,6 @@ fn fetch_write_with_signature() -> InternalResult {
 #[cfg(feature = "crypto")]
 fn edcryptor_test() -> InternalResult {
 	use crate::crypto_utils::gen_keypair;
-	use crate::crypto::Encryptor;
 
 	let pk = gen_keypair().public;
 
