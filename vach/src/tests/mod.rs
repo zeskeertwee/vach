@@ -1,6 +1,6 @@
+#![cfg(test)]
 // This is meant to mirror as closely as possible, how users should use the crate
 
-#![cfg(test)]
 // Boring, average every day contemporary imports
 use std::{fs::File, str};
 use crate::prelude::*;

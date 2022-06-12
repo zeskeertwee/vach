@@ -231,7 +231,6 @@ where
 		}
 	}
 
-	#[inline(always)]
 	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
 		let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
 
@@ -240,6 +239,7 @@ where
 
 		let mut take = guard.by_ref().take(entry.offset);
 		take.read_to_end(&mut buffer)?;
+
 		Ok(buffer)
 	}
 
