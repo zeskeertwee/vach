@@ -89,8 +89,8 @@ impl<T> Archive<T> {
 			let raw_size = raw.len();
 
 			// If there is an error the data is flagged as invalid
-			raw.extend_from_slice(id.as_bytes());
 			if let Some(signature) = entry.signature {
+				raw.extend_from_slice(id.as_bytes());
 				is_secure = pk.verify_strict(&raw, &signature).is_ok();
 			}
 

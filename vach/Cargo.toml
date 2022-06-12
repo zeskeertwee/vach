@@ -29,7 +29,10 @@ rand = { version = "0.7.0", optional = true }
 aes-gcm = { version = "0.9.4", features = ["aes"], optional = true }
 
 # Compression dependencies
-lz4_flex = { version = "0.9.2", optional = true }
+lz4_flex = { version = "0.9.2", optional = true, default-features = false, features = [
+	"checked-decode",
+	"frame"
+] }
 snap = { version = "1.0.5", optional = true }
 brotli = { version = "3.3.4", optional = true }
 
