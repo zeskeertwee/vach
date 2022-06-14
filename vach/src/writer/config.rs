@@ -76,7 +76,7 @@ impl<'a> BuilderConfig<'a> {
 	/// use vach::prelude::BuilderConfig;
 	/// let config = BuilderConfig::default().magic(*b"DbAfh");
 	///```
-	pub fn magic(mut self, magic: [u8; 5]) -> BuilderConfig<'a> {
+	pub fn magic(mut self, magic: [u8; crate::MAGIC_LENGTH]) -> BuilderConfig<'a> {
 		self.magic = magic;
 		self
 	}

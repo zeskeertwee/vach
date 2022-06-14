@@ -97,7 +97,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	}
 
 	// Load data
-	throughput_group.throughput(Throughput::Bytes((data_1.len() + data_2.len() + data_3.len()) as u64));
+	throughput_group.throughput(Throughput::Elements(3));
 
 	let archive = Archive::with_config(&mut target, &h_config).unwrap();
 	let mut sink = Sink::new();

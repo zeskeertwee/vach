@@ -27,7 +27,7 @@ impl ArchiveConfig {
 	#[inline(always)]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-	pub const fn new(magic: [u8; 5], key: Option<crypto::PublicKey>) -> ArchiveConfig {
+	pub const fn new(magic: [u8; crate::MAGIC_LENGTH], key: Option<crypto::PublicKey>) -> ArchiveConfig {
 		ArchiveConfig { magic, public_key: key }
 	}
 
@@ -37,7 +37,7 @@ impl ArchiveConfig {
 	/// let config = ArchiveConfig::new(*b"_TEST");
 	/// ```
 	#[cfg(not(feature = "crypto"))]
-	pub const fn new(magic: [u8; 5]) -> ArchiveConfig {
+	pub const fn new(magic: [u8; crate::MAGIC_LENGTH]) -> ArchiveConfig {
 		ArchiveConfig { magic }
 	}
 
@@ -71,7 +71,7 @@ impl ArchiveConfig {
 	}
 
 	/// Setter for the magic into a [ArchiveConfig]
-	pub fn magic(mut self, magic: [u8; 5]) -> ArchiveConfig {
+	pub fn magic(mut self, magic: [u8; crate::MAGIC_LENGTH]) -> ArchiveConfig {
 		self.magic = magic;
 		self
 	}
@@ -172,9 +172,9 @@ impl Header {
 		// Construct header
 		Ok(Header {
 			// Read magic, [u8;5]
-			magic: buffer[0..5].try_into().unwrap(),
+			magic: buffer[0..crate::MAGIC_LENGTH].try_into().unwrap(),
 			// Read flags, u32 from [u8;4]
-			flags: Flags::from_bits(u32::from_le_bytes(buffer[5..9].try_into().unwrap())),
+			flags: Flags::from_bits(u32::from_le_bytes(buffer[crate::MAGIC_LENGTH..9].try_into().unwrap())),
 			// Read version, u16 from [u8;2]
 			arch_version: u16::from_le_bytes(buffer[9..11].try_into().unwrap()),
 			// Read the capacity of the archive, u16 from [u8;2]

@@ -23,7 +23,7 @@ impl fmt::Debug for Encryptor {
 }
 
 impl Encryptor {
-	pub(crate) fn new(pk: &PublicKey, magic: [u8; 5]) -> Encryptor {
+	pub(crate) fn new(pk: &PublicKey, magic: [u8; crate::MAGIC_LENGTH]) -> Encryptor {
 		// Build encryption key
 		let bytes = &pk.to_bytes();
 

@@ -6,7 +6,11 @@
 /*!
 #### A simple archiving format, designed for storing assets in compact secure containers
 
-`vach`, pronounced like "puck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. A big benefit of `vach` is the fine grained control it grants it's users, as it allows for per-entry independent configuration.`vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/vach/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach` is an archiving and resource transmission format.
+It was built to be secure, contained and protected. A big benefit of `vach` is the fine grained control it grants it's users, as it allows for per-entry independent configuration.
+`vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization.
+
+> Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/vach/blob/main/spec/main.txt)**.
 
 ### 👄 Terminologies
 
@@ -168,11 +172,11 @@ pub const SIGNATURE_LENGTH: usize = 64;
 /// Maximum size for any ID
 pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
 
-/// The default MAGIC used by `vach`
-pub const DEFAULT_MAGIC: &[u8; 5] = b"VfACH";
-
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;
+
+/// The default MAGIC used by `vach`
+pub const DEFAULT_MAGIC: &[u8; crate::MAGIC_LENGTH] = b"VfACH";
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
