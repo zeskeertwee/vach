@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 
 /*!
+![GitHub last commit](https://img.shields.io/github/last-commit/zeskeertwee/vach?logo=rust&logoColor=orange&style=flat-square)
 #### A simple archiving format, designed for storing assets in compact secure containers
 
 `vach` is an archiving and resource transmission format.

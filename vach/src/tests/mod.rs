@@ -161,7 +161,7 @@ fn builder_with_signature() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "archive", feature = "crypto"))]
+#[cfg(all(feature = "archive", feature = "crypto", feature = "compression"))]
 fn fetch_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
