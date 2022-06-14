@@ -29,5 +29,5 @@ pretty_env_logger = "0.4.0"
 term_size = "0.3.2"
 
 [dependencies.vach]
-version = "0.4.0"
+version = "0.4.1"
 features = ["compression", "multithreaded", "crypto"]

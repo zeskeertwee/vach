@@ -1,6 +1,3 @@
-<h1 align=center>
-  <strong>vach</strong>
-</h1>
 <p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
 
 <p align=center>

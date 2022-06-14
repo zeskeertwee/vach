@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "aes-gcm",
  "brotli",
@@ -1136,15 +1136,16 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc1d23f7b1db590938bd4d33aeeb80603082d77c69fdd8c9b3b796b92376fec2"
+checksum = "eef71767c2e3dbe250578f50d2a81ac6c577863bd694e4d821e59265b4f002ae"
 dependencies = [
  "aes-gcm",
  "brotli",
  "ed25519-dalek",
  "lz4_flex",
  "num_cpus",
+ "parking_lot",
  "rand",
  "rayon",
  "snap",
@@ -1157,7 +1158,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "rayon",
- "vach 0.4.0",
+ "vach 0.4.1",
 ]
 
 [[package]]
@@ -1171,7 +1172,7 @@ dependencies = [
  "pretty_env_logger",
  "tabled",
  "term_size",
- "vach 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vach 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir",
 ]
 
