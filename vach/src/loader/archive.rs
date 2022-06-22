@@ -21,7 +21,7 @@ use crate::{
 use crate::crypto;
 
 #[cfg(feature = "compression")]
-use crate::global::compressor::{Compressor, CompressionAlgorithm};
+use crate::global::compressor::*;
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
