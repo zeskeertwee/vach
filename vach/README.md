@@ -1,5 +1,3 @@
-<p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
-
 <p align=center>
 <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/zeskeertwee/vach?logo=rust&logoColor=orange&style=flat-square">
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
