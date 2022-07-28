@@ -3,7 +3,7 @@
   <mime-type type="application/vach">
 	<acronym>VACH</acronym>
 	<expanded-acronym>Virtual No-So-Virtual Archive</expanded-acronym>
-    <comment>A simple archive format implented in Rust</comment>
+    <comment>A simple read-only archive format implented in Rust</comment>
 	<icon name="application-x-archive"/>
     <glob pattern="*.vach"/>
 	<magic priority="100">
