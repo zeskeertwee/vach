@@ -138,6 +138,7 @@ let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 mod tests;
 
 pub(crate) mod global;
+
 #[cfg(feature = "archive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
 pub(crate) mod loader;
