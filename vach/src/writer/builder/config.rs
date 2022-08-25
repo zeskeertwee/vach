@@ -1,6 +1,9 @@
 use std::fmt::Debug;
 
-use crate::global::{flags::Flags, reg_entry::RegistryEntry};
+use crate::{
+	global::{flags::Flags, reg_entry::RegistryEntry},
+	builder::Leaf,
+};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -17,15 +20,20 @@ pub struct BuilderConfig<'a> {
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub keypair: Option<crypto::Keypair>,
 	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
-	/// The callback get passed to it: the leaf's id and the generated registry entry. Respectively.
+	/// The callback get passed to it: a reference to the leaf and the generated registry entry. Use the RegEntry to get info on how the data was integrated for the given [`Leaf`].
 	/// > **To avoid** the `implementation of "FnOnce" is not general enough` error consider adding types to the closure's parameters, as this is a type inference error. Rust somehow cannot infer enough information, [link](https://www.reddit.com/r/rust/comments/ntqu68/implementation_of_fnonce_is_not_general_enough/).
 	/// Usage:
 	/// ```
-	/// use vach::builder::BuilderConfig;
+	/// use vach::prelude::{RegistryEntry, BuilderConfig, Leaf};
 	///
 	/// let builder_config = BuilderConfig::default();
+	/// fn callback(leaf: &Leaf, reg_entry: &RegistryEntry) {
+	/// 	println!("Leaf: {leaf:?} has been processed into Entry: {reg_entry:?}")
+	/// }
+	///
+	/// builder_config.callback(&callback);
 	/// ```
-	pub progress_callback: Option<&'a (dyn Fn(&str, &RegistryEntry) + Send + Sync)>,
+	pub progress_callback: Option<&'a (dyn Fn(&Leaf, &RegistryEntry) + Send + Sync)>,
 }
 
 impl<'a> Debug for BuilderConfig<'a> {
@@ -82,12 +90,12 @@ impl<'a> BuilderConfig<'a> {
 
 	/// Setter for the `progress_callback` field
 	///```
-	/// use vach::prelude::{BuilderConfig, RegistryEntry};
+	/// use vach::prelude::{BuilderConfig, RegistryEntry, Leaf};
 	///
-	/// let callback = |_: &str,  entry: &RegistryEntry| { println!("Number of bytes written: {}", entry.offset) };
+	/// let callback = |_: &Leaf,  entry: &RegistryEntry| { println!("Number of bytes written: {}", entry.offset) };
 	/// let config = BuilderConfig::default().callback(&callback);
 	///```
-	pub fn callback(mut self, callback: &'a (dyn Fn(&str, &RegistryEntry) + Send + Sync)) -> BuilderConfig<'a> {
+	pub fn callback(mut self, callback: &'a (dyn Fn(&Leaf, &RegistryEntry) + Send + Sync)) -> BuilderConfig<'a> {
 		self.progress_callback = Some(callback);
 		self
 	}
