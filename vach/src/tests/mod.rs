@@ -24,7 +24,7 @@ const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 #[cfg(feature = "archive")]
 fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
-	let archive = Archive::from_handle(target)?;
+	let archive = Archive::new(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = entry.flags;
 
@@ -86,7 +86,7 @@ fn builder_no_signature() -> InternalResult {
 	poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)?;
 
 	builder.add_leaf(
-		Leaf::from_handle(File::open("test_data/poem.txt")?)
+		Leaf::new(File::open("test_data/poem.txt")?)
 			.compress(CompressMode::Always)
 			.version(10)
 			.id("poem")
@@ -94,7 +94,7 @@ fn builder_no_signature() -> InternalResult {
 	)?;
 
 	builder.add_leaf(
-		Leaf::from_handle(b"Hello, Cassandra!" as &[u8])
+		Leaf::new(b"Hello, Cassandra!" as &[u8])
 			.compress(CompressMode::Never)
 			.id("greeting"),
 	)?;
@@ -109,7 +109,7 @@ fn builder_no_signature() -> InternalResult {
 #[cfg(all(feature = "compression", feature = "archive"))]
 fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
-	let mut archive = Archive::from_handle(target)?;
+	let mut archive = Archive::new(target)?;
 	let resource = archive.fetch_mut("poem")?;
 
 	// Windows bullshit
@@ -263,7 +263,7 @@ fn builder_with_encryption() -> InternalResult {
 
 	builder.add_dir("test_data", None)?;
 	builder.add_leaf(
-		Leaf::from_handle(b"Snitches get stitches, iOS sucks" as &[u8])
+		Leaf::new(b"Snitches get stitches, iOS sucks" as &[u8])
 			.sign(false)
 			.compression_algo(CompressionAlgorithm::Brotli(11))
 			.compress(CompressMode::Always)
@@ -333,9 +333,9 @@ fn consolidated_example() -> InternalResult {
 
 	// Add data
 	let template = Leaf::default().encrypt(true).version(59);
-	builder.add_leaf(Leaf::from_handle(data_1).id("d1").template(&template))?;
-	builder.add_leaf(Leaf::from_handle(data_2).id("d2").template(&template))?;
-	builder.add_leaf(Leaf::from_handle(data_3).id("d3").template(&template))?;
+	builder.add_leaf(Leaf::new(data_1).id("d1").template(&template))?;
+	builder.add_leaf(Leaf::new(data_2).id("d2").template(&template))?;
+	builder.add_leaf(Leaf::new(data_3).id("d3").template(&template))?;
 
 	// Dump data
 	let then = Instant::now();
@@ -376,19 +376,19 @@ fn test_compressors() -> InternalResult {
 	let mut builder = Builder::new();
 
 	builder.add_leaf(
-		Leaf::from_handle(input.as_slice())
+		Leaf::new(input.as_slice())
 			.id("LZ4")
 			.compression_algo(CompressionAlgorithm::LZ4)
 			.compress(CompressMode::Always),
 	)?;
 	builder.add_leaf(
-		Leaf::from_handle(input.as_slice())
+		Leaf::new(input.as_slice())
 			.id("BROTLI")
 			.compression_algo(CompressionAlgorithm::Brotli(9))
 			.compress(CompressMode::Always),
 	)?;
 	builder.add_leaf(
-		Leaf::from_handle(input.as_slice())
+		Leaf::new(input.as_slice())
 			.id("SNAPPY")
 			.compression_algo(CompressionAlgorithm::Snappy)
 			.compress(CompressMode::Always),
@@ -396,7 +396,7 @@ fn test_compressors() -> InternalResult {
 
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let mut archive = Archive::from_handle(&mut target)?;
+	let mut archive = Archive::new(&mut target)?;
 
 	let d1 = archive.fetch_mut("LZ4")?;
 	let d2 = archive.fetch_mut("BROTLI")?;
@@ -452,7 +452,7 @@ fn test_batch_fetching() -> InternalResult {
 	// Process data
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let archive = Archive::from_handle(target)?;
+	let archive = Archive::new(target)?;
 	let mut resources = ids
 		.as_slice()
 		.par_iter()

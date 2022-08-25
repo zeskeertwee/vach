@@ -46,7 +46,7 @@ impl<'a> Builder<'a> {
 	/// ### Errors
 	/// Returns an `Err(())` if a Leaf with the specified ID exists.
 	pub fn add<D: Read + Send + Sync + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
-		let leaf = Leaf::from_handle(data)
+		let leaf = Leaf::new(data)
 			.id(id.as_ref().to_string())
 			.template(&self.leaf_template);
 
@@ -81,7 +81,7 @@ impl<'a> Builder<'a> {
 			if !uri.is_dir() {
 				// Therefore a file
 				let file = fs::File::open(uri)?;
-				let leaf = Leaf::from_handle(file)
+				let leaf = Leaf::new(file)
 					.template(template.unwrap_or(&self.leaf_template))
 					.id(&format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
 

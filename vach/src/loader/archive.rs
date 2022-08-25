@@ -28,7 +28,7 @@ use crate::global::compressor::*;
 /// `fetch` and `fetch_mut`, with `fetch` involving a locking operation therefore only requires immutable access.
 /// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`ArchiveConfig`].
 /// > **A word of advice:**
-/// > Do not wrap Archive in a [Mutex] or [RefCell], use `Archive::fetch`, [`Archive`] employs a [`Mutex`] internally in an optimized manner that reduces time spent locked.
+/// > Do not wrap Archive in a [Mutex] or [RefCell](std::cell::RefCell), use `Archive::fetch`, [`Archive`] employs a [`Mutex`] internally in an optimized manner that reduces time spent locked.
 #[derive(Debug)]
 pub struct Archive<T> {
 	/// Wrapping `handle` in a Mutex means that we only ever lock when reading from the underlying buffer, thus ensuring maximum performance across threads
@@ -171,7 +171,7 @@ where
 	/// ### Errors
 	/// - If the internal call to `Archive::with_config(-)` returns an error
 	#[inline(always)]
-	pub fn from_handle(handle: T) -> InternalResult<Archive<T>> {
+	pub fn new(handle: T) -> InternalResult<Archive<T>> {
 		Archive::with_config(handle, &ArchiveConfig::default())
 	}
 
@@ -293,7 +293,7 @@ where
 		}
 	}
 
-	/// Cheaper alternative to [`fetch`] that works best for single threaded applications.
+	/// Cheaper alternative to `fetch` that works best for single threaded applications.
 	/// It does not lock the underlying [Mutex], since it requires a mutable reference.
 	/// Therefore the borrow checker statically guarantees the operation is safe. Refer to [`Mutex::get_mut`](Mutex).
 	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {

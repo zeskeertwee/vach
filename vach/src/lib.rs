@@ -56,7 +56,7 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::from_handle(target)?;
+let mut archive = Archive::new(target)?;
 let resource: Resource = archive.fetch_mut("ambient")?;
 
 // By default all resources are flagged as NOT authenticated

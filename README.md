@@ -78,7 +78,7 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let mut archive = Archive::from_handle(target)?;
+let mut archive = Archive::new(target)?;
 let resource: Resource = archive.fetch_mut("ambient")?;
 
 // By default all resources are flagged as NOT authenticated
@@ -169,9 +169,9 @@ let mut builder = Builder::new();
 let config = BuilderConfig::default().magic(*MAGIC);
 
 // Add data
-builder.add_leaf(Leaf::from_handle(data_1).id("d1").compress(CompressMode::Always))?;
-builder.add_leaf(Leaf::from_handle(data_2).id("d2").compress(CompressMode::Never))?;
-builder.add_leaf(Leaf::from_handle(data_3).id("d3").compress(CompressMode::Detect))?;
+builder.add_leaf(Leaf::new(data_1).id("d1").compress(CompressMode::Always))?;
+builder.add_leaf(Leaf::new(data_2).id("d2").compress(CompressMode::Never))?;
+builder.add_leaf(Leaf::new(data_3).id("d3").compress(CompressMode::Detect))?;
 
 // Dump data
 builder.dump(&mut target, &config)?;

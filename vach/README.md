@@ -31,7 +31,7 @@ use vach::prelude::{Archive, Resource, Flags};
 
 let source = File::open("sounds.vach")?;
 
-let mut archive = Archive::from_handle(source)?;
+let mut archive = Archive::new(source)?;
 let resource: Resource = archive.fetch_mut("footstep.wav")?;
 
 // By default all resources are flagged as NOT secure

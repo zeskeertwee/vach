@@ -50,9 +50,9 @@ impl<'a> Leaf<'a> {
 	/// use vach::prelude::Leaf;
 	/// use std::io::Cursor;
 	///
-	/// let leaf = Leaf::from_handle(Cursor::new(vec![]));
+	/// let leaf = Leaf::new(Cursor::new(vec![]));
 	///```
-	pub fn from_handle<R: Read + Send + 'a>(handle: R) -> Leaf<'a> {
+	pub fn new<R: Read + Send + 'a>(handle: R) -> Leaf<'a> {
 		Leaf {
 			handle: Box::new(handle),
 			..Default::default()
@@ -71,7 +71,7 @@ impl<'a> Leaf<'a> {
 	/// use vach::prelude::Leaf;
 	/// let template = Leaf::default().version(12);
 	///
-	/// let leaf = Leaf::from_handle(Cursor::new(vec![])).template(&template);
+	/// let leaf = Leaf::new(Cursor::new(vec![])).template(&template);
 	/// assert_eq!(&leaf.content_version, &template.content_version);
 	/// ```
 	pub fn template(self, other: &Leaf<'a>) -> Self {
