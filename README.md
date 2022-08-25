@@ -84,9 +84,6 @@ let resource: Resource = archive.fetch_mut("ambient")?;
 // By default all resources are flagged as NOT authenticated
 println!("{}", Sound::new(&resource.data)?);
 assert!(!resource.authenticated);
-
-let mut buffer = Vec::new();
-let (flags, content_version, is_authenticated) = archive.fetch_mut("ftstep", &mut buffer)?;
 ```
 
 ##### > Build a signed `.vach` file
