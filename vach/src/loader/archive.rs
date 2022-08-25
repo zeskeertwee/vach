@@ -1,6 +1,6 @@
 use std::{
 	str,
-	io::{self, Read, Seek, SeekFrom, Write},
+	io::{Read, Seek, SeekFrom},
 	collections::HashMap,
 };
 
@@ -25,13 +25,14 @@ use crate::global::compressor::*;
 
 /// A wrapper for loading data from archive sources.
 /// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
+/// `fetch` and `fetch_mut`, with `fetch` involving a locking operation therefore only requires immutable access.
 /// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`ArchiveConfig`].
 /// > **A word of advice:**
-/// > Does not buffer the underlying handle, so consider wrapping `handle` in a `BufReader`
+/// > Do not wrap Archive in a [Mutex] or [RefCell], use `Archive::fetch`, [`Archive`] employs a [`Mutex`] internally in an optimized manner that reduces time spent locked.
 #[derive(Debug)]
 pub struct Archive<T> {
 	/// Wrapping `handle` in a Mutex means that we only ever lock when reading from the underlying buffer, thus ensuring maximum performance across threads
-	/// Since all the other work is done per thread
+	/// Since all other work is done per thread
 	handle: Mutex<T>,
 
 	// Archive metadata
@@ -231,13 +232,12 @@ where
 		}
 	}
 
-	pub(crate) fn fetch_raw(&self, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+	/// Given a data source and a [`RegistryEntry`], gets the adjacent raw data
+	pub(crate) fn fetch_raw(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
 		let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
+		handle.seek(SeekFrom::Start(entry.location))?;
 
-		let mut guard = self.handle.lock();
-		guard.seek(SeekFrom::Start(entry.location))?;
-
-		let mut take = guard.by_ref().take(entry.offset);
+		let mut take = handle.take(entry.offset);
 		take.read_to_end(&mut buffer)?;
 
 		Ok(buffer)
@@ -267,11 +267,14 @@ where
 	T: Read + Seek,
 {
 	/// Fetch a [`Resource`] with the given `ID`.
-	/// If the `ID` does not exist within the source, [`InternalError::MissingResourceError`] is returned.
+	/// Locks the underlying [`Mutex`], for a cheaper non-locking operation refer to `Archive::fetch_mut`
 	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
-			let raw = self.fetch_raw(&entry)?;
+			let raw = {
+				let mut guard = self.handle.lock();
+				Archive::<T>::fetch_raw(&mut guard, &entry)?
+			};
 
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
@@ -290,12 +293,13 @@ where
 		}
 	}
 
-	/// Fetch data with the given `ID` and write it directly into the given `target: impl Read`.
-	/// Returns a tuple containing the `Flags`, `content_version` and `authenticity` (boolean) of the data.
-	/// If no leaf with the specified `ID` exists, [`InternalError::MissingResourceError`] is returned.
-	pub fn fetch_write(&self, id: impl AsRef<str>, target: &mut dyn Write) -> InternalResult<(Flags, u8, bool)> {
+	/// Cheaper alternative to [`fetch`] that works best for single threaded applications.
+	/// It does not lock the underlying [Mutex], since it requires a mutable reference.
+	/// Therefore the borrow checker statically guarantees the operation is safe. Refer to [`Mutex::get_mut`](Mutex).
+	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
+		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
-			let raw = self.fetch_raw(&entry)?;
+			let raw = Archive::<T>::fetch_raw(self.handle.get_mut(), &entry)?;
 
 			// Prepare contextual variables
 			let independent = (&entry, id.as_ref(), raw);
@@ -303,8 +307,12 @@ where
 			// Decompress and|or decrypt the data
 			let (buffer, is_secure) = self.process(independent)?;
 
-			io::copy(&mut buffer.as_slice(), target)?;
-			Ok((entry.flags, entry.content_version, is_secure))
+			Ok(Resource {
+				content_version: entry.content_version,
+				flags: entry.flags,
+				data: buffer,
+				authenticated: is_secure,
+			})
 		} else {
 			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
 		}

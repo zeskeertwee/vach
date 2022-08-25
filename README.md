@@ -78,15 +78,15 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let archive = Archive::from_handle(target)?;
-let resource: Resource = archive.fetch("ambient")?;
+let mut archive = Archive::from_handle(target)?;
+let resource: Resource = archive.fetch_mut("ambient")?;
 
 // By default all resources are flagged as NOT authenticated
 println!("{}", Sound::new(&resource.data)?);
 assert!(!resource.authenticated);
 
 let mut buffer = Vec::new();
-let (flags, content_version, is_authenticated) = archive.fetch_write("ftstep", &mut buffer)?;
+let (flags, content_version, is_authenticated) = archive.fetch_mut("ftstep", &mut buffer)?;
 ```
 
 ##### > Build a signed `.vach` file
@@ -148,10 +148,10 @@ let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH] = include_bytes!(PUBLIC
 let mut config = ArchiveConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
 
 let target = File::open("sounds.vach")?;
-let archive = Archive::with_config(target, &config)?;
+let mut archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
-let resource = archive.fetch("ambient")?;
+let resource = archive.fetch_mut("ambient")?;
 println!("{}", Sound::new(&resource.data)?);
 assert!(resource.authenticated);
 ```
@@ -181,12 +181,12 @@ builder.dump(&mut target, &config)?;
 
 // Load data
 let config = ArchiveConfig::default().magic(*MAGIC);
-let archive = Archive::with_config(target, &config)?;
+let mut archive = Archive::with_config(target, &config)?;
 
 // Quick assertions
-assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
-assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
-assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
+assert_eq!(archive.fetch_mut("d1")?.data.as_slice(), data_1);
+assert_eq!(archive.fetch_mut("d2")?.data.as_slice(), data_2);
+assert_eq!(archive.fetch_mut("d3")?.data.as_slice(), data_3);
 ```
 
 > For more information on how to use the library, read the documentation. [Always read the documentation!](https://youtu.be/TUE_HSgQiG0?t=91) or read the tests, they offer great insight into how the crate works.

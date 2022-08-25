@@ -56,15 +56,14 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let archive = Archive::from_handle(target)?;
-let resource: Resource = archive.fetch("ambient")?;
+let mut archive = Archive::from_handle(target)?;
+let resource: Resource = archive.fetch_mut("ambient")?;
 
 // By default all resources are flagged as NOT authenticated
 println!("{}", Sound::new(&resource.data)?);
 assert!(!resource.authenticated);
 
-let mut buffer = Vec::new();
-let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
+let resource = archive.fetch_mut("ftstep")?;
 ```
 
 ##### > Build a signed `.vach` file
@@ -104,7 +103,7 @@ let target = File::open("sounds.vach")?;
 let archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
-let resource = archive.fetch("ambient")?;
+let mut resource = archive.fetch_mut("ambient")?;
 println!("{}", Sound::new(&resource.data)?);
 assert!(resource.authenticated);
 ```

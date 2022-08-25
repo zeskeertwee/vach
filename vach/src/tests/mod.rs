@@ -109,8 +109,8 @@ fn builder_no_signature() -> InternalResult {
 #[cfg(all(feature = "compression", feature = "archive"))]
 fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
-	let archive = Archive::from_handle(target)?;
-	let resource = archive.fetch("poem")?;
+	let mut archive = Archive::from_handle(target)?;
+	let resource = archive.fetch_mut("poem")?;
 
 	// Windows bullshit
 	#[cfg(target_os = "windows")]
@@ -127,7 +127,7 @@ fn simple_fetch() -> InternalResult {
 
 	println!("{}", String::from_utf8(resource.data).unwrap());
 
-	let hello = archive.fetch("greeting")?;
+	let hello = archive.fetch_mut("greeting")?;
 	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
 	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
@@ -170,17 +170,17 @@ fn fetch_with_signature() -> InternalResult {
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
-	let archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch("test_data/song.txt")?;
+	let mut archive = Archive::with_config(target, &config)?;
+	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
 	// The adjacent resource was flagged to not be signed
-	let not_signed_resource = archive.fetch("not_signed")?;
+	let not_signed_resource = archive.fetch_mut("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 
 	// The adjacent resource was flagged to not be signed
-	let not_signed_resource = archive.fetch("not_signed")?;
+	let not_signed_resource = archive.fetch_mut("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 
@@ -214,24 +214,23 @@ fn fetch_write_with_signature() -> InternalResult {
 	config.load_public_key(keypair)?;
 
 	let archive = Archive::with_config(target, &config)?;
-	let mut song = Vec::new();
 
-	let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
-	assert!(metadata.2);
-	assert!(metadata.0.contains(Flags::SIGNED_FLAG));
+	let resource = archive.fetch("test_data/poem.txt")?;
+	assert!(resource.authenticated);
+	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
 	// Windows bullshit
 	#[cfg(target_os = "windows")]
 	{
-		assert_eq!(song.len(), 359);
+		assert_eq!(resource.data.len(), 359);
 	}
 	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
 	{
-		assert_eq!(song.len(), 345);
+		assert_eq!(resource.data.len(), 345);
 	}
 
 	// Assert identity of retrieved data
-	println!("{}", String::from_utf8(song).unwrap());
+	println!("{}", String::from_utf8(resource.data).unwrap());
 
 	Ok(())
 }
@@ -290,8 +289,8 @@ fn fetch_from_encrypted() -> InternalResult {
 	let public_key = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(public_key)?;
 
-	let archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch("test_data/song.txt")?;
+	let mut archive = Archive::with_config(target, &config)?;
+	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
 	// Windows bullshit
@@ -350,15 +349,15 @@ fn consolidated_example() -> InternalResult {
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let then = Instant::now();
-	let archive = Archive::with_config(target, &config)?;
+	let mut archive = Archive::with_config(target, &config)?;
 
 	println!("Archive initialization took: {}us", then.elapsed().as_micros());
 
 	// Quick assertions
 	let then = Instant::now();
-	assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
-	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
-	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
+	assert_eq!(archive.fetch_mut("d1")?.data.as_slice(), data_1);
+	assert_eq!(archive.fetch_mut("d2")?.data.as_slice(), data_2);
+	assert_eq!(archive.fetch_mut("d3")?.data.as_slice(), data_3);
 
 	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 
@@ -397,11 +396,11 @@ fn test_compressors() -> InternalResult {
 
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let archive = Archive::from_handle(&mut target)?;
+	let mut archive = Archive::from_handle(&mut target)?;
 
-	let d1 = archive.fetch("LZ4")?;
-	let d2 = archive.fetch("BROTLI")?;
-	let d3 = archive.fetch("SNAPPY")?;
+	let d1 = archive.fetch_mut("LZ4")?;
+	let d2 = archive.fetch_mut("BROTLI")?;
+	let d3 = archive.fetch_mut("SNAPPY")?;
 
 	// Identity tests
 	assert_eq!(d1.data.len(), INPUT_LEN);

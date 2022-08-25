@@ -31,8 +31,8 @@ use vach::prelude::{Archive, Resource, Flags};
 
 let source = File::open("sounds.vach")?;
 
-let archive = Archive::from_handle(source)?;
-let resource: Resource = archive.fetch("footstep.wav")?;
+let mut archive = Archive::from_handle(source)?;
+let resource: Resource = archive.fetch_mut("footstep.wav")?;
 
 // By default all resources are flagged as NOT secure
 assert!(!resource.authenticated);
@@ -43,7 +43,7 @@ println!("{}", Sound::new(resource.data.as_slice())?);
 
 // Read data directly into an `io::Write` stream
 let mut buffer = Vec::new();
-let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
+let (flags, content_version, is_secure) = archive.fetch_mut("ftstep", &mut buffer)?;
 ```
 
 > For more information on how to use the crate, read the [documentation](https://docs.rs/vach) or pass by the [repository](https://github.com/zeskeertwee/vach). Maybe also check out the [CLI](https://crates.io/crates/vach-cli), for a more user-friendly use of `vach`
