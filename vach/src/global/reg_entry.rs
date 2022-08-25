@@ -1,7 +1,5 @@
-use crate::global::flags::Flags;
-
 use std::{io::Read, fmt};
-use super::result::InternalResult;
+use super::{result::InternalResult, flags::Flags};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;

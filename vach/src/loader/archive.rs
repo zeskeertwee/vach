@@ -164,7 +164,7 @@ where
 {
 	/// Load an [`Archive`] with the default settings from a source.
 	/// The same as doing:
-	/// ```ignore
+	/// ```skip
 	/// Archive::with_config(HANDLE, &ArchiveConfig::default())?;
 	/// ```
 	/// ### Errors

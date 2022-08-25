@@ -7,24 +7,12 @@ use {crate::global::compressor::CompressionAlgorithm, super::compress_mode::Comp
 
 use std::{io::Read, fmt};
 
-#[cfg(feature = "multithreaded")]
-/// A toggle blanket-trait wrapping around [`io::Read`](std::io::Read) allowing for seamless switching between single or multithreaded execution
-pub trait HandleTrait: Read + Send + Sync {}
-#[cfg(feature = "multithreaded")]
-impl<T: Read + Send + Sync> HandleTrait for T {}
-
-#[cfg(not(feature = "multithreaded"))]
-/// A toggle blanket-trait wrapping around [`io::Read`](std::io::Read) allowing for seamless switching between single or multithreaded execution
-pub trait HandleTrait: Read {}
-#[cfg(not(feature = "multithreaded"))]
-impl<T: Read> HandleTrait for T {}
-
 /// A wrapper around an [`io::Read`](std::io::Read) handle.
 /// Allows for multiple types of data implementing [`io::Read`](std::io::Read) to be used under one struct.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
 	/// The lifetime simply reflects to the [`Builder`](crate::builder::Builder)'s lifetime, meaning the handle must live longer than or the same as the Builder
-	pub(crate) handle: Box<dyn HandleTrait + 'a>,
+	pub(crate) handle: Box<dyn Read + Send + 'a>,
 
 	/// The `ID` under which the embedded data will be referenced
 	pub id: String,
@@ -64,7 +52,7 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::from_handle(Cursor::new(vec![]));
 	///```
-	pub fn from_handle<H: HandleTrait + 'a>(handle: H) -> Leaf<'a> {
+	pub fn from_handle<R: Read + Send + 'a>(handle: R) -> Leaf<'a> {
 		Leaf {
 			handle: Box::new(handle),
 			..Default::default()
@@ -72,7 +60,7 @@ impl<'a> Leaf<'a> {
 	}
 
 	/// Consume the [Leaf] and return the underlying Boxed handle
-	pub fn into_inner(self) -> Box<dyn HandleTrait + 'a> {
+	pub fn into_inner(self) -> Box<dyn Read + Send + 'a> {
 		self.handle
 	}
 

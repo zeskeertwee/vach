@@ -139,7 +139,7 @@ fn simple_fetch() -> InternalResult {
 fn builder_with_signature() -> InternalResult {
 	let mut builder = Builder::default();
 
-	let cb = |_: &str, entry: &RegistryEntry| {
+	let cb = |_: &Leaf, entry: &RegistryEntry| {
 		dbg!(entry);
 	};
 	let mut build_config = BuilderConfig::default().callback(&cb);

@@ -21,7 +21,7 @@ It was built to be secure, contained and protected. A big benefit of `vach` is t
 
 ### 🔫 Cargo Features
 - `archive` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `archive` feature but a tool for packing assets would only need the `builder` feature.
-- `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types. This allows for the auto-parallelization of the `Builder::dump(---)` function.
+- `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds [`Send`] as a trait bound to many generic types. This allows for the auto-parallelization of the `Builder::dump(---)` function.
 - `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
 - `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
 
