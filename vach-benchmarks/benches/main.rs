@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::io;
-use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 
-use rayon::iter::{ParallelIterator, IntoParallelRefIterator};
+use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 use vach::prelude::*;
 use vach::crypto_utils::gen_keypair;
 
@@ -80,12 +78,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 	{
 		// Builds an archive source from which to benchmark
-		let template = Leaf::default()
-			.encrypt(false)
-			.sign(false)
-			.compress(CompressMode::Never)
-			.compression_algo(CompressionAlgorithm::LZ4);
-		let mut builder = Builder::new().template(template);
+		let mut builder = Builder::new().template(Leaf::default().encrypt(false).sign(false));
 
 		// Add data
 		builder.add(data_1, "d1").unwrap();
@@ -116,19 +109,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 			archive.fetch_mut("d1").unwrap();
 			archive.fetch_mut("d2").unwrap();
 			archive.fetch_mut("d3").unwrap();
-		});
-	});
-
-	throughput_group.bench_function("Archive::fetch_batch(---)", |b| {
-		// Load data
-		b.iter(|| {
-			let resources = ["d2", "d1", "d3"]
-				.as_slice()
-				.par_iter()
-				.map(|id| (id, archive.fetch(&id)))
-				.collect::<HashMap<_, _>>();
-
-			criterion::black_box(resources)
 		});
 	});
 

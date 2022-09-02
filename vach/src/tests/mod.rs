@@ -204,38 +204,6 @@ fn fetch_with_signature() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "archive", feature = "crypto"))]
-fn fetch_write_with_signature() -> InternalResult {
-	let target = File::open(SIGNED_TARGET)?;
-
-	// Load keypair
-	let mut config = ArchiveConfig::default();
-	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
-	config.load_public_key(keypair)?;
-
-	let archive = Archive::with_config(target, &config)?;
-
-	let resource = archive.fetch("test_data/poem.txt")?;
-	assert!(resource.authenticated);
-	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
-
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(resource.data.len(), 359);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(resource.data.len(), 345);
-	}
-
-	// Assert identity of retrieved data
-	println!("{}", String::from_utf8(resource.data).unwrap());
-
-	Ok(())
-}
-
-#[test]
 #[cfg(feature = "crypto")]
 fn edcryptor_test() -> InternalResult {
 	use crate::crypto_utils::gen_keypair;

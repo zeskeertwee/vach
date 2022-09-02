@@ -37,15 +37,15 @@ snap = { version = "1.0.5", optional = true }
 brotli = { version = "3.3.4", optional = true }
 
 # Multithreaded features
-parking_lot = { version = "0.12.1", optional = true }
+parking_lot = { version = "0.12.1" }
 rayon = { version = "1.5.2", optional = true }
 num_cpus = { version = "1.13.1", optional = true }
 
 [features]
 default = ["builder", "archive"]
 
-archive = ["parking_lot"]
-builder = ["parking_lot"]
+archive = []
+builder = []
 
 crypto = ["ed25519-dalek", "aes-gcm", "rand"]
 multithreaded = ["rayon", "num_cpus"]

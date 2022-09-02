@@ -44,7 +44,7 @@ impl<'a> Builder<'a> {
 	/// The `data` is wrapped in the default [`Leaf`], without cloning the original data.
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
-	/// Returns an `Err(())` if a Leaf with the specified ID exists.
+	/// - if a Leaf with the specified ID exists.
 	pub fn add<D: Read + Send + Sync + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
 		let leaf = Leaf::new(data)
 			.id(id.as_ref().to_string())
@@ -62,10 +62,10 @@ impl<'a> Builder<'a> {
 
 	/// Loads all files from a directory, parses them into [`Leaf`]s and appends them into the processing queue.
 	/// An optional [`Leaf`] is passed as a template from which the new [`Leaf`]s shall implement, pass `None` to use the [`Builder`] internal default template.
-	/// Appended [`Leaf`]s have an `ID` in the form of of: `directory_name/file_name`. For example: "sounds/footstep.wav", "sample/script.data"
+	/// Appended [`Leaf`]s have an `ID` in the form of of: `directory_name/file_name`. For example: `sounds/footstep.wav1, `sample/script.data`
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
-	/// - The internal call to `Builder::add_leaf()` returns an error.
+	/// - The internal call to `Builder::add_leaf()` fails.
 	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult {
 		use std::fs;
 
