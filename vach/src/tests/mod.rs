@@ -24,7 +24,7 @@ const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 #[cfg(feature = "archive")]
 fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
-	let archive = Archive::from_handle(target)?;
+	let archive = Archive::new(target)?;
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = entry.flags;
 
@@ -86,7 +86,7 @@ fn builder_no_signature() -> InternalResult {
 	poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)?;
 
 	builder.add_leaf(
-		Leaf::from_handle(File::open("test_data/poem.txt")?)
+		Leaf::new(File::open("test_data/poem.txt")?)
 			.compress(CompressMode::Always)
 			.version(10)
 			.id("poem")
@@ -94,7 +94,7 @@ fn builder_no_signature() -> InternalResult {
 	)?;
 
 	builder.add_leaf(
-		Leaf::from_handle(b"Hello, Cassandra!" as &[u8])
+		Leaf::new(b"Hello, Cassandra!" as &[u8])
 			.compress(CompressMode::Never)
 			.id("greeting"),
 	)?;
@@ -109,8 +109,8 @@ fn builder_no_signature() -> InternalResult {
 #[cfg(all(feature = "compression", feature = "archive"))]
 fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
-	let archive = Archive::from_handle(target)?;
-	let resource = archive.fetch("poem")?;
+	let mut archive = Archive::new(target)?;
+	let resource = archive.fetch_mut("poem")?;
 
 	// Windows bullshit
 	#[cfg(target_os = "windows")]
@@ -127,7 +127,7 @@ fn simple_fetch() -> InternalResult {
 
 	println!("{}", String::from_utf8(resource.data).unwrap());
 
-	let hello = archive.fetch("greeting")?;
+	let hello = archive.fetch_mut("greeting")?;
 	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
 	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
@@ -139,7 +139,7 @@ fn simple_fetch() -> InternalResult {
 fn builder_with_signature() -> InternalResult {
 	let mut builder = Builder::default();
 
-	let cb = |_: &str, entry: &RegistryEntry| {
+	let cb = |_: &Leaf, entry: &RegistryEntry| {
 		dbg!(entry);
 	};
 	let mut build_config = BuilderConfig::default().callback(&cb);
@@ -161,7 +161,7 @@ fn builder_with_signature() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "archive", feature = "crypto"))]
+#[cfg(all(feature = "archive", feature = "crypto", feature = "compression"))]
 fn fetch_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 
@@ -170,17 +170,17 @@ fn fetch_with_signature() -> InternalResult {
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(keypair)?;
 
-	let archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch("test_data/song.txt")?;
+	let mut archive = Archive::with_config(target, &config)?;
+	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
 	// The adjacent resource was flagged to not be signed
-	let not_signed_resource = archive.fetch("not_signed")?;
+	let not_signed_resource = archive.fetch_mut("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 
 	// The adjacent resource was flagged to not be signed
-	let not_signed_resource = archive.fetch("not_signed")?;
+	let not_signed_resource = archive.fetch_mut("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 
@@ -199,39 +199,6 @@ fn fetch_with_signature() -> InternalResult {
 
 	assert!(resource.authenticated);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
-
-	Ok(())
-}
-
-#[test]
-#[cfg(all(feature = "archive", feature = "crypto"))]
-fn fetch_write_with_signature() -> InternalResult {
-	let target = File::open(SIGNED_TARGET)?;
-
-	// Load keypair
-	let mut config = ArchiveConfig::default();
-	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
-	config.load_public_key(keypair)?;
-
-	let archive = Archive::with_config(target, &config)?;
-	let mut song = Vec::new();
-
-	let metadata = archive.fetch_write("test_data/poem.txt", &mut song)?;
-	assert!(metadata.2);
-	assert!(metadata.0.contains(Flags::SIGNED_FLAG));
-
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(song.len(), 359);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(song.len(), 345);
-	}
-
-	// Assert identity of retrieved data
-	println!("{}", String::from_utf8(song).unwrap());
 
 	Ok(())
 }
@@ -264,7 +231,7 @@ fn builder_with_encryption() -> InternalResult {
 
 	builder.add_dir("test_data", None)?;
 	builder.add_leaf(
-		Leaf::from_handle(b"Snitches get stitches, iOS sucks" as &[u8])
+		Leaf::new(b"Snitches get stitches, iOS sucks" as &[u8])
 			.sign(false)
 			.compression_algo(CompressionAlgorithm::Brotli(11))
 			.compress(CompressMode::Always)
@@ -290,8 +257,8 @@ fn fetch_from_encrypted() -> InternalResult {
 	let public_key = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
 	config.load_public_key(public_key)?;
 
-	let archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch("test_data/song.txt")?;
+	let mut archive = Archive::with_config(target, &config)?;
+	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
 	// Windows bullshit
@@ -334,9 +301,9 @@ fn consolidated_example() -> InternalResult {
 
 	// Add data
 	let template = Leaf::default().encrypt(true).version(59);
-	builder.add_leaf(Leaf::from_handle(data_1).id("d1").template(&template))?;
-	builder.add_leaf(Leaf::from_handle(data_2).id("d2").template(&template))?;
-	builder.add_leaf(Leaf::from_handle(data_3).id("d3").template(&template))?;
+	builder.add_leaf(Leaf::new(data_1).id("d1").template(&template))?;
+	builder.add_leaf(Leaf::new(data_2).id("d2").template(&template))?;
+	builder.add_leaf(Leaf::new(data_3).id("d3").template(&template))?;
 
 	// Dump data
 	let then = Instant::now();
@@ -350,15 +317,15 @@ fn consolidated_example() -> InternalResult {
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let then = Instant::now();
-	let archive = Archive::with_config(target, &config)?;
+	let mut archive = Archive::with_config(target, &config)?;
 
 	println!("Archive initialization took: {}us", then.elapsed().as_micros());
 
 	// Quick assertions
 	let then = Instant::now();
-	assert_eq!(archive.fetch("d1")?.data.as_slice(), data_1);
-	assert_eq!(archive.fetch("d2")?.data.as_slice(), data_2);
-	assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
+	assert_eq!(archive.fetch_mut("d1")?.data.as_slice(), data_1);
+	assert_eq!(archive.fetch_mut("d2")?.data.as_slice(), data_2);
+	assert_eq!(archive.fetch_mut("d3")?.data.as_slice(), data_3);
 
 	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 
@@ -377,19 +344,19 @@ fn test_compressors() -> InternalResult {
 	let mut builder = Builder::new();
 
 	builder.add_leaf(
-		Leaf::from_handle(input.as_slice())
+		Leaf::new(input.as_slice())
 			.id("LZ4")
 			.compression_algo(CompressionAlgorithm::LZ4)
 			.compress(CompressMode::Always),
 	)?;
 	builder.add_leaf(
-		Leaf::from_handle(input.as_slice())
+		Leaf::new(input.as_slice())
 			.id("BROTLI")
 			.compression_algo(CompressionAlgorithm::Brotli(9))
 			.compress(CompressMode::Always),
 	)?;
 	builder.add_leaf(
-		Leaf::from_handle(input.as_slice())
+		Leaf::new(input.as_slice())
 			.id("SNAPPY")
 			.compression_algo(CompressionAlgorithm::Snappy)
 			.compress(CompressMode::Always),
@@ -397,11 +364,11 @@ fn test_compressors() -> InternalResult {
 
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let archive = Archive::from_handle(&mut target)?;
+	let mut archive = Archive::new(&mut target)?;
 
-	let d1 = archive.fetch("LZ4")?;
-	let d2 = archive.fetch("BROTLI")?;
-	let d3 = archive.fetch("SNAPPY")?;
+	let d1 = archive.fetch_mut("LZ4")?;
+	let d2 = archive.fetch_mut("BROTLI")?;
+	let d3 = archive.fetch_mut("SNAPPY")?;
 
 	// Identity tests
 	assert_eq!(d1.data.len(), INPUT_LEN);
@@ -453,7 +420,7 @@ fn test_batch_fetching() -> InternalResult {
 	// Process data
 	builder.dump(&mut target, &BuilderConfig::default())?;
 
-	let archive = Archive::from_handle(target)?;
+	let archive = Archive::new(target)?;
 	let mut resources = ids
 		.as_slice()
 		.par_iter()

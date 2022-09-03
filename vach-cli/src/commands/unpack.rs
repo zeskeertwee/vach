@@ -1,6 +1,6 @@
 use std::fs::{self, File};
 use std::str::FromStr;
-use std::io::{Read, Seek};
+use std::io::{Read, Seek, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -123,19 +123,11 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 	let entry_vec = archive.entries().iter().map(|a| (a.0, a.1.offset)).collect::<Vec<_>>();
 
 	// ignore the unprofessional match clause
-	match entry_vec.as_slice().par_iter().try_for_each(|(id, offset)| {
-		// Prevent column from wrapping around
-		if let Some((terminal_width, _)) = term_size::dimensions() {
-			let mut msg = id.to_string();
-			// Make sure progress bar never get's longer than terminal size
-			if msg.len() + 140 >= terminal_width {
-				msg.truncate(terminal_width - 140);
-				msg.push_str("...");
-			}
+	if let Err(err) = entry_vec.as_slice().par_iter().try_for_each(|(id, offset)| {
+		let msg = id.to_string();
 
-			// Set's the Progress Bar message
-			pbar.set_message(msg.to_string());
-		};
+		// Set's the Progress Bar message
+		pbar.set_message(msg);
 
 		// Process filesystem
 		let mut save_path = target_folder.clone();
@@ -147,18 +139,18 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 
 		// Write to file and update process queue
 		let mut file = File::create(save_path)?;
-		archive.fetch_write(id, &mut file)?;
+		let resource = archive.fetch(id)?;
+		file.write_all(&resource.data)?;
 
 		// Increment Progress Bar
 		pbar.inc(*offset);
 		Ok(())
 	}) {
-		Ok(it) => it,
-		Err(err) => return Err(err),
+		return Err(err);
 	};
 
 	// Finished extracting
-	pbar.finish_and_clear();
+	pbar.finish();
 	log::info!(
 		"Extracted {} files in {}s",
 		archive.entries().len(),

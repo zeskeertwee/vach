@@ -1,4 +1,4 @@
-use std::io::{BufWriter, Write, Seek, SeekFrom};
+use std::io::{BufWriter, Write, Seek, SeekFrom, Read};
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize};
@@ -11,10 +11,10 @@ use parking_lot::{Mutex};
 
 mod config;
 pub use config::BuilderConfig;
-use super::leaf::{Leaf, HandleTrait};
+use super::leaf::Leaf;
 
 #[cfg(feature = "compression")]
-use {crate::global::compressor::Compressor, super::compress_mode::CompressMode, std::io::Read};
+use {crate::global::compressor::Compressor, super::compress_mode::CompressMode};
 
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
@@ -24,18 +24,6 @@ use crate::{
 
 #[cfg(feature = "crypto")]
 use {crate::crypto::Encryptor, ed25519_dalek::Signer};
-
-/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
-#[cfg(feature = "multithreaded")]
-pub trait DumpTrait: Write + Seek + Send + Sync {}
-#[cfg(feature = "multithreaded")]
-impl<T: Write + Seek + Send + Sync> DumpTrait for T {}
-
-#[cfg(not(feature = "multithreaded"))]
-/// A toggle blanket-trait wrapping around `io::Write + Seek` allowing for seamless switching between single and multithreaded execution, by implementing `Send + Sync`
-pub trait DumpTrait: Write + Seek {}
-#[cfg(not(feature = "multithreaded"))]
-impl<T: Write + Seek> DumpTrait for T {}
 
 /// The archive builder. Provides an interface with which one can configure and build valid `vach` archives.
 #[derive(Default)]
@@ -56,9 +44,9 @@ impl<'a> Builder<'a> {
 	/// The `data` is wrapped in the default [`Leaf`], without cloning the original data.
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	/// ### Errors
-	/// Returns an `Err(())` if a Leaf with the specified ID exists.
-	pub fn add<D: HandleTrait + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
-		let leaf = Leaf::from_handle(data)
+	/// - if a Leaf with the specified ID exists.
+	pub fn add<D: Read + Send + Sync + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
+		let leaf = Leaf::new(data)
 			.id(id.as_ref().to_string())
 			.template(&self.leaf_template);
 
@@ -74,10 +62,10 @@ impl<'a> Builder<'a> {
 
 	/// Loads all files from a directory, parses them into [`Leaf`]s and appends them into the processing queue.
 	/// An optional [`Leaf`] is passed as a template from which the new [`Leaf`]s shall implement, pass `None` to use the [`Builder`] internal default template.
-	/// Appended [`Leaf`]s have an `ID` in the form of of: `directory_name/file_name`. For example: "sounds/footstep.wav", "sample/script.data"
+	/// Appended [`Leaf`]s have an `ID` in the form of of: `directory_name/file_name`. For example: `sounds/footstep.wav1, `sample/script.data`
 	/// ## Errors
 	/// - Any of the underlying calls to the filesystem fail.
-	/// - The internal call to `Builder::add_leaf()` returns an error.
+	/// - The internal call to `Builder::add_leaf()` fails.
 	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult {
 		use std::fs;
 
@@ -93,7 +81,7 @@ impl<'a> Builder<'a> {
 			if !uri.is_dir() {
 				// Therefore a file
 				let file = fs::File::open(uri)?;
-				let leaf = Leaf::from_handle(file)
+				let leaf = Leaf::new(file)
 					.template(template.unwrap_or(&self.leaf_template))
 					.id(&format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
 
@@ -140,7 +128,7 @@ impl<'a> Builder<'a> {
 	/// - Underlying `io` errors
 	/// - If the optional compression or compression stages fails
 	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a [`Leaf`] is to be encrypted.
-	pub fn dump<W: DumpTrait>(&mut self, mut target: W, config: &BuilderConfig) -> InternalResult<usize> {
+	pub fn dump<W: Write + Seek + Send>(&mut self, mut target: W, config: &BuilderConfig) -> InternalResult<usize> {
 		// Keep track of how many bytes are written, and where bytes are being written
 		#[cfg(feature = "multithreaded")]
 		use rayon::prelude::*;
@@ -319,6 +307,7 @@ impl<'a> Builder<'a> {
 					entry.signature = Some(keypair.sign(&raw));
 					entry.flags.force_set(Flags::SIGNED_FLAG, true);
 
+					// RAW has exhausted it's usefulness, we save memory by deallocating
 					drop(raw);
 				};
 			}
@@ -346,7 +335,7 @@ impl<'a> Builder<'a> {
 
 			// Call the progress callback bound within the [`BuilderConfig`]
 			if let Some(callback) = config.progress_callback {
-				callback(&leaf.id, &entry);
+				callback(&leaf, &entry);
 			}
 
 			Ok(())

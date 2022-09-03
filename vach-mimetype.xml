@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="application/vach">
+	<acronym>VACH</acronym>
+	<expanded-acronym>Virtual No-So-Virtual Archive</expanded-acronym>
+    <comment>A simple read-only archive format implented in Rust</comment>
+	<icon name="application-x-archive"/>
+    <glob pattern="*.vach"/>
+	<magic priority="100">
+		<match type="string" value="VfACH" offset="0"/>
+	</magic>
+  </mime-type>
+</mime-info>

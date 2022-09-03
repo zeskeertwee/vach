@@ -1,9 +1,5 @@
-<h1 align=center>
-  <strong>vach</strong>
-</h1>
-<p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
-
 <p align=center>
+<img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/zeskeertwee/vach?logo=rust&logoColor=orange&style=flat-square">
   <a href="https://docs.rs/vach"><img alt="docs.rs" src="https://img.shields.io/docsrs/vach?style=flat-square"></a>
   <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
   <br/>
@@ -35,8 +31,8 @@ use vach::prelude::{Archive, Resource, Flags};
 
 let source = File::open("sounds.vach")?;
 
-let archive = Archive::from_handle(source)?;
-let resource: Resource = archive.fetch("footstep.wav")?;
+let mut archive = Archive::new(source)?;
+let resource: Resource = archive.fetch_mut("footstep.wav")?;
 
 // By default all resources are flagged as NOT secure
 assert!(!resource.authenticated);
@@ -47,7 +43,7 @@ println!("{}", Sound::new(resource.data.as_slice())?);
 
 // Read data directly into an `io::Write` stream
 let mut buffer = Vec::new();
-let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
+let (flags, content_version, is_secure) = archive.fetch_mut("ftstep", &mut buffer)?;
 ```
 
 > For more information on how to use the crate, read the [documentation](https://docs.rs/vach) or pass by the [repository](https://github.com/zeskeertwee/vach). Maybe also check out the [CLI](https://crates.io/crates/vach-cli), for a more user-friendly use of `vach`

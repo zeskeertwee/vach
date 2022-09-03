@@ -4,6 +4,7 @@
 #![deny(missing_docs)]
 
 /*!
+![GitHub last commit](https://img.shields.io/github/last-commit/zeskeertwee/vach?logo=rust&logoColor=orange&style=flat-square)
 #### A simple archiving format, designed for storing assets in compact secure containers
 
 `vach` is an archiving and resource transmission format.
@@ -20,7 +21,7 @@ It was built to be secure, contained and protected. A big benefit of `vach` is t
 
 ### 🔫 Cargo Features
 - `archive` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `archive` feature but a tool for packing assets would only need the `builder` feature.
-- `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds `Send + Sync` as a trait bound to many generic types. This allows for the auto-parallelization of the `Builder::dump(---)` function.
+- `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds [`Send`] as a trait bound to many generic types. This allows for the auto-parallelization of the `Builder::dump(---)` function.
 - `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
 - `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
 
@@ -55,15 +56,14 @@ use std::fs::File;
 use vach::prelude::{Archive, Resource, Flags};
 
 let target = File::open("sounds.vach")?;
-let archive = Archive::from_handle(target)?;
-let resource: Resource = archive.fetch("ambient")?;
+let mut archive = Archive::new(target)?;
+let resource: Resource = archive.fetch_mut("ambient")?;
 
 // By default all resources are flagged as NOT authenticated
 println!("{}", Sound::new(&resource.data)?);
 assert!(!resource.authenticated);
 
-let mut buffer = Vec::new();
-let (flags, content_version, is_secure) = archive.fetch_write("ftstep", &mut buffer)?;
+let resource = archive.fetch_mut("ftstep")?;
 ```
 
 ##### > Build a signed `.vach` file
@@ -103,7 +103,7 @@ let target = File::open("sounds.vach")?;
 let archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
-let resource = archive.fetch("ambient")?;
+let mut resource = archive.fetch_mut("ambient")?;
 println!("{}", Sound::new(&resource.data)?);
 assert!(resource.authenticated);
 ```
@@ -137,6 +137,7 @@ let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
 mod tests;
 
 pub(crate) mod global;
+
 #[cfg(feature = "archive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
 pub(crate) mod loader;

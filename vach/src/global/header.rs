@@ -147,7 +147,7 @@ impl Header {
 	/// Validates a `Header` with a template [ArchiveConfig]
 	/// ### Errors
 	///  - (in)validation of magic and archive version
-	pub fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult {
+	pub(crate) fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult {
 		// Validate magic
 		if header.magic != config.magic {
 			return Err(InternalError::MalformedArchiveSource(header.magic));
@@ -163,7 +163,7 @@ impl Header {
 
 	/// ### Errors
 	///  - `io` errors
-	pub fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
+	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
 		#![allow(clippy::uninit_assumed_init)]
 		let mut buffer: [u8; Header::BASE_SIZE] = [0u8; Header::BASE_SIZE];
 

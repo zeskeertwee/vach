@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::io;
-use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 
-use rayon::iter::{ParallelIterator, IntoParallelRefIterator};
+use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 use vach::prelude::*;
 use vach::crypto_utils::gen_keypair;
 
@@ -57,13 +55,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 			// Add data
 			builder
-				.add_leaf(Leaf::from_handle(data_1).id("d1").compress(CompressMode::Always))
+				.add_leaf(Leaf::new(data_1).id("d1").compress(CompressMode::Always))
 				.unwrap();
 			builder
-				.add_leaf(Leaf::from_handle(data_2).id("d2").compress(CompressMode::Never))
+				.add_leaf(Leaf::new(data_2).id("d2").compress(CompressMode::Never))
 				.unwrap();
 			builder
-				.add_leaf(Leaf::from_handle(data_3).id("d3").compress(CompressMode::Detect))
+				.add_leaf(Leaf::new(data_3).id("d3").compress(CompressMode::Detect))
 				.unwrap();
 
 			// Dump data
@@ -80,12 +78,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 	{
 		// Builds an archive source from which to benchmark
-		let template = Leaf::default()
-			.encrypt(false)
-			.sign(false)
-			.compress(CompressMode::Never)
-			.compression_algo(CompressionAlgorithm::LZ4);
-		let mut builder = Builder::new().template(template);
+		let mut builder = Builder::new().template(Leaf::default().encrypt(false).sign(false));
 
 		// Add data
 		builder.add(data_1, "d1").unwrap();
@@ -99,28 +92,23 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	// Load data
 	throughput_group.throughput(Throughput::Elements(3));
 
-	let archive = Archive::with_config(&mut target, &h_config).unwrap();
-	let mut sink = Sink::new();
+	let mut archive = Archive::with_config(&mut target, &h_config).unwrap();
 
-	throughput_group.bench_function("Archive::fetch_write(---)", |b| {
+	throughput_group.bench_function("Archive::fetch(---)", |b| {
 		// Load data
 		b.iter(|| {
-			archive.fetch_write("d1", &mut sink).unwrap();
-			archive.fetch_write("d2", &mut sink).unwrap();
-			archive.fetch_write("d3", &mut sink).unwrap();
+			archive.fetch("d1").unwrap();
+			archive.fetch("d2").unwrap();
+			archive.fetch("d3").unwrap();
 		});
 	});
 
-	throughput_group.bench_function("Archive::fetch_batch(---)", |b| {
+	throughput_group.bench_function("Archive::fetch_mut(---)", |b| {
 		// Load data
 		b.iter(|| {
-			let resources = ["d2", "d1", "d3"]
-				.as_slice()
-				.par_iter()
-				.map(|id| (id, archive.fetch(&id)))
-				.collect::<HashMap<_, _>>();
-
-			criterion::black_box(resources)
+			archive.fetch_mut("d1").unwrap();
+			archive.fetch_mut("d2").unwrap();
+			archive.fetch_mut("d3").unwrap();
 		});
 	});
 
