@@ -127,8 +127,7 @@ impl<T> Archive<T> {
 					},
 					// data was not decrypted nor stored.
 					None => {
-						let capacity = raw.len();
-						(raw, Vec::with_capacity(capacity))
+						(raw, Vec::with_capacity(raw.capacity())
 					},
 				};
 
