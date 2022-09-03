@@ -1,7 +1,7 @@
 use std::{
 	str,
 	io::{Read, Seek, SeekFrom},
-	collections::BTreeMap,
+	collections::HashMap,
 };
 
 use super::resource::Resource;
@@ -37,7 +37,7 @@ pub struct Archive<T> {
 
 	// Archive metadata
 	header: Header,
-	entries: BTreeMap<String, RegistryEntry>,
+	entries: HashMap<String, RegistryEntry>,
 
 	// Optional parts
 	#[cfg(feature = "crypto")]
@@ -190,7 +190,7 @@ where
 		Header::validate(config, &header)?;
 
 		// Generate and store Registry Entries
-		let mut entries = BTreeMap::new();
+		let mut entries = HashMap::new();
 
 		// Construct entries map
 		for _ in 0..header.capacity {
@@ -251,7 +251,7 @@ where
 
 	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
-	pub fn entries(&self) -> &BTreeMap<String, RegistryEntry> {
+	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
 	}
 
