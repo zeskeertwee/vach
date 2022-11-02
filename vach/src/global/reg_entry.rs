@@ -1,4 +1,6 @@
 use std::{io::Read, fmt};
+use ed25519_dalek::Signature;
+
 use super::{result::InternalResult, flags::Flags};
 
 #[cfg(feature = "crypto")]
@@ -41,7 +43,7 @@ impl RegistryEntry {
 	/// Given a read handle, will proceed to read and parse bytes into a [`RegistryEntry`] struct. (de-serialization)
 	/// ### Errors
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
-	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(Self, String)> {
+	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(RegistryEntry, String)> {
 		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = [0u8; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
@@ -97,7 +99,8 @@ impl RegistryEntry {
 
 	/// Serializes a [`RegistryEntry`] struct into an array of bytes
 	pub(crate) fn bytes(&self, id_length: &u16) -> Vec<u8> {
-		let mut buffer = Vec::new();
+		let mut buffer = Vec::with_capacity(RegistryEntry::MIN_SIZE + Signature::BYTE_SIZE);
+
 		buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
 		buffer.extend_from_slice(&self.content_version.to_le_bytes());
 		buffer.extend_from_slice(&self.location.to_le_bytes());

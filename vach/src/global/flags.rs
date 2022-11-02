@@ -30,8 +30,6 @@ impl Flags {
 	pub const SIGNED_FLAG: u32 = 0b_0000_1000_0000_0000_0000_0000_0000_0000;
 	/// The flag that shows data in the leaf in encrypted
 	pub const ENCRYPTED_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
-	/// A flag that is set if the registry has space reserved for more entries
-	pub const MUTABLE_REGISTRY_FLAG: u32 = 0b_0000_0001_0000_0000_0000_0000_0000_0000;
 
 	#[inline(always)]
 	/// Construct a `Flags` struct from a `u32` number
@@ -82,7 +80,7 @@ impl Flags {
 	/// ### Errors
 	///  - Trying to set a bit in the forbidden section of the flags
 	pub fn set(&mut self, bit: u32, toggle: bool) -> InternalResult<u32> {
-		if Flags::_contains(Flags::RESERVED_MASK, bit) {
+		if (Flags::RESERVED_MASK & bit) != 0 {
 			return Err(InternalError::RestrictedFlagAccessError);
 		} else {
 			self.force_set(bit, toggle)
@@ -109,12 +107,7 @@ impl Flags {
 	/// assert!(flag.contains(0b1000_0000_0000_0000));
 	/// ```
 	pub fn contains(&self, bit: u32) -> bool {
-		Flags::_contains(self.bits, bit)
-	}
-
-	// Auxillary function
-	fn _contains(first: u32, other: u32) -> bool {
-		(first & other) != 0
+		(self.bits & bit) != 0
 	}
 }
 

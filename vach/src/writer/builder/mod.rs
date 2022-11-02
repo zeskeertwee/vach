@@ -2,12 +2,9 @@ use std::io::{BufWriter, Write, Seek, SeekFrom, Read};
 use std::collections::HashSet;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, AtomicUsize};
-use std::sync::{
-	Arc,
-	atomic::{Ordering},
-};
+use std::sync::{Arc, atomic::Ordering};
 
-use parking_lot::{Mutex};
+use parking_lot::Mutex;
 
 mod config;
 pub use config::BuilderConfig;
@@ -18,9 +15,7 @@ use {crate::global::compressor::Compressor, super::compress_mode::CompressMode};
 
 use crate::global::error::InternalError;
 use crate::global::result::InternalResult;
-use crate::{
-	global::{header::Header, reg_entry::RegistryEntry, flags::Flags},
-};
+use crate::global::{header::Header, reg_entry::RegistryEntry, flags::Flags};
 
 #[cfg(feature = "crypto")]
 use {crate::crypto::Encryptor, ed25519_dalek::Signer};
@@ -50,8 +45,7 @@ impl<'a> Builder<'a> {
 			.id(id.as_ref().to_string())
 			.template(&self.leaf_template);
 
-		self.add_leaf(leaf)?;
-		Ok(())
+		self.add_leaf(leaf)
 	}
 
 	/// Removes all the [`Leaf`]s from the [`Builder`]. Leaves the `template` intact. Use this to re-use [`Builder`]s instead of instantiating new ones
@@ -99,11 +93,11 @@ impl<'a> Builder<'a> {
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult {
 		// Make sure no two leaves are written with the same ID
 		if !self.id_set.insert(leaf.id.clone()) {
-			return Err(InternalError::LeafAppendError(leaf.id));
-		};
-
-		self.leafs.push(leaf);
-		Ok(())
+			Err(InternalError::LeafAppendError(leaf.id))
+		} else {
+			self.leafs.push(leaf);
+			Ok(())
+		}
 	}
 
 	/// Avoid unnecessary boilerplate by auto-templating all [`Leaf`]s added with `Builder::add(--)` with the given template
@@ -137,8 +131,7 @@ impl<'a> Builder<'a> {
 		let mut reg_buffer_sync = Vec::new();
 
 		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
-		#[allow(unused_mut)]
-		let mut leaf_offset_sync = {
+		let leaf_offset_sync = {
 			self.leafs
 				.iter()
 				.map(|leaf| {
@@ -335,7 +328,7 @@ impl<'a> Builder<'a> {
 
 			// Call the progress callback bound within the [`BuilderConfig`]
 			if let Some(callback) = config.progress_callback {
-				callback(&leaf, &entry);
+				callback(&leaf, &entry)
 			}
 
 			Ok(())

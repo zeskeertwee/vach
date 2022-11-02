@@ -49,26 +49,22 @@ impl<T: Read> Compressor<T> {
 			)),
 		}
 	}
+
 	/// Pass in a compression algorithm to use, sit back and let the decompressor do it's job. That is if the compressed data *is* compressed with the adjacent algorithm
-	pub fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult {
+	/// Contains the number of bytes decompressed from the source
+	pub fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut Vec<u8>) -> InternalResult<usize> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut rdr = lz4::frame::FrameDecoder::new(&mut self.data);
-				io::copy(&mut rdr, output)?;
-
-				Ok(())
+				rdr.read_to_end(output).map_err(InternalError::IOError)
 			},
 			CompressionAlgorithm::Snappy => {
 				let mut rdr = snap::read::FrameDecoder::new(&mut self.data);
-				io::copy(&mut rdr, output)?;
-
-				Ok(())
+				rdr.read_to_end(output).map_err(InternalError::IOError)
 			},
 			CompressionAlgorithm::Brotli(_) => {
 				let mut rdr = brotli::Decompressor::new(&mut self.data, 4096);
-				io::copy(&mut rdr, output)?;
-
-				Ok(())
+				rdr.read_to_end(output).map_err(InternalError::IOError)
 			},
 		}
 	}

@@ -218,6 +218,7 @@ fn edcryptor_test() -> InternalResult {
 
 	assert_ne!(&plaintext, &ciphertext);
 	assert_eq!(&plaintext, &data);
+
 	Ok(())
 }
 

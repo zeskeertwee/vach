@@ -1,7 +1,5 @@
 use std::fmt;
-use crate::{
-	global::{flags::Flags},
-};
+use crate::global::flags::Flags;
 
 /// Basically processed data obtained from an archive.
 /// Contains `data`, `flags` and `content_version` fields.
