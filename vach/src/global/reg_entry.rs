@@ -97,7 +97,7 @@ impl RegistryEntry {
 
 	/// Serializes a [`RegistryEntry`] struct into an array of bytes
 	pub(crate) fn bytes(&self, id_length: &u16) -> Vec<u8> {
-		let mut buffer = Vec::with_capacity(RegistryEntry::MIN_SIZE + crypto::Signature::BYTE_SIZE);
+		let mut buffer = Vec::with_capacity(RegistryEntry::MIN_SIZE + 64);
 
 		buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
 		buffer.extend_from_slice(&self.content_version.to_le_bytes());
