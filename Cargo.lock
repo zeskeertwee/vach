@@ -1106,7 +1106,6 @@ dependencies = [
  "brotli",
  "ed25519-dalek",
  "lz4_flex",
- "num_cpus",
  "parking_lot",
  "rand",
  "rayon",
