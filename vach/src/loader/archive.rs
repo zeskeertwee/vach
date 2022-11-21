@@ -1,7 +1,7 @@
 use std::{
 	str,
 	io::{Read, Seek, SeekFrom},
-	collections::BTreeMap,
+	collections::HashMap,
 };
 
 use super::resource::Resource;
@@ -37,7 +37,7 @@ pub struct Archive<T> {
 
 	// Archive metadata
 	header: Header,
-	entries: BTreeMap<String, RegistryEntry>,
+	entries: HashMap<String, RegistryEntry>,
 
 	// Optional parts
 	#[cfg(feature = "crypto")]
@@ -75,11 +75,10 @@ impl<T> Archive<T> {
 
 	// Decompress and|or decrypt the data
 	#[inline(never)]
-	fn process(&self, values: (&RegistryEntry, &str, Vec<u8>)) -> InternalResult<(Vec<u8>, bool)> {
+	fn process(&self, entry: &RegistryEntry, id: &str, mut raw: Vec<u8>) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		// buffer_a originally contains the raw data
-		let (entry, id, mut raw) = values;
 		let mut decrypted = None;
 		let mut is_secure = false;
 
@@ -110,9 +109,7 @@ impl<T> Archive<T> {
 			}
 
 			#[cfg(not(feature = "crypto"))]
-			{
-				return Err(InternalError::MissingFeatureError("crypto"));
-			}
+			return Err(InternalError::MissingFeatureError("crypto"));
 		}
 
 		// 2: Decompression layer
@@ -127,7 +124,7 @@ impl<T> Archive<T> {
 					},
 					// data was not decrypted nor stored.
 					None => {
-						let capacity = raw.len();
+						let capacity = raw.capacity();
 						(raw, Vec::with_capacity(capacity))
 					},
 				};
@@ -190,7 +187,7 @@ where
 		Header::validate(config, &header)?;
 
 		// Generate and store Registry Entries
-		let mut entries = BTreeMap::new();
+		let mut entries = HashMap::new();
 
 		// Construct entries map
 		for _ in 0..header.capacity {
@@ -206,12 +203,14 @@ where
 				.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
 
 			// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
-			let mut decryptor = None;
-			if use_decryption {
-				if let Some(pk) = config.public_key {
-					decryptor = Some(crypto::Encryptor::new(&pk, config.magic))
-				}
-			}
+			let decryptor = use_decryption
+				.then(|| {
+					config
+						.public_key
+						.as_ref()
+						.map(|pk| crypto::Encryptor::new(pk, config.magic))
+				})
+				.flatten();
 
 			Ok(Archive {
 				header,
@@ -232,17 +231,6 @@ where
 		}
 	}
 
-	/// Given a data source and a [`RegistryEntry`], gets the adjacent raw data
-	pub(crate) fn fetch_raw(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
-		handle.seek(SeekFrom::Start(entry.location))?;
-
-		let mut take = handle.take(entry.offset);
-		take.read_to_end(&mut buffer)?;
-
-		Ok(buffer)
-	}
-
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
 	/// This can be used for debugging, as the [`RegistryEntry`] holds information on data with the adjacent ID.
 	pub fn fetch_entry(&self, id: impl AsRef<str>) -> Option<RegistryEntry> {
@@ -251,7 +239,7 @@ where
 
 	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
-	pub fn entries(&self) -> &BTreeMap<String, RegistryEntry> {
+	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
 		&self.entries
 	}
 
@@ -262,25 +250,32 @@ where
 	}
 }
 
+/// Given a data source and a [`RegistryEntry`], gets the adjacent raw data
+pub(crate) fn read_entry<T: Seek + Read>(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+	let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
+	handle.seek(SeekFrom::Start(entry.location))?;
+
+	let mut take = handle.take(entry.offset);
+	take.read_to_end(&mut buffer)?;
+
+	Ok(buffer)
+}
+
 impl<T> Archive<T>
 where
 	T: Read + Seek,
 {
-	/// Fetch a [`Resource`] with the given `ID`.
-	/// Locks the underlying [`Mutex`], for a cheaper non-locking operation refer to `Archive::fetch_mut`
-	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
+	/// Cheaper alternative to `fetch` that works best for single threaded applications.
+	/// It does not lock the underlying [Mutex], since it requires a mutable reference.
+	/// Therefore the borrow checker statically guarantees the operation is safe. Refer to [`Mutex::get_mut`](Mutex).
+	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
-			let raw = {
-				let mut guard = self.handle.lock();
-				Archive::<T>::fetch_raw(&mut guard, &entry)?
-			};
+			let raw = read_entry(self.handle.get_mut(), &entry)?;
 
 			// Prepare contextual variables
-			let independent = (&entry, id.as_ref(), raw);
-
 			// Decompress and|or decrypt the data
-			let (buffer, is_secure) = self.process(independent)?;
+			let (buffer, is_secure) = self.process(&entry, id.as_ref(), raw)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
@@ -293,19 +288,19 @@ where
 		}
 	}
 
-	/// Cheaper alternative to `fetch` that works best for single threaded applications.
-	/// It does not lock the underlying [Mutex], since it requires a mutable reference.
-	/// Therefore the borrow checker statically guarantees the operation is safe. Refer to [`Mutex::get_mut`](Mutex).
-	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
+	/// Fetch a [`Resource`] with the given `ID`.
+	/// > Locks the underlying [`Mutex`], for a cheaper non-locking operation refer to `Archive::fetch_mut`
+	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
-			let raw = Archive::<T>::fetch_raw(self.handle.get_mut(), &entry)?;
+			let raw = {
+				let mut guard = self.handle.lock();
+				read_entry(guard.by_ref(), &entry)?
+			};
 
 			// Prepare contextual variables
-			let independent = (&entry, id.as_ref(), raw);
-
 			// Decompress and|or decrypt the data
-			let (buffer, is_secure) = self.process(independent)?;
+			let (buffer, is_secure) = self.process(&entry, id.as_ref(), raw)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,

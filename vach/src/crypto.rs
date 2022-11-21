@@ -10,7 +10,7 @@ pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
 
 use crate::prelude::{InternalResult, InternalError};
 
-// Encryption - Decryption, A convenient wrapper around aes encryption and decryption
+/// Encryption - Decryption, A convenient wrapper around aes encryption and decryption
 pub(crate) struct Encryptor {
 	cipher: Aes256Gcm,
 	nonce: Nonce<U12>,
@@ -29,8 +29,8 @@ impl Encryptor {
 
 		// Build Nonce
 		let key = Key::from_slice(bytes);
-		let mut v = vec![178, 5, 239, 228, 165, 44, 169];
-		v.extend_from_slice(&magic);
+		let mut v = [178, 5, 239, 228, 165, 44, 169, 0, 0, 0, 0, 0];
+		(&mut v[7..12]).copy_from_slice(&magic);
 
 		Encryptor {
 			cipher: Aes256Gcm::new(key),
@@ -40,20 +40,10 @@ impl Encryptor {
 
 	// The meat and the mass of this struct
 	pub(crate) fn encrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
-		let res = match self.cipher.encrypt(&self.nonce, data) {
-			Ok(data) => data,
-			Err(err) => return Err(InternalError::CryptoError(err)),
-		};
-
-		Ok(res)
+		self.cipher.encrypt(&self.nonce, data).map_err(InternalError::CryptoError)
 	}
 
 	pub(crate) fn decrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
-		let res = match self.cipher.decrypt(&self.nonce, data) {
-			Ok(data) => data,
-			Err(err) => return Err(InternalError::CryptoError(err)),
-		};
-
-		Ok(res)
+		self.cipher.decrypt(&self.nonce, data).map_err(InternalError::CryptoError)
 	}
 }

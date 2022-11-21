@@ -2,7 +2,7 @@
 name = "vach"
 
 # NOTE: Make sure spec.txt and vach::VERSION constants are all synced up
-version = "0.4.1"
+version = "0.4.5"
 
 edition = "2021"
 authors = [
@@ -39,7 +39,6 @@ brotli = { version = "3.3.4", optional = true }
 # Multithreaded features
 parking_lot = { version = "0.12.1" }
 rayon = { version = "1.5.2", optional = true }
-num_cpus = { version = "1.13.1", optional = true }
 
 [features]
 default = ["builder", "archive"]
@@ -48,7 +47,7 @@ archive = []
 builder = []
 
 crypto = ["ed25519-dalek", "aes-gcm", "rand"]
-multithreaded = ["rayon", "num_cpus"]
+multithreaded = ["rayon"]
 compression = ["snap", "lz4_flex", "brotli"]
 
 [package.metadata.docs.rs]

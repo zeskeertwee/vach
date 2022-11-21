@@ -106,8 +106,7 @@ impl<'a> BuilderConfig<'a> {
 	/// If the call to `::utils::read_keypair()` fails to parse the data from the handle
 	#[cfg(feature = "crypto")]
 	pub fn load_keypair<T: std::io::Read>(&mut self, handle: T) -> crate::global::result::InternalResult {
-		self.keypair = Some(crate::crypto_utils::read_keypair(handle)?);
-		Ok(())
+		crate::crypto_utils::read_keypair(handle).map(|kp| self.keypair = Some(kp))
 	}
 }
 

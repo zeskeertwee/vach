@@ -1,6 +1,4 @@
-use crate::{
-	global::{reg_entry::RegistryEntry, flags::Flags},
-};
+use crate::global::{reg_entry::RegistryEntry, flags::Flags};
 
 #[cfg(feature = "compression")]
 use {crate::global::compressor::CompressionAlgorithm, super::compress_mode::CompressMode};
