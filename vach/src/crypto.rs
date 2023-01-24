@@ -31,6 +31,7 @@ impl Encryptor {
 		let key = Key::from_slice(bytes);
 		let mut v = [178, 5, 239, 228, 165, 44, 169, 0, 0, 0, 0, 0];
 		(&mut v[7..12]).copy_from_slice(&magic);
+		dbg!(&v);
 
 		Encryptor {
 			cipher: Aes256Gcm::new(key),
@@ -40,10 +41,14 @@ impl Encryptor {
 
 	// The meat and the mass of this struct
 	pub(crate) fn encrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
-		self.cipher.encrypt(&self.nonce, data).map_err(InternalError::CryptoError)
+		self.cipher
+			.encrypt(&self.nonce, data)
+			.map_err(InternalError::CryptoError)
 	}
 
 	pub(crate) fn decrypt(&self, data: &[u8]) -> InternalResult<Vec<u8>> {
-		self.cipher.decrypt(&self.nonce, data).map_err(InternalError::CryptoError)
+		self.cipher
+			.decrypt(&self.nonce, data)
+			.map_err(InternalError::CryptoError)
 	}
 }

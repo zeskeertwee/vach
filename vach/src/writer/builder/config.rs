@@ -28,11 +28,12 @@ pub struct BuilderConfig<'a> {
 	///
 	/// let builder_config = BuilderConfig::default();
 	/// fn callback(leaf: &Leaf, reg_entry: &RegistryEntry) {
-	/// 	println!("Leaf: {leaf:?} has been processed into Entry: {reg_entry:?}")
+	///   println!("Leaf: {leaf:?} has been processed into Entry: {reg_entry:?}")
 	/// }
 	///
 	/// builder_config.callback(&callback);
 	/// ```
+	#[allow(clippy::type_complexity)]
 	pub progress_callback: Option<&'a (dyn Fn(&Leaf, &RegistryEntry) + Send + Sync)>,
 }
 

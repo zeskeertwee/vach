@@ -50,8 +50,8 @@ impl<T> std::fmt::Display for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let bytes = self
 			.entries
-			.iter()
-			.map(|(_, entry)| entry.offset)
+			.values()
+			.map(|re| re.offset)
 			.reduce(|a, b| a + b)
 			.unwrap_or(0);
 

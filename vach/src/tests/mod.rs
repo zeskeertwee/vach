@@ -25,6 +25,9 @@ const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::new(target)?;
+
+	dbg!(archive.entries());
+
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = entry.flags;
 
