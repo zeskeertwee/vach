@@ -115,16 +115,7 @@ fn simple_fetch() -> InternalResult {
 	let mut archive = Archive::new(target)?;
 	let resource = archive.fetch_mut("poem")?;
 
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(resource.data.len(), 359);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(resource.data.len(), 345);
-	}
-
+	assert_eq!(resource.data.len(), 345);
 	assert!(!resource.authenticated);
 	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
 
@@ -265,16 +256,7 @@ fn fetch_from_encrypted() -> InternalResult {
 	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(resource.data.as_slice()).unwrap();
 
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(song.len(), 2041);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(song.len(), 1977);
-	}
-
+	assert_eq!(song.len(), 1977);
 	assert!(resource.authenticated);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
