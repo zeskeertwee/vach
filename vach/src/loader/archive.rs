@@ -41,7 +41,7 @@ pub struct Archive<T> {
 	#[cfg(feature = "crypto")]
 	decryptor: Option<crypto::Encryptor>,
 	#[cfg(feature = "crypto")]
-	key: Option<crypto::PublicKey>,
+	key: Option<crypto::VerifyingKey>,
 }
 
 impl<T> std::fmt::Display for Archive<T> {

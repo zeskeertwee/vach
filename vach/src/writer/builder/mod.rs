@@ -182,7 +182,7 @@ impl<'a> Builder<'a> {
 		#[cfg(feature = "crypto")]
 		let encryptor = if use_encryption {
 			if let Some(keypair) = config.keypair.as_ref() {
-				Some(Encryptor::new(&keypair.public, config.magic))
+				Some(Encryptor::new(&keypair.verifying_key(), config.magic))
 			} else {
 				return Err(InternalError::NoKeypairError);
 			}

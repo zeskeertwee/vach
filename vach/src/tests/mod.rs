@@ -7,7 +7,7 @@ use crate::prelude::*;
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
-const KEYPAIR: &[u8; crate::KEYPAIR_LENGTH] = include_bytes!("../../test_data/pair.pub");
+const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
 const SIGNED_TARGET: &str = "test_data/signed/target.vach";
@@ -202,9 +202,9 @@ fn fetch_with_signature() -> InternalResult {
 fn edcryptor_test() -> InternalResult {
 	use crate::crypto_utils::gen_keypair;
 
-	let pk = gen_keypair().public;
+	let vk = gen_keypair().verifying_key();
 
-	let crypt = Encryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
+	let crypt = Encryptor::new(&vk, crate::DEFAULT_MAGIC.clone());
 	let data = vec![12, 12, 12, 12];
 
 	let ciphertext = crypt.encrypt(&data)?;
@@ -256,12 +256,6 @@ fn fetch_from_encrypted() -> InternalResult {
 	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(&resource.data).unwrap();
 
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		dbg!(&song);
-	}
-
 	assert_eq!(song.len(), 1977);
 	assert!(resource.authenticated);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
@@ -285,7 +279,7 @@ fn consolidated_example() -> InternalResult {
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
 	// Builder definition
-	let keypair_bytes = gen_keypair().to_bytes();
+	let keypair_bytes = gen_keypair().to_keypair_bytes();
 	let config = BuilderConfig::default()
 		.magic(*MAGIC)
 		.keypair(read_keypair(&keypair_bytes as &[u8])?);

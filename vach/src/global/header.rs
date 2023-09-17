@@ -15,7 +15,7 @@ pub struct ArchiveConfig {
 	/// archive source has signatures.
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-	pub public_key: Option<crypto::PublicKey>,
+	pub public_key: Option<crypto::VerifyingKey>,
 }
 
 impl ArchiveConfig {
@@ -27,7 +27,7 @@ impl ArchiveConfig {
 	#[inline(always)]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-	pub const fn new(magic: [u8; crate::MAGIC_LENGTH], key: Option<crypto::PublicKey>) -> ArchiveConfig {
+	pub const fn new(magic: [u8; crate::MAGIC_LENGTH], key: Option<crypto::VerifyingKey>) -> ArchiveConfig {
 		ArchiveConfig { magic, public_key: key }
 	}
 
@@ -65,8 +65,8 @@ impl ArchiveConfig {
 	/// Shorthand to load a PublicKey into the [ArchiveConfig]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-	pub fn key(mut self, public_key: crypto::PublicKey) -> ArchiveConfig {
-		self.public_key = Some(public_key);
+	pub fn key(mut self, verifying_key: crypto::VerifyingKey) -> ArchiveConfig {
+		self.public_key = Some(verifying_key);
 		self
 	}
 

@@ -6,7 +6,7 @@ use aes_gcm::aead::Aead;
 use aes_gcm::aes::cipher::consts::U12;
 use aes_gcm::{Aes256Gcm, Nonce, KeyInit};
 
-pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
+pub use ed25519_dalek::{SigningKey, VerifyingKey, SecretKey, Signature};
 
 use crate::prelude::{InternalResult, InternalError};
 
@@ -23,14 +23,13 @@ impl fmt::Debug for Encryptor {
 }
 
 impl Encryptor {
-	pub(crate) fn new(pk: &PublicKey, magic: [u8; crate::MAGIC_LENGTH]) -> Encryptor {
+	pub(crate) fn new(vk: &VerifyingKey, magic: [u8; crate::MAGIC_LENGTH]) -> Encryptor {
 		// Build encryption key
-		let bytes = &pk.to_bytes();
+		let bytes = &vk.to_bytes();
 
 		// Build Nonce
 		let mut v = [178, 5, 239, 228, 165, 44, 169, 0, 0, 0, 0, 0];
 		(&mut v[7..12]).copy_from_slice(&magic);
-		dbg!(&v);
 
 		Encryptor {
 			cipher: Aes256Gcm::new_from_slice(bytes).unwrap(),

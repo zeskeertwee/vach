@@ -158,9 +158,6 @@ pub use rayon;
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;
 
-/// Size of a keypair: (secret + public)
-pub const KEYPAIR_LENGTH: usize = 64;
-
 /// Size of a secret key
 pub const SECRET_KEY_LENGTH: usize = 32;
 
