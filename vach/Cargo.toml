@@ -23,14 +23,13 @@ thiserror = "1.0.31"
 
 # Authentication dependencies
 ed25519-dalek = { version = "1.0.1", optional = true }
-rand = { version = "0.7.0", optional = true }
+rand = { version = "0.8.5", optional = true }
 
 # Encryption dependencies
-aes-gcm = { version = "0.9.4", features = ["aes"], optional = true }
+aes-gcm = { version = "0.10.2", features = ["aes"], optional = true }
 
 # Compression dependencies
-lz4_flex = { version = "0.9.2", optional = true, default-features = false, features = [
-	"checked-decode",
+lz4_flex = { version = "0.11.1", optional = true, default-features = false, features = [
 	"frame",
 ] }
 snap = { version = "1.0.5", optional = true }

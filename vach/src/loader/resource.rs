@@ -8,7 +8,7 @@ use crate::global::flags::Flags;
 #[derive(Debug)]
 pub struct Resource {
 	/// The processed data, stored as a vector of bytes `Vec<u8>`.
-	pub data: Vec<u8>,
+	pub data: Box<[u8]>,
 	/// The flags extracted from the archive's registry entry
 	pub flags: Flags,
 	/// The content version of the extracted archive entry

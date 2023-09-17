@@ -7,7 +7,7 @@ use {
 		crypto,
 		global::{error::InternalError, result::InternalResult},
 	},
-	std::{io::Read},
+	std::io::Read,
 };
 
 // A favour

@@ -5,14 +5,12 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::{
-	global::{
-		error::InternalError,
-		flags::Flags,
-		header::{Header, ArchiveConfig},
-		reg_entry::RegistryEntry,
-		result::InternalResult,
-	},
+use crate::global::{
+	error::InternalError,
+	flags::Flags,
+	header::{Header, ArchiveConfig},
+	reg_entry::RegistryEntry,
+	result::InternalResult,
 };
 
 use parking_lot::Mutex;
@@ -280,7 +278,7 @@ where
 			Ok(Resource {
 				content_version: entry.content_version,
 				flags: entry.flags,
-				data: buffer,
+				data: buffer.into_boxed_slice(),
 				authenticated: is_secure,
 			})
 		} else {
@@ -305,7 +303,7 @@ where
 			Ok(Resource {
 				content_version: entry.content_version,
 				flags: entry.flags,
-				data: buffer,
+				data: buffer.into_boxed_slice(),
 				authenticated: is_secure,
 			})
 		} else {

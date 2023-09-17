@@ -2,9 +2,9 @@
 #![cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 use std::fmt;
 
-use aes_gcm::aead::{Aead, NewAead};
+use aes_gcm::aead::Aead;
 use aes_gcm::aes::cipher::consts::U12;
-use aes_gcm::{Aes256Gcm, Key, Nonce};
+use aes_gcm::{Aes256Gcm, Nonce, KeyInit};
 
 pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
 
@@ -28,13 +28,12 @@ impl Encryptor {
 		let bytes = &pk.to_bytes();
 
 		// Build Nonce
-		let key = Key::from_slice(bytes);
 		let mut v = [178, 5, 239, 228, 165, 44, 169, 0, 0, 0, 0, 0];
 		(&mut v[7..12]).copy_from_slice(&magic);
 		dbg!(&v);
 
 		Encryptor {
-			cipher: Aes256Gcm::new(key),
+			cipher: Aes256Gcm::new_from_slice(bytes).unwrap(),
 			nonce: *Nonce::from_slice(v.as_slice()),
 		}
 	}

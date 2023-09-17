@@ -119,10 +119,10 @@ fn simple_fetch() -> InternalResult {
 	assert!(!resource.authenticated);
 	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
 
-	println!("{}", String::from_utf8(resource.data).unwrap());
+	println!("{}", str::from_utf8(&resource.data).unwrap());
 
 	let hello = archive.fetch_mut("greeting")?;
-	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
+	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data).unwrap());
 	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
 	Ok(())
@@ -166,7 +166,7 @@ fn fetch_with_signature() -> InternalResult {
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch_mut("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice()).unwrap();
+	let song = str::from_utf8(&resource.data).unwrap();
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
@@ -254,7 +254,7 @@ fn fetch_from_encrypted() -> InternalResult {
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch_mut("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice()).unwrap();
+	let song = str::from_utf8(&resource.data).unwrap();
 
 	// Windows bullshit
 	#[cfg(target_os = "windows")]
@@ -315,9 +315,9 @@ fn consolidated_example() -> InternalResult {
 
 	// Quick assertions
 	let then = Instant::now();
-	assert_eq!(archive.fetch_mut("d1")?.data.as_slice(), data_1);
-	assert_eq!(archive.fetch_mut("d2")?.data.as_slice(), data_2);
-	assert_eq!(archive.fetch_mut("d3")?.data.as_slice(), data_3);
+	assert_eq!(archive.fetch_mut("d1")?.data.as_ref(), data_1);
+	assert_eq!(archive.fetch_mut("d2")?.data.as_ref(), data_2);
+	assert_eq!(archive.fetch_mut("d3")?.data.as_ref(), data_3);
 
 	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 
@@ -435,7 +435,7 @@ fn test_batch_fetching() -> InternalResult {
 	};
 
 	for (_, res) in resources {
-		assert_eq!(res?.data.as_slice(), &INPUT[..]);
+		assert_eq!(res?.data.as_ref(), &INPUT[..]);
 	}
 
 	Ok(())
