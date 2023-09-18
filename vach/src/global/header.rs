@@ -45,7 +45,9 @@ impl ArchiveConfig {
 	/// ```
 	/// use vach::{crypto_utils::gen_keypair, prelude::ArchiveConfig};
 	/// let mut config = ArchiveConfig::default();
-	/// let keypair_bytes = gen_keypair().to_bytes();
+	/// let keypair_bytes = gen_keypair().to_keypair_bytes();
+	/// // let keypair_bytes = gen_keypair().verifying_key().to_bytes();
+	/// // config.load_public_key(&keypair_bytes).unwrap();
 	/// config.load_public_key(&keypair_bytes[32..]).unwrap();
 	/// ```
 	///
