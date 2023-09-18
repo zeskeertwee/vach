@@ -110,27 +110,7 @@ assert!(resource.authenticated);
 
 ##### > Serialize and de-serialize a `Keypair`, `SecretKey` and `PublicKey`
 
-As `Keypair`, `SecretKey` and `PublicKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/), you could refer to their docs to read further about them. These are needed for any cryptography related procedures,
-
-```ignore
-use vach::prelude::{Keypair, SecretKey, PublicKey};
-use vach::crypto_utils::gen_keypair;
-
-// Generate keys
-let keypair : Keypair  = gen_keypair();
-let secret : SecretKey = keypair.secret;
-let public : PublicKey = keypair.public;
-
-// Serialize
-let public_key_bytes : [u8; vach::PUBLIC_KEY_LENGTH] = public.to_bytes();
-let secret_key_bytes : [u8; vach::SECRET_KEY_LENGTH] = secret.to_bytes();
-let keypair_bytes : [u8; vach::KEYPAIR_LENGTH]    = keypair.to_bytes();
-
-// Deserialize
-let public_key : PublicKey = PublicKey::from_bytes(&public_key_bytes).unwrap();
-let secret_key : SecretKey = SecretKey::from_bytes(&secret_key_bytes).unwrap();
-let keypair : Keypair   = Keypair::from_bytes(&keypair_bytes).unwrap();
-```
+As `SigningKey`, `SecretKey` and `VerifyingKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/), you could refer to their docs to read further about them. These are needed for any cryptography related procedures,
 */
 
 /// All tests are included in this module.
