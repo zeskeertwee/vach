@@ -46,7 +46,7 @@ impl CommandTrait for Evaluator {
 					Err(err) => anyhow::bail!("IOError: {} @ {}", err, path),
 				};
 
-				Some(crypto_utils::read_keypair(file)?.public)
+				Some(crypto_utils::read_keypair(file)?.verifying_key())
 			},
 			None => match args.value_of(key_names::PUBLIC_KEY) {
 				Some(path) => {

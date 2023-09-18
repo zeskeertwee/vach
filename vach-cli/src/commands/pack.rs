@@ -163,7 +163,7 @@ impl CommandTrait for Evaluator {
 		let secret_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = File::open(path)?;
-				Some(crypto_utils::read_keypair(file)?.secret)
+				Some(crypto_utils::read_secret_key(file)?)
 			},
 			None => match args.value_of(key_names::SECRET_KEY) {
 				Some(path) => {
@@ -175,13 +175,7 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Generate a keypair from the secret key
-		let mut kp = match secret_key {
-			Some(sk) => {
-				let pk = PublicKey::from(&sk);
-				Some(Keypair { secret: sk, public: pk })
-			},
-			None => None,
-		};
+		let mut kp = secret_key.map(|sk| SigningKey::from(sk));
 
 		// If encrypt is true, and no keypair was found: Generate and write a new keypair to a file
 		if (encrypt || hash) && kp.is_none() {
