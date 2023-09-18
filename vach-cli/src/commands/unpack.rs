@@ -109,29 +109,19 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 	// NOTE: More styling is to come
 	pbar.set_style(
 		ProgressStyle::default_bar()
-			.template(super::PROGRESS_BAR_STYLE)
+			.template(super::PROGRESS_BAR_STYLE)?
 			.progress_chars("█░-")
-			.tick_strings(&[
-				"⢀ ", "⡀ ", "⠄ ", "⢂ ", "⡂ ", "⠅ ", "⢃ ", "⡃ ", "⠍ ", "⢋ ", "⡋ ", "⠍⠁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉", "⠋⠉",
-				"⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⢈⠩", "⡀⢙", "⠄⡙", "⢂⠩", "⡂⢘", "⠅⡘", "⢃⠨", "⡃⢐", "⠍⡐", "⢋⠠", "⡋⢀", "⠍⡁",
-				"⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉", "⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⠈⠩", " ⢙", " ⡙", " ⠩", " ⢘", " ⡘", " ⠨",
-				" ⢐", " ⡐", " ⠠", " ⢀", " ⡀",
-			]),
+			.tick_chars("⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀"),
 	);
 
-	// Vector to allow us to window later via .as_slice()
-	let entry_vec = archive.entries().iter().map(|a| (a.0, a.1.offset)).collect::<Vec<_>>();
-
 	// ignore the unprofessional match clause
-	if let Err(err) = entry_vec.as_slice().par_iter().try_for_each(|(id, offset)| {
-		let msg = id.to_string();
-
+	if let Err(err) = archive.entries().par_iter().try_for_each(|(id, entry)| {
 		// Set's the Progress Bar message
-		pbar.set_message(msg);
+		pbar.set_message(id.to_string());
 
 		// Process filesystem
 		let mut save_path = target_folder.clone();
-		save_path.push(&id);
+		save_path.push(id);
 
 		if let Some(parent_dir) = save_path.ancestors().nth(1) {
 			fs::create_dir_all(parent_dir)?;
@@ -143,7 +133,7 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 		file.write_all(&resource.data)?;
 
 		// Increment Progress Bar
-		pbar.inc(*offset);
+		pbar.inc(entry.offset);
 		Ok(())
 	}) {
 		return Err(err);

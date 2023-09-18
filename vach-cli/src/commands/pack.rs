@@ -182,7 +182,7 @@ impl CommandTrait for Evaluator {
 			let generated = crypto_utils::gen_keypair();
 
 			let mut file = File::create("keypair.kp")?;
-			file.write_all(&generated.to_bytes())?;
+			file.write_all(&generated.to_keypair_bytes())?;
 			log::info!("Generated a new keypair @ keypair.kp");
 
 			kp = Some(generated);
@@ -191,20 +191,15 @@ impl CommandTrait for Evaluator {
 		let pbar = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
 		pbar.set_style(
 			ProgressStyle::default_bar()
-				.template(super::PROGRESS_BAR_STYLE)
+				.template(super::PROGRESS_BAR_STYLE)?
 				.progress_chars("█░-")
-				.tick_strings(&[
-					"⢀ ", "⡀ ", "⠄ ", "⢂ ", "⡂ ", "⠅ ", "⢃ ", "⡃ ", "⠍ ", "⢋ ", "⡋ ", "⠍⠁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉",
-					"⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⢈⠩", "⡀⢙", "⠄⡙", "⢂⠩", "⡂⢘", "⠅⡘", "⢃⠨", "⡃⢐", "⠍⡐", "⢋⠠",
-					"⡋⢀", "⠍⡁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉", "⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⠈⠩", " ⢙", " ⡙", " ⠩",
-					" ⢘", " ⡘", " ⠨", " ⢐", " ⡐", " ⠠", " ⢀", " ⡀",
-				]),
+				.tick_chars("⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀"),
 		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
 		let callback = |leaf: &Leaf, _: &RegistryEntry| {
 			pbar.inc(1);
-			pbar.set_message(leaf.id.to_string())
+			pbar.set_message(leaf.id.clone())
 		};
 
 		// Build a builder-config using the above extracted data

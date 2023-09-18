@@ -1,5 +1,7 @@
 #! /usr/bin/sh
 
+set -xe
+
 # # Variables
 EXCLUDE=test.sh
 ARTIFACTS="keypair.sk keypair.pk keypair.kp signed.vach custom.vach encrypted.vach"
@@ -18,7 +20,7 @@ cargo check -q
 cargo build -q --release
 
 # # Create simple archive with simple input, no compression only signatures
-$VACH pack -o signed.vach -r ./ -c detect -g brotli -a -x $EXCLUDE
+$VACH pack --output signed.vach --directory-r ./ --compress-mode detect --compress-algo brotli --hash --exclude $EXCLUDE
 
 # # Split the resulting keypair
 $VACH split -i keypair.kp
