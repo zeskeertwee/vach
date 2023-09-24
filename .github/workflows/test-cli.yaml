@@ -16,6 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Grant executive permissions to script
-        run: chmod +x ./vach-cli/test_data/test.sh
+        run: chmod +x ./vach-cli/test_data/test.sh\
+      - name: Change into relevant directory
+        run: cd ./vach-cli/test_data/
       - name: Run CLI tests
         run: sh ./vach-cli/test_data/test.sh
