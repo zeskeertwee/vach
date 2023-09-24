@@ -113,13 +113,11 @@ fn builder_no_signature() -> InternalResult {
 fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::new(target)?;
-	let resource = archive.fetch_mut("poem")?;
+	let resource = archive.fetch_mut("wasm")?;
 
-	// assert_eq!(resource.data.len(), 345);
+	assert_eq!(resource.data.len(), 106537);
 	assert!(!resource.authenticated);
-	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
-
-	println!("{}", str::from_utf8(&resource.data).unwrap());
+	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 
 	let hello = archive.fetch_mut("greeting")?;
 	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data).unwrap());
@@ -253,11 +251,9 @@ fn fetch_from_encrypted() -> InternalResult {
 	config.load_public_key(public_key)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch_mut("test_data/song.txt")?;
-	let song = str::from_utf8(&resource.data).unwrap();
-	dbg!(song);
+	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
 
-	assert_eq!(song.len(), 1977);
+	assert_eq!(resource.data.len(), 106537);
 	assert!(resource.authenticated);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
