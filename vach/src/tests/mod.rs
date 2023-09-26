@@ -7,7 +7,7 @@ use crate::prelude::*;
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
-const KEYPAIR: &[u8; crate::KEYPAIR_LENGTH] = include_bytes!("../../test_data/pair.pub");
+const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
 const SIGNED_TARGET: &str = "test_data/signed/target.vach";
@@ -25,6 +25,9 @@ const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::new(target)?;
+
+	dbg!(archive.entries());
+
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = entry.flags;
 
@@ -110,25 +113,14 @@ fn builder_no_signature() -> InternalResult {
 fn simple_fetch() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::new(target)?;
-	let resource = archive.fetch_mut("poem")?;
+	let resource = archive.fetch_mut("wasm")?;
 
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(resource.data.len(), 359);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(resource.data.len(), 345);
-	}
-
+	assert_eq!(resource.data.len(), 106537);
 	assert!(!resource.authenticated);
-	assert!(resource.flags.contains(Flags::COMPRESSED_FLAG));
-
-	println!("{}", String::from_utf8(resource.data).unwrap());
+	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 
 	let hello = archive.fetch_mut("greeting")?;
-	assert_eq!("Hello, Cassandra!", String::from_utf8(hello.data).unwrap());
+	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data).unwrap());
 	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
 
 	Ok(())
@@ -172,7 +164,7 @@ fn fetch_with_signature() -> InternalResult {
 
 	let mut archive = Archive::with_config(target, &config)?;
 	let resource = archive.fetch_mut("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice()).unwrap();
+	let song = str::from_utf8(&resource.data).unwrap();
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
@@ -208,9 +200,9 @@ fn fetch_with_signature() -> InternalResult {
 fn edcryptor_test() -> InternalResult {
 	use crate::crypto_utils::gen_keypair;
 
-	let pk = gen_keypair().public;
+	let vk = gen_keypair().verifying_key();
 
-	let crypt = Encryptor::new(&pk, crate::DEFAULT_MAGIC.clone());
+	let crypt = Encryptor::new(&vk, crate::DEFAULT_MAGIC.clone());
 	let data = vec![12, 12, 12, 12];
 
 	let ciphertext = crypt.encrypt(&data)?;
@@ -259,19 +251,9 @@ fn fetch_from_encrypted() -> InternalResult {
 	config.load_public_key(public_key)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch_mut("test_data/song.txt")?;
-	let song = str::from_utf8(resource.data.as_slice()).unwrap();
+	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
 
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(song.len(), 2041);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(song.len(), 1977);
-	}
-
+	assert_eq!(resource.data.len(), 106537);
 	assert!(resource.authenticated);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
@@ -294,7 +276,7 @@ fn consolidated_example() -> InternalResult {
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
 	// Builder definition
-	let keypair_bytes = gen_keypair().to_bytes();
+	let keypair_bytes = gen_keypair().to_keypair_bytes();
 	let config = BuilderConfig::default()
 		.magic(*MAGIC)
 		.keypair(read_keypair(&keypair_bytes as &[u8])?);
@@ -324,9 +306,9 @@ fn consolidated_example() -> InternalResult {
 
 	// Quick assertions
 	let then = Instant::now();
-	assert_eq!(archive.fetch_mut("d1")?.data.as_slice(), data_1);
-	assert_eq!(archive.fetch_mut("d2")?.data.as_slice(), data_2);
-	assert_eq!(archive.fetch_mut("d3")?.data.as_slice(), data_3);
+	assert_eq!(archive.fetch_mut("d1")?.data.as_ref(), data_1);
+	assert_eq!(archive.fetch_mut("d2")?.data.as_ref(), data_2);
+	assert_eq!(archive.fetch_mut("d3")?.data.as_ref(), data_3);
 
 	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
 
@@ -444,7 +426,7 @@ fn test_batch_fetching() -> InternalResult {
 	};
 
 	for (_, res) in resources {
-		assert_eq!(res?.data.as_slice(), &INPUT[..]);
+		assert_eq!(res?.data.as_ref(), &INPUT[..]);
 	}
 
 	Ok(())

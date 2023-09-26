@@ -163,7 +163,7 @@ impl CommandTrait for Evaluator {
 		let secret_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = File::open(path)?;
-				Some(crypto_utils::read_keypair(file)?.secret)
+				Some(crypto_utils::read_secret_key(file)?)
 			},
 			None => match args.value_of(key_names::SECRET_KEY) {
 				Some(path) => {
@@ -175,20 +175,14 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Generate a keypair from the secret key
-		let mut kp = match secret_key {
-			Some(sk) => {
-				let pk = PublicKey::from(&sk);
-				Some(Keypair { secret: sk, public: pk })
-			},
-			None => None,
-		};
+		let mut kp = secret_key.map(|sk| SigningKey::from(sk));
 
 		// If encrypt is true, and no keypair was found: Generate and write a new keypair to a file
 		if (encrypt || hash) && kp.is_none() {
 			let generated = crypto_utils::gen_keypair();
 
 			let mut file = File::create("keypair.kp")?;
-			file.write_all(&generated.to_bytes())?;
+			file.write_all(&generated.to_keypair_bytes())?;
 			log::info!("Generated a new keypair @ keypair.kp");
 
 			kp = Some(generated);
@@ -197,20 +191,15 @@ impl CommandTrait for Evaluator {
 		let pbar = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
 		pbar.set_style(
 			ProgressStyle::default_bar()
-				.template(super::PROGRESS_BAR_STYLE)
+				.template(super::PROGRESS_BAR_STYLE)?
 				.progress_chars("█░-")
-				.tick_strings(&[
-					"⢀ ", "⡀ ", "⠄ ", "⢂ ", "⡂ ", "⠅ ", "⢃ ", "⡃ ", "⠍ ", "⢋ ", "⡋ ", "⠍⠁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉",
-					"⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⢈⠩", "⡀⢙", "⠄⡙", "⢂⠩", "⡂⢘", "⠅⡘", "⢃⠨", "⡃⢐", "⠍⡐", "⢋⠠",
-					"⡋⢀", "⠍⡁", "⢋⠁", "⡋⠁", "⠍⠉", "⠋⠉", "⠋⠉", "⠉⠙", "⠉⠙", "⠉⠩", "⠈⢙", "⠈⡙", "⠈⠩", " ⢙", " ⡙", " ⠩",
-					" ⢘", " ⡘", " ⠨", " ⢐", " ⡐", " ⠠", " ⢀", " ⡀",
-				]),
+				.tick_chars("⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀"),
 		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
 		let callback = |leaf: &Leaf, _: &RegistryEntry| {
 			pbar.inc(1);
-			pbar.set_message(leaf.id.to_string())
+			pbar.set_message(leaf.id.clone())
 		};
 
 		// Build a builder-config using the above extracted data

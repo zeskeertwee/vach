@@ -31,7 +31,7 @@ impl io::Write for Sink {
 
 pub fn criterion_benchmark(c: &mut Criterion) {
 	const MAGIC: &[u8; 5] = b"BNCMK";
-	let keypair_bytes = &gen_keypair().to_bytes() as &[u8];
+	let keypair_bytes = &gen_keypair().to_keypair_bytes() as &[u8];
 
 	let mut b_config = BuilderConfig::default().magic(*MAGIC);
 	b_config.load_keypair(keypair_bytes).unwrap();

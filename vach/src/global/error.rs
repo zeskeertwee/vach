@@ -48,5 +48,5 @@ pub enum InternalError {
 	/// Errors thrown  during compression or decompression
 	#[error("[VachError::CompressorDecompressorError]: {0}")]
 	#[cfg(feature = "compression")]
-	DeCompressionError(#[from] lz4_flex::frame::Error),
+	DeCompressionError(#[from] lz4_flex::frame::Error)
 }

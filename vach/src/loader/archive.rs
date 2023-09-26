@@ -5,14 +5,12 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::{
-	global::{
-		error::InternalError,
-		flags::Flags,
-		header::{Header, ArchiveConfig},
-		reg_entry::RegistryEntry,
-		result::InternalResult,
-	},
+use crate::global::{
+	error::InternalError,
+	flags::Flags,
+	header::{Header, ArchiveConfig},
+	reg_entry::RegistryEntry,
+	result::InternalResult,
 };
 
 use parking_lot::Mutex;
@@ -43,15 +41,15 @@ pub struct Archive<T> {
 	#[cfg(feature = "crypto")]
 	decryptor: Option<crypto::Encryptor>,
 	#[cfg(feature = "crypto")]
-	key: Option<crypto::PublicKey>,
+	key: Option<crypto::VerifyingKey>,
 }
 
 impl<T> std::fmt::Display for Archive<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let bytes = self
 			.entries
-			.iter()
-			.map(|(_, entry)| entry.offset)
+			.values()
+			.map(|re| re.offset)
 			.reduce(|a, b| a + b)
 			.unwrap_or(0);
 
@@ -280,7 +278,7 @@ where
 			Ok(Resource {
 				content_version: entry.content_version,
 				flags: entry.flags,
-				data: buffer,
+				data: buffer.into_boxed_slice(),
 				authenticated: is_secure,
 			})
 		} else {
@@ -305,7 +303,7 @@ where
 			Ok(Resource {
 				content_version: entry.content_version,
 				flags: entry.flags,
-				data: buffer,
+				data: buffer.into_boxed_slice(),
 				authenticated: is_secure,
 			})
 		} else {
