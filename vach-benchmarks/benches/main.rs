@@ -5,17 +5,23 @@ use vach::prelude::*;
 use vach::crypto_utils::gen_keypair;
 
 // Remove io overhead by Sinking data into the void
-struct Sink;
+struct Sink(u64);
 
 impl Sink {
 	fn new() -> Sink {
-		black_box(Sink)
+		black_box(Sink(0))
 	}
 }
 
 impl io::Seek for Sink {
-	fn seek(&mut self, _: io::SeekFrom) -> io::Result<u64> {
-		Ok(0)
+	fn seek(&mut self, seek: io::SeekFrom) -> io::Result<u64> {
+		match seek {
+			io::SeekFrom::Start(s) => self.0 = s,
+			io::SeekFrom::Current(s) => self.0 = (self.0 as i64 + s) as u64,
+			io::SeekFrom::End(s) => self.0 = (self.0 as i64 + s) as u64,
+		}
+
+		Ok(self.0)
 	}
 }
 
@@ -86,7 +92,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		builder.add(data_3, "d3").unwrap();
 
 		// Dump data
-		builder.dump(&mut target, &b_config).unwrap();
+		black_box(builder.dump(&mut target, &b_config).unwrap());
 	}
 
 	// Load data
@@ -97,18 +103,18 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	throughput_group.bench_function("Archive::fetch(---)", |b| {
 		// Load data
 		b.iter(|| {
-			archive.fetch("d1").unwrap();
-			archive.fetch("d2").unwrap();
-			archive.fetch("d3").unwrap();
+			black_box(archive.fetch("d1").unwrap());
+			black_box(archive.fetch("d2").unwrap());
+			black_box(archive.fetch("d3").unwrap());
 		});
 	});
 
 	throughput_group.bench_function("Archive::fetch_mut(---)", |b| {
 		// Load data
 		b.iter(|| {
-			archive.fetch_mut("d1").unwrap();
-			archive.fetch_mut("d2").unwrap();
-			archive.fetch_mut("d3").unwrap();
+			black_box(archive.fetch_mut("d1").unwrap());
+			black_box(archive.fetch_mut("d2").unwrap());
+			black_box(archive.fetch_mut("d3").unwrap());
 		});
 	});
 
@@ -117,7 +123,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	c.bench_function("Archive::LOAD_NEW", |b| {
 		// How fast it takes to load a new archive
 		b.iter(|| {
-			Archive::with_config(&mut target, &h_config).unwrap();
+			black_box(Archive::with_config(&mut target, &h_config).unwrap());
 		})
 	});
 }
