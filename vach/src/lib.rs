@@ -26,7 +26,7 @@ It was built to be secure, contained and protected. A big benefit of `vach` is t
 - `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
 - `tikv-jemallocator`: Enable `jemalloc`` as the global allocator. Enabled by the [`tikv-jemallocator`](https://crates.io/crates/tikv-jemallocator) crate, don't enable on `x86_64-pc-windows-msvc`
 - `default`: Enables the `archive` and `builder` features.
-- `all`: Enables all the features listed above.
+- `all`: Enables all the features listed above. `tikv-jemallocator` needs to be enabled separately.
 
 ### 🀄 Show me some code _dang it!_
 
