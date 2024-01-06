@@ -2,7 +2,7 @@
 name = "vach"
 
 # NOTE: Make sure spec.txt and vach::VERSION constants are all synced up
-version = "0.5.2"
+version = "0.5.3"
 
 edition = "2021"
 authors = [
@@ -38,10 +38,6 @@ brotli = { version = "3.4.0", optional = true }
 # Multithreaded features
 parking_lot = { version = "0.12.1" }
 rayon = { version = "1.8.0", optional = true }
-
-# Jemalloc
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
-tikv-jemallocator = { version = "0.5.0", optional = true }
 
 [features]
 default = ["builder", "archive"]

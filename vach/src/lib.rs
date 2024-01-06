@@ -24,9 +24,8 @@ It was built to be secure, contained and protected. A big benefit of `vach` is t
 - `multithreaded`: Pulls [rayon](https://crates.io/crates/rayon) as a dependency and adds [`Send`] as a trait bound to many generic types. This allows for the auto-parallelization of the `Builder::dump(---)` function.
 - `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
 - `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
-- `tikv-jemallocator`: Enable `jemalloc`` as the global allocator. Enabled by the [`tikv-jemallocator`](https://crates.io/crates/tikv-jemallocator) crate, don't enable on `x86_64-pc-windows-msvc`
 - `default`: Enables the `archive` and `builder` features.
-- `all`: Enables all the features listed above. `tikv-jemallocator` needs to be enabled separately.
+- `all`: Enables all the features listed above
 
 ### 🀄 Show me some code _dang it!_
 
@@ -120,11 +119,6 @@ As `SigningKey`, `SecretKey` and `VerifyingKey` are reflected from [ed25519_dale
 mod tests;
 
 pub(crate) mod global;
-
-/// Optionally enable jemalloc
-#[cfg(all(feature = "jemalloc", not(target_env = "msvc")))]
-#[global_allocator]
-static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 #[cfg(feature = "archive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
