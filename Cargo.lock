@@ -163,15 +163,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
-name = "cc"
-version = "1.0.83"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1174fb0b6ec23863f8b971027804a42614e347eafb0a95bf0b12cdae21fc4d0"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1205,26 +1196,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tikv-jemalloc-sys"
-version = "0.5.4+5.3.0-patched"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9402443cb8fd499b6f327e40565234ff34dbda27460c5b47db0db77443dd85d1"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
-name = "tikv-jemallocator"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "965fe0c26be5c56c94e38ba547249074803efd52adfb66de62107d95aab3eaca"
-dependencies = [
- "libc",
- "tikv-jemalloc-sys",
-]
-
-[[package]]
 name = "tinytemplate"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1274,7 +1245,7 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.5.2"
+version = "0.5.5"
 dependencies = [
  "aes-gcm",
  "brotli",
@@ -1285,14 +1256,13 @@ dependencies = [
  "rayon",
  "snap",
  "thiserror",
- "tikv-jemallocator",
 ]
 
 [[package]]
 name = "vach"
-version = "0.5.2"
+version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "168270a93d41d4e50d45dd0aaace68be405b2f3cc02fd442d0ec86f313706b20"
+checksum = "e36952a168221690ab9adc1dd46a7fb650449632f262d1fa86e4baed865eb7dc"
 dependencies = [
  "aes-gcm",
  "brotli",
@@ -1303,7 +1273,6 @@ dependencies = [
  "rayon",
  "snap",
  "thiserror",
- "tikv-jemallocator",
 ]
 
 [[package]]
@@ -1311,12 +1280,12 @@ name = "vach-benchmarks"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "vach 0.5.2",
+ "vach 0.5.5",
 ]
 
 [[package]]
 name = "vach-cli"
-version = "0.5.1"
+version = "0.5.5"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1325,7 +1294,7 @@ dependencies = [
  "pretty_env_logger",
  "tabled",
  "term_size",
- "vach 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vach 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir",
 ]
 

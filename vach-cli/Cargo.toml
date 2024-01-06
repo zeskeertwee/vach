@@ -1,6 +1,6 @@
 [package]
 name = "vach-cli"
-version = "0.5.2"
+version = "0.5.5"
 edition = "2021"
 authors = [
 	"Jasper Fortuin <zeskeertwee@gmail.com>",
@@ -19,7 +19,7 @@ name = "vach"
 path = "src/main.rs"
 
 [dependencies]
-vach = { version = "0.5.3", features = ["all"] }
+vach = { version = "0.5.5", features = ["all"] }
 clap = "3.1.15"
 indicatif = "0.17.6"
 anyhow = "1.0.57"
