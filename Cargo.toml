@@ -1,5 +1,6 @@
 [workspace]
 members = ["vach", "vach-cli", "vach-benchmarks"]
+resolver = "2"
 
 [profile.bench]
 debug = true
