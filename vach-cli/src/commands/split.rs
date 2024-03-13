@@ -35,11 +35,9 @@ impl CommandTrait for Evaluator {
 		utils::create_and_write_to_file(&pk_path, &kp.verifying_key().to_bytes())?;
 		utils::create_and_write_to_file(&sk_path, &kp.to_bytes())?;
 
-		log::info!(
+		println!(
 			"Successfully split keypair: {} -> into {} and {}",
-			input_path,
-			pk_path,
-			sk_path
+			input_path, pk_path, sk_path
 		);
 
 		Ok(())

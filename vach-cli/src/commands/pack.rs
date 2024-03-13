@@ -92,7 +92,7 @@ impl CommandTrait for Evaluator {
 					match path.canonicalize() {
 						Ok(path) => Some(path),
 						Err(err) => {
-							log::warn!(
+							eprintln!(
 								"Failed to evaluate: {}. Skipping due to error: {}",
 								path.to_string_lossy(),
 								err
@@ -113,7 +113,7 @@ impl CommandTrait for Evaluator {
 		let path_filter = |path: &PathBuf| match path.canonicalize() {
 			Ok(canonical) => !excludes.contains(&canonical) && canonical.is_file(),
 			Err(err) => {
-				log::warn!(
+				eprintln!(
 					"Failed to evaluate: {}. Skipping due to error: {}",
 					path.to_string_lossy(),
 					err
@@ -183,7 +183,7 @@ impl CommandTrait for Evaluator {
 
 			let mut file = File::create("keypair.kp")?;
 			file.write_all(&generated.to_keypair_bytes())?;
-			log::info!("Generated a new keypair @ keypair.kp");
+			println!("Generated a new keypair @ keypair.kp");
 
 			kp = Some(generated);
 		}
@@ -247,7 +247,7 @@ impl CommandTrait for Evaluator {
 				.trim_start_matches("./")
 				.trim_start_matches(".\\")
 				.to_string();
-			log::info!("Preparing {} for packaging", id);
+			println!("Preparing {} for packaging", id);
 			builder.add(wrapper, &id)?;
 		}
 

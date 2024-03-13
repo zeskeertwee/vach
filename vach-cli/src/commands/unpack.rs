@@ -84,7 +84,7 @@ impl CommandTrait for Evaluator {
 
 		// Delete original archive
 		if truncate {
-			log::info!("Truncating original archive @ {}", &input_path);
+			println!("Truncating original archive @ {}", &input_path);
 			std::fs::remove_file(input_path)?;
 		};
 
@@ -141,7 +141,7 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 
 	// Finished extracting
 	pbar.finish();
-	log::info!(
+	println!(
 		"Extracted {} files in {}s",
 		archive.entries().len(),
 		time.elapsed().as_secs_f64()
