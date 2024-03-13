@@ -12,7 +12,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use super::CommandTrait;
 use crate::keys::key_names;
 
-pub const VERSION: &str = "0.1.0";
+pub const VERSION: &str = "0.1.1";
 
 /// This command extracts an archive into the specified output folder
 pub struct Evaluator;
