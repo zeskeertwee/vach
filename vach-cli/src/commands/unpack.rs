@@ -1,6 +1,6 @@
 use std::fs::{self, File};
 use std::str::FromStr;
-use std::io::{Read, Seek, Write};
+use std::io::{BufReader, Read, Seek, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -61,7 +61,7 @@ impl CommandTrait for Evaluator {
 		let truncate = args.is_present(key_names::TRUNCATE);
 
 		let input_file = match File::open(input_path) {
-			Ok(it) => it,
+			Ok(it) => BufReader::new(it),
 			Err(err) => anyhow::bail!("IOError: {} @ {}", err, input_path),
 		};
 

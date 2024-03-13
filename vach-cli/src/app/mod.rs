@@ -57,6 +57,17 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.arg(key_map.get(key_names::TRUNCATE).unwrap()),
 		)
 		.subcommand(
+			Command::new("pipe")
+				.author(AUTHORS)
+				.version(commands::pipe::VERSION)
+				.about("Pipes the contents of a .vach archive to stdout")
+				.arg(key_map.get(key_names::INPUT).unwrap())
+				.arg(key_map.get(key_names::MAGIC).unwrap())
+				.arg(key_map.get(key_names::PUBLIC_KEY).unwrap())
+				.arg(key_map.get(key_names::RESOURCE).unwrap())
+				.arg(key_map.get(key_names::KEYPAIR).unwrap()),
+		)
+		.subcommand(
 			Command::new("pack")
 				.author(AUTHORS)
 				.version(commands::pack::VERSION)

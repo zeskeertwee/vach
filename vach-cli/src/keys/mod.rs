@@ -4,6 +4,7 @@ use std::collections::HashMap;
 pub mod key_names {
 	pub(crate) const OUTPUT: &str = "OUTPUT";
 	pub(crate) const INPUT: &str = "INPUT";
+	pub(crate) const RESOURCE: &str = "RESOURCE";
 
 	pub(crate) const DIR_INPUT: &str = "DIR_INPUT";
 	pub(crate) const DIR_INPUT_REC: &str = "DIR_INPUT_REC";
@@ -40,6 +41,19 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.long("output")
 			.value_name(key_names::OUTPUT)
 			.help("A general output target, for example a file to write to")
+			.required(false)
+			.takes_value(true)
+			.number_of_values(1),
+	);
+
+	// A resource to focus on and extract
+	map.insert(
+		key_names::RESOURCE,
+		Arg::new(key_names::RESOURCE)
+			.short('r')
+			.long("resource")
+			.value_name(key_names::RESOURCE)
+			.help("An exact resource to extract from the archive")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),
