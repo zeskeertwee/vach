@@ -15,6 +15,7 @@ pub trait CommandTrait: Sync {
 pub mod keypair;
 pub mod list;
 pub mod pack;
+pub mod pipe;
 pub mod split;
 pub mod unpack;
 pub mod verify;
@@ -28,6 +29,7 @@ pub fn build_commands() -> HashMap<&'static str, Box<dyn CommandTrait>> {
 	map.insert("list", Box::new(list::Evaluator));
 	map.insert("unpack", Box::new(unpack::Evaluator));
 	map.insert("pack", Box::new(pack::Evaluator));
+	map.insert("pipe", Box::new(pipe::Evaluator));
 
 	map
 }

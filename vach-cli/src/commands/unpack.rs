@@ -1,6 +1,6 @@
 use std::fs::{self, File};
 use std::str::FromStr;
-use std::io::{Read, Seek, Write};
+use std::io::{BufReader, Read, Seek, Write};
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -12,7 +12,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use super::CommandTrait;
 use crate::keys::key_names;
 
-pub const VERSION: &str = "0.1.0";
+pub const VERSION: &str = "0.1.1";
 
 /// This command extracts an archive into the specified output folder
 pub struct Evaluator;
@@ -61,7 +61,7 @@ impl CommandTrait for Evaluator {
 		let truncate = args.is_present(key_names::TRUNCATE);
 
 		let input_file = match File::open(input_path) {
-			Ok(it) => it,
+			Ok(it) => BufReader::new(it),
 			Err(err) => anyhow::bail!("IOError: {} @ {}", err, input_path),
 		};
 
@@ -84,7 +84,7 @@ impl CommandTrait for Evaluator {
 
 		// Delete original archive
 		if truncate {
-			log::info!("Truncating original archive @ {}", &input_path);
+			println!("Truncating original archive @ {}", &input_path);
 			std::fs::remove_file(input_path)?;
 		};
 
@@ -141,7 +141,7 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 
 	// Finished extracting
 	pbar.finish();
-	log::info!(
+	println!(
 		"Extracted {} files in {}s",
 		archive.entries().len(),
 		time.elapsed().as_secs_f64()
