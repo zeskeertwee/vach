@@ -63,9 +63,8 @@ vach list -i textures.vach
 > `pack` is used to pack files and directories into archives. It takes inputs for customizing how the archive should be packaged.
 
 ```sh
-# The simplest pack command.
 # Any pack command must have an output, set using the "-o" or "--output" keys
-# This builds only an empty archive
+# This builds an empty archive
 vach pack -o hello.vach
 
 # You can add files as inputs using the "-i" or "--input" keys
@@ -127,10 +126,9 @@ vach pack -t -o hello.vach -i hello.txt goodbye.txt
 
 ### 2: unpack
 
->`unpack` is used to unpack archives back into their constituent files.
+>`unpack` it's just like `pack` but backwards
 
 ```sh
-# The simplest unpack command
 # Provide an input: "-i" or "--input"
 vach unpack -i target.vach
 
@@ -151,12 +149,26 @@ vach unpack -k keypair.kp -i source.vach
 vach unpack -s keypair.sk -i source.vach
 ```
 
-### 3: list
+### 3: pipe
+
+>`pipe`: Read the data from a _specific_ entry and pipe it to stdout
+
+```sh
+# Print to stdout
+vach pipe -i target.vach -r npc-dialogue.txt
+
+# Pipe directly into a file
+vach pipe -i target.vach -r npc-dialogue.txt >> npc-dialogue.txt
+
+# Pipe into another process' stdin
+vach pipe -i presets.vach -r low.json | jq '."TextureResolution"'
+```
+
+### 4: list
 
 > Lists all the entries in the archive as a table
 
 ```sh
-# The simplest list command
 # Provide some input: "-i" or "--input"
 vach list -i textures.vach
 
@@ -170,7 +182,7 @@ vach list -i textures.vach -m TXTRS
 vach list -i textures.vach -m TXTRS --sort size-descending
 ```
 
-### 4: verify
+### 5: verify
 
 > Verifies the validity of a file as an archive
 
@@ -182,7 +194,7 @@ vach verify -i textures.vach
 vach verify -i textures.vach -m TXTRS
 ```
 
-### 5: keypair
+### 6: keypair
 
 > Key-pair generation command
 
@@ -197,7 +209,7 @@ vach keypair -s -o keypair.kp
 # -> keypair.sk
 ```
 
-### 6: split
+### 7: split
 
 > Splits an existing keypair into it's public and secret components
 
