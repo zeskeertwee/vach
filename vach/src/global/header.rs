@@ -92,10 +92,10 @@ impl fmt::Display for ArchiveConfig {
 			"[ArchiveConfig] magic: {}, has_public_key: {}",
 			match str::from_utf8(&self.magic) {
 				Ok(magic) => {
-					magic
+					magic.to_string()
 				},
 				Err(_) => {
-					return fmt::Result::Err(fmt::Error);
+					format!("{:?}", &self.magic)
 				},
 			},
 			has_pk
@@ -166,9 +166,7 @@ impl Header {
 	/// ### Errors
 	///  - `io` errors
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
-		#![allow(clippy::uninit_assumed_init)]
 		let mut buffer: [u8; Header::BASE_SIZE] = [0u8; Header::BASE_SIZE];
-
 		handle.read_exact(&mut buffer)?;
 
 		// Construct header
