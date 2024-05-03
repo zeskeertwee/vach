@@ -248,28 +248,28 @@ where
 	}
 }
 
-/// Given a data source and a [`RegistryEntry`], gets the adjacent raw data
-pub(crate) fn read_entry<T: Seek + Read>(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-	let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
-	handle.seek(SeekFrom::Start(entry.location))?;
-
-	let mut take = handle.take(entry.offset);
-	take.read_to_end(&mut buffer)?;
-
-	Ok(buffer)
-}
-
 impl<T> Archive<T>
 where
 	T: Read + Seek,
 {
+	/// Given a data source and a [`RegistryEntry`], gets the adjacent raw data
+	pub(crate) fn read_raw(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+		let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
+		handle.seek(SeekFrom::Start(entry.location))?;
+
+		let mut take = handle.take(entry.offset);
+		take.read_to_end(&mut buffer)?;
+
+		Ok(buffer)
+	}
+
 	/// Cheaper alternative to `fetch` that works best for single threaded applications.
 	/// It does not lock the underlying [Mutex], since it requires a mutable reference.
 	/// Therefore the borrow checker statically guarantees the operation is safe. Refer to [`Mutex::get_mut`](Mutex).
 	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
-			let raw = read_entry(self.handle.get_mut(), &entry)?;
+			let raw = Archive::read_raw(self.handle.get_mut(), &entry)?;
 
 			// Prepare contextual variables
 			// Decompress and|or decrypt the data
@@ -293,7 +293,7 @@ where
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = {
 				let mut guard = self.handle.lock();
-				read_entry(guard.by_ref(), &entry)?
+				Archive::read_raw(guard.by_ref(), &entry)?
 			};
 
 			// Prepare contextual variables
