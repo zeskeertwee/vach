@@ -11,14 +11,14 @@ pub struct RegistryEntry {
 	pub flags: Flags,
 	/// The content version of the extracted archive entry
 	pub content_version: u8,
-	/// The signature of the data in the archive, used when verifying data authenticity
-	#[cfg(feature = "crypto")]
-	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-	pub signature: Option<crypto::Signature>,
 	/// The location of the file in the archive, as an offset of bytes from the beginning of the file
 	pub location: u64,
 	/// The offset|size of the [`Leaf`](crate::builder::Leaf), in bytes. This is the actual number of bytes in the leaf endpoint. But the size of the data may vary once processed, ie when decompressed
 	pub offset: u64,
+	/// The signature of the data in the archive, used when verifying data authenticity
+	#[cfg(feature = "crypto")]
+	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
+	pub signature: Option<crypto::Signature>,
 }
 
 impl RegistryEntry {
