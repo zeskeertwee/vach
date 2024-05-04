@@ -197,7 +197,7 @@ assert_eq!(archive.fetch_mut("d3")?.data.as_slice(), data_3);
 - [x] Benchmarks.
 - [x] Features to turn off (or to turn on) either the `Builder` or the `Loader` modules.
 - [x] `Some(examples)` instead of `None`
-- [ ] Skynet, (coming _very_ soon). 
+- [ ] Skynet, (coming _very_ soon).
 - [ ] Some proper benchmarking code. (Call for participation)
 
 > If you appreciate the works of this repo, consider dropping a star. It will be much appreciated; 🌟
