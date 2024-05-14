@@ -98,9 +98,9 @@ impl RegistryEntry {
 	}
 
 	/// Serializes a [`RegistryEntry`] struct into an array of bytes
-	pub(crate) fn bytes(&self) -> InternalResult<Vec<u8>> {
+	pub(crate) fn encode(&self, skip_signature: bool) -> InternalResult<Vec<u8>> {
 		// Make sure the ID is not too big or else it will break the archive
-		let id = &self.id;
+		let id = self.id.as_ref();
 
 		if id.len() >= crate::MAX_ID_LENGTH {
 			let copy = id.to_string();
@@ -119,7 +119,9 @@ impl RegistryEntry {
 		// Only write signature if one exists
 		#[cfg(feature = "crypto")]
 		if let Some(signature) = self.signature {
-			buffer.extend_from_slice(&signature.to_bytes())
+			if !skip_signature {
+				buffer.extend_from_slice(&signature.to_bytes())
+			}
 		};
 
 		// Append id

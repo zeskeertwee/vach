@@ -110,7 +110,7 @@ fn builder_no_signature() -> InternalResult {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "archive"))]
-fn simple_fetch() -> InternalResult {
+fn fetch_no_signature() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::new(target)?;
 	let resource = archive.fetch_mut("wasm")?;
@@ -138,7 +138,8 @@ fn builder_with_signature() -> InternalResult {
 
 	build_config.load_keypair(KEYPAIR.as_slice())?;
 
-	builder.add_dir("test_data", Some(&Leaf::default().sign(true)))?;
+	let template = Leaf::default().sign(true);
+	builder.add_dir("test_data", Some(&template))?;
 
 	// Tests conditional signing
 	builder.add_leaf(Leaf::default().id("not_signed").sign(false))?;
@@ -233,7 +234,7 @@ fn builder_with_encryption() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "archive", feature = "crypto"))]
+#[cfg(all(feature = "archive", feature = "crypto", feature = "compression"))]
 fn fetch_from_encrypted() -> InternalResult {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
@@ -243,12 +244,18 @@ fn fetch_from_encrypted() -> InternalResult {
 	config.load_public_key(public_key)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
 
-	assert_eq!(resource.data.len(), 106537);
-	assert!(resource.authenticated);
-	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
-	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
+	// read data
+	let not_signed = archive.fetch_mut("stitches.snitches")?;
+	let data = std::str::from_utf8(&not_signed.data).unwrap();
+	assert_eq!(data, "Snitches get stitches, iOS sucks");
+
+	let signed = archive.fetch_mut("test_data/quicksort.wasm")?;
+
+	assert_eq!(signed.data.len(), 106537);
+	assert!(signed.authenticated);
+	assert!(!signed.flags.contains(Flags::COMPRESSED_FLAG));
+	assert!(signed.flags.contains(Flags::ENCRYPTED_FLAG));
 
 	Ok(())
 }
@@ -275,7 +282,7 @@ fn consolidated_example() -> InternalResult {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
-	let template = Leaf::default().encrypt(true).version(59);
+	let template = Leaf::default().encrypt(true).version(59).sign(true);
 	builder.add_leaf(Leaf::new(data_1).id("d1").template(&template))?;
 	builder.add_leaf(Leaf::new(data_2).id("d2").template(&template))?;
 	builder.add_leaf(Leaf::new(data_3).id("d3").template(&template))?;

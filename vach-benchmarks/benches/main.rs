@@ -42,8 +42,8 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut b_config = BuilderConfig::default().magic(*MAGIC);
 	b_config.load_keypair(keypair_bytes).unwrap();
 
-	let mut h_config = ArchiveConfig::default().magic(*MAGIC);
-	h_config.load_public_key(&keypair_bytes[32..]).unwrap();
+	let mut a_config = ArchiveConfig::default().magic(*MAGIC);
+	a_config.load_public_key(&keypair_bytes[32..]).unwrap();
 
 	/* BUILDER BENCHMARKS */
 	let mut builder_group = c.benchmark_group("Builder");
@@ -98,7 +98,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	// Load data
 	throughput_group.throughput(Throughput::Elements(3));
 
-	let mut archive = Archive::with_config(&mut target, &h_config).unwrap();
+	let mut archive = Archive::with_config(&mut target, &a_config).unwrap();
 
 	throughput_group.bench_function("Archive::fetch(---)", |b| {
 		// Load data
@@ -123,7 +123,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	c.bench_function("Archive::LOAD_NEW", |b| {
 		// How fast it takes to load a new archive
 		b.iter(|| {
-			black_box(Archive::with_config(&mut target, &h_config).unwrap());
+			black_box(Archive::with_config(&mut target, &a_config).unwrap());
 		})
 	});
 }

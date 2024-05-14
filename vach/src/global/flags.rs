@@ -24,7 +24,7 @@ impl Flags {
 	pub const LZ4_COMPRESSED: u32 = 0b_0100_0000_0000_0000_0000_0000_0000_0000;
 	/// This entry was compressed using the [snappy](https://crates.io/crates/snap) scheme for balanced compression properties
 	pub const SNAPPY_COMPRESSED: u32 = 0b_0010_0000_0000_0000_0000_0000_0000_0000;
-	/// This entry was compressed using the [brotli](https://crates.io/crates/brotli) scheme for higher compression ratios but *much* (depends on the quality of compression) slower compression speed
+	/// This entry was compressed using the [brotli](https://crates.io/crates/brotli) scheme for higher compression ratios but slower compression speed
 	pub const BROTLI_COMPRESSED: u32 = 0b_0001_0000_0000_0000_0000_0000_0000_0000;
 
 	/// The flag that denotes that the archive source has signatures

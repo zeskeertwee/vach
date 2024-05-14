@@ -84,16 +84,16 @@ impl<T> Archive<T> {
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 		#[cfg(feature = "crypto")]
 		if let Some(pk) = self.key {
-			let raw_size = raw.len();
-
 			// If there is an error the data is flagged as invalid
 			if let Some(signature) = entry.signature {
-				let entry_bytes = entry.bytes()?;
-				raw.extend_from_slice(&entry_bytes);
-				is_secure = pk.verify_strict(&raw, &signature).is_ok();
-			}
+				let raw_size = raw.len();
 
-			raw.truncate(raw_size);
+				let entry_bytes = entry.encode(true)?;
+				raw.extend_from_slice(&entry_bytes);
+
+				is_secure = pk.verify_strict(&raw, &signature).is_ok();
+				raw.truncate(raw_size);
+			}
 		}
 
 		// Add read layers

@@ -172,7 +172,7 @@ impl<'a> Builder<'a> {
 		// Encryption comes second
 		#[cfg(feature = "crypto")]
 		if leaf.encrypt {
-			if let Some(ex) = &encryptor {
+			if let Some(ex) = encryptor {
 				raw = ex.encrypt(&raw)?;
 				entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
 			}
@@ -279,8 +279,8 @@ impl<'a> Builder<'a> {
 			#[cfg(feature = "crypto")]
 			if result.sign {
 				if let Some(keypair) = &config.keypair {
-					let entry_bytes = result.entry.bytes()?;
-					result.data.extend_from_slice(&entry_bytes);
+					let entry_bytes = result.entry.encode(true)?;
+					result.data.extend_from_slice(&entry_bytes); // DON"T FORGET TO TRUNCATE IF MODIFICATIONS ARE MADE
 
 					// Include registry data in the signature
 					result.entry.signature = Some(keypair.sign(&result.data));
@@ -289,7 +289,7 @@ impl<'a> Builder<'a> {
 			}
 
 			// write to registry buffer, this one might include the Signature
-			let entry_bytes = result.entry.bytes()?;
+			let entry_bytes = result.entry.encode(false)?;
 			registry.write_all(&entry_bytes)?;
 
 			// Call the progress callback bound within the [`BuilderConfig`]
