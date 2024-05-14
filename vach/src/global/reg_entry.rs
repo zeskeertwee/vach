@@ -30,7 +30,7 @@ impl RegistryEntry {
 	#[inline(always)]
 	pub(crate) fn empty() -> RegistryEntry {
 		RegistryEntry {
-			id: Arc::from("<EMPTY ID>"),
+			id: Arc::from("<NULL ID>"),
 			flags: Flags::empty(),
 			content_version: 0,
 			location: 0,

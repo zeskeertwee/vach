@@ -335,6 +335,10 @@ impl<'a> Builder<'a> {
 			.map(|l| Builder::process_leaf(l, encryptor.as_ref()))
 			.try_for_each(write)?;
 
+		// write out Registry
+		target.seek(SeekFrom::Start(Header::BASE_SIZE as _))?;
+		target.write_all(&registry)?;
+
 		// // Define all arc-mutexes
 		// let leaf_offset_arc = Arc::new(AtomicU64::new(leaf_offset));
 		// let total_arc = Arc::new(AtomicUsize::new(Header::BASE_SIZE));

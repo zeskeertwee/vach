@@ -163,7 +163,6 @@ fn fetch_with_signature() -> InternalResult {
 	config.load_public_key(keypair)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
-	dbg!(archive.entries());
 	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(&resource.data).unwrap();
 
@@ -178,17 +177,9 @@ fn fetch_with_signature() -> InternalResult {
 	assert!(!not_signed_resource.authenticated);
 
 	// Check authenticity of retrieved data
+	let song = song.trim();
 	println!("{}", song);
-
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(song.len(), 2041);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(song.len(), 1977);
-	}
+	assert_eq!(song.len(), 1977);
 
 	assert!(resource.authenticated);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
@@ -198,7 +189,7 @@ fn fetch_with_signature() -> InternalResult {
 
 #[test]
 #[cfg(feature = "crypto")]
-fn edcryptor_test() -> InternalResult {
+fn decryptor_test() -> InternalResult {
 	use crate::crypto_utils::gen_keypair;
 
 	let vk = gen_keypair().verifying_key();
