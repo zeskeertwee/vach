@@ -1,5 +1,5 @@
-use std::{io::Read, fmt};
-use super::{result::InternalResult, flags::Flags};
+use std::{fmt, io::Read, sync::Arc};
+use super::{error::*, flags::Flags};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -7,6 +7,8 @@ use crate::crypto;
 /// Stand-alone meta-data for an archive entry(Leaf). This can be fetched without reading from the archive.
 #[derive(Debug, Clone)]
 pub struct RegistryEntry {
+	/// Self explanatory?
+	pub id: Arc<str>,
 	/// The flags extracted from the archive entry and parsed into a accessible struct
 	pub flags: Flags,
 	/// The content version of the extracted archive entry
@@ -28,6 +30,7 @@ impl RegistryEntry {
 	#[inline(always)]
 	pub(crate) fn empty() -> RegistryEntry {
 		RegistryEntry {
+			id: Arc::from("<EMPTY ID>"),
 			flags: Flags::empty(),
 			content_version: 0,
 			location: 0,
@@ -41,7 +44,7 @@ impl RegistryEntry {
 	/// Given a read handle, will proceed to read and parse bytes into a [`RegistryEntry`] struct. (de-serialization)
 	/// ### Errors
 	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
-	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<(RegistryEntry, String)> {
+	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<RegistryEntry> {
 		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = [0u8; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
 
@@ -66,8 +69,6 @@ impl RegistryEntry {
 			// If the `crypto` feature is turned off then the bytes are just read then discarded
 			#[cfg(feature = "crypto")]
 			{
-				use super::error::InternalError;
-
 				let sig = match crypto::Signature::try_from(sig_bytes) {
 					Ok(sig) => sig,
 					Err(err) => return Err(InternalError::ParseError(err.to_string())),
@@ -83,6 +84,7 @@ impl RegistryEntry {
 
 		// Build entry step manually, to prevent unnecessary `Default::default()` call, then changing fields individually
 		let entry = RegistryEntry {
+			id: id.into(),
 			flags,
 			content_version,
 			location,
@@ -92,18 +94,27 @@ impl RegistryEntry {
 			signature,
 		};
 
-		Ok((entry, id))
+		Ok(entry)
 	}
 
 	/// Serializes a [`RegistryEntry`] struct into an array of bytes
-	pub(crate) fn bytes(&self, id_length: &u16) -> Vec<u8> {
-		let mut buffer = Vec::with_capacity(RegistryEntry::MIN_SIZE + 64);
+	pub(crate) fn bytes(&self) -> InternalResult<Vec<u8>> {
+		// Make sure the ID is not too big or else it will break the archive
+		let id = &self.id;
+
+		if id.len() >= crate::MAX_ID_LENGTH {
+			let copy = id.to_string();
+			return Err(InternalError::IDSizeOverflowError(copy));
+		};
+
+		let mut buffer = Vec::with_capacity(RegistryEntry::MIN_SIZE + id.len());
+		let len = id.len() as u16;
 
 		buffer.extend_from_slice(&self.flags.bits().to_le_bytes());
 		buffer.extend_from_slice(&self.content_version.to_le_bytes());
 		buffer.extend_from_slice(&self.location.to_le_bytes());
 		buffer.extend_from_slice(&self.offset.to_le_bytes());
-		buffer.extend_from_slice(&id_length.to_le_bytes());
+		buffer.extend_from_slice(&len.to_le_bytes());
 
 		// Only write signature if one exists
 		#[cfg(feature = "crypto")]
@@ -111,7 +122,10 @@ impl RegistryEntry {
 			buffer.extend_from_slice(&signature.to_bytes())
 		};
 
-		buffer
+		// Append id
+		buffer.extend_from_slice(id.as_bytes());
+
+		Ok(buffer)
 	}
 }
 

@@ -6,7 +6,7 @@ use aes_gcm::aead::Aead;
 use aes_gcm::aes::cipher::consts::U12;
 use aes_gcm::{Aes256Gcm, Nonce, KeyInit};
 
-pub use ed25519_dalek::{SigningKey, VerifyingKey, SecretKey, Signature};
+pub use ed25519_dalek::{SigningKey, VerifyingKey, Signature};
 
 use crate::prelude::{InternalResult, InternalError};
 

@@ -2,7 +2,7 @@ use std::{fmt, io::Read, str};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
-use super::{error::InternalError, result::InternalResult, flags::Flags};
+use super::{error::*, flags::Flags};
 
 /// Used to configure and give extra information to the [`Archive`](crate::archive::Archive) loader.
 /// Used exclusively in archive source and integrity validation.

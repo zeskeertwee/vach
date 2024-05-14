@@ -133,10 +133,6 @@ pub(crate) mod writer;
 #[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 pub use rand;
 
-#[cfg(feature = "multithreaded")]
-#[cfg_attr(docsrs, doc(cfg(feature = "multithreaded")))]
-pub use rayon;
-
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;
 
@@ -160,9 +156,7 @@ pub const DEFAULT_MAGIC: &[u8; crate::MAGIC_LENGTH] = b"VfACH";
 
 /// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
 pub mod prelude {
-	pub use crate::global::{
-		error::InternalError, result::InternalResult, flags::Flags, header::ArchiveConfig, reg_entry::RegistryEntry,
-	};
+	pub use crate::global::{error::*, flags::Flags, header::ArchiveConfig, reg_entry::RegistryEntry};
 
 	#[cfg(feature = "crypto")]
 	pub use crate::crypto::*;
@@ -181,14 +175,9 @@ pub mod crypto;
 #[cfg(feature = "builder")]
 #[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub mod builder {
-	pub use crate::writer::{
-		builder::{Builder, BuilderConfig},
-		leaf::Leaf,
-	};
-	pub use crate::global::{error::InternalError, result::InternalResult, flags::Flags};
+	pub use crate::writer::*;
+	pub use crate::global::{error::*, flags::Flags};
 
-	#[cfg(feature = "compression")]
-	pub use crate::writer::compress_mode::CompressMode;
 	#[cfg(feature = "compression")]
 	pub use crate::global::compressor::CompressionAlgorithm;
 }
@@ -199,7 +188,7 @@ pub mod builder {
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
 	pub use crate::global::{
-		reg_entry::RegistryEntry, header::ArchiveConfig, error::InternalError, result::InternalResult, flags::Flags,
+		reg_entry::RegistryEntry, header::ArchiveConfig, error::*, flags::Flags,
 	};
 	#[cfg(feature = "compression")]
 	pub use crate::global::compressor::CompressionAlgorithm;

@@ -1,19 +1,18 @@
 use std::{
-	str,
-	io::{Read, Seek, SeekFrom},
 	collections::HashMap,
+	io::{Read, Seek, SeekFrom},
+	ops::DerefMut,
+	str,
+	sync::{Arc, Mutex},
 };
 
 use super::resource::Resource;
 use crate::global::{
-	error::InternalError,
+	error::*,
 	flags::Flags,
 	header::{Header, ArchiveConfig},
 	reg_entry::RegistryEntry,
-	result::InternalResult,
 };
-
-use parking_lot::Mutex;
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -33,9 +32,9 @@ pub struct Archive<T> {
 	/// Since all other work is done per thread
 	handle: Mutex<T>,
 
-	// Archive metadata
+	// Registry Data
 	header: Header,
-	entries: HashMap<String, RegistryEntry>,
+	entries: HashMap<Arc<str>, RegistryEntry>,
 
 	// Optional parts
 	#[cfg(feature = "crypto")]
@@ -67,7 +66,8 @@ impl<T> std::fmt::Display for Archive<T> {
 
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
-	pub fn into_inner(self) -> T {
+	/// `None` if underlying
+	pub fn into_inner(self) -> Result<T, std::sync::PoisonError<T>> {
 		self.handle.into_inner()
 	}
 
@@ -88,7 +88,8 @@ impl<T> Archive<T> {
 
 			// If there is an error the data is flagged as invalid
 			if let Some(signature) = entry.signature {
-				raw.extend_from_slice(id.as_bytes());
+				let entry_bytes = entry.bytes()?;
+				raw.extend_from_slice(&entry_bytes);
 				is_secure = pk.verify_strict(&raw, &signature).is_ok();
 			}
 
@@ -189,26 +190,17 @@ where
 
 		// Construct entries map
 		for _ in 0..header.capacity {
-			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
-			entries.insert(id, entry);
+			let entry = RegistryEntry::from_handle(&mut handle)?;
+			entries.insert(entry.id.clone(), entry);
 		}
 
 		#[cfg(feature = "crypto")]
 		{
-			// Build decryptor
-			let use_decryption = entries
-				.iter()
-				.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
-
 			// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
-			let decryptor = use_decryption
-				.then(|| {
-					config
-						.public_key
-						.as_ref()
-						.map(|pk| crypto::Encryptor::new(pk, config.magic))
-				})
-				.flatten();
+			let decryptor = config
+				.public_key
+				.as_ref()
+				.map(|pk| crypto::Encryptor::new(pk, config.magic));
 
 			Ok(Archive {
 				header,
@@ -237,7 +229,7 @@ where
 
 	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
-	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
+	pub fn entries(&self) -> &HashMap<Arc<str>, RegistryEntry> {
 		&self.entries
 	}
 
@@ -269,7 +261,7 @@ where
 	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
-			let raw = Archive::read_raw(self.handle.get_mut(), &entry)?;
+			let raw = Archive::read_raw(self.handle.get_mut().unwrap(), &entry)?;
 
 			// Prepare contextual variables
 			// Decompress and|or decrypt the data
@@ -292,8 +284,8 @@ where
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = {
-				let mut guard = self.handle.lock();
-				Archive::read_raw(guard.by_ref(), &entry)?
+				let mut guard = self.handle.lock().unwrap();
+				Archive::read_raw(guard.deref_mut(), &entry)?
 			};
 
 			// Prepare contextual variables

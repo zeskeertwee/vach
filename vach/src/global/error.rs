@@ -1,5 +1,8 @@
-use std::{io, error};
+use std::{error, io, sync::Arc};
 use thiserror::Error;
+
+/// Internal `Result` type alias used by `vach`. Basically equal to: `Result<T, InternalError>`
+pub type InternalResult<T = ()> = Result<T, InternalError>;
 
 /// All errors manifestable within `vach` collected into a neat enum
 #[derive(Debug, Error)]
@@ -25,7 +28,7 @@ pub enum InternalError {
 	MissingResourceError(String),
 	/// Thrown when a leaf with an identical ID to a queued leaf is add with the `Builder::add(---)` functions
 	#[error("[VachError::LeafAppendError] A leaf with the ID: {0} already exists. Consider changing the ID to prevent collisions")]
-	LeafAppendError(String),
+	LeafAppendError(Arc<str>),
 	/// Thrown when no `Keypair` is provided and an encrypted [Leaf](crate::builder::Leaf) is encountered
 	#[error("[VachError::NoKeypairError] Unable to continue with cryptographic operation, as no keypair was supplied")]
 	NoKeypairError,
@@ -42,11 +45,8 @@ pub enum InternalError {
 	/// An error that is thrown when the current archive attempts to load an incompatible version, contains the incompatible version
 	#[error("The provided archive source has version: {}. While the current implementation has a spec-version: {}. The provided source is incompatible!", .0, crate::VERSION)]
 	IncompatibleArchiveVersionError(u16),
-	/// An error that is thrown when if `Mutex` is poisoned, when a message doesn't go though an `mspc::sync_channel` or other sync related issues
-	#[error("[VachError::SyncError] {0}")]
-	SyncError(String),
 	/// Errors thrown  during compression or decompression
 	#[error("[VachError::CompressorDecompressorError]: {0}")]
 	#[cfg(feature = "compression")]
-	DeCompressionError(#[from] lz4_flex::frame::Error)
+	DeCompressionError(#[from] lz4_flex::frame::Error),
 }

@@ -131,7 +131,7 @@ fn simple_fetch() -> InternalResult {
 fn builder_with_signature() -> InternalResult {
 	let mut builder = Builder::default();
 
-	let cb = |_: &Leaf, entry: &RegistryEntry| {
+	let cb = |entry: &RegistryEntry| {
 		dbg!(entry);
 	};
 	let mut build_config = BuilderConfig::default().callback(&cb);
@@ -163,6 +163,7 @@ fn fetch_with_signature() -> InternalResult {
 	config.load_public_key(keypair)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
+	dbg!(archive.entries());
 	let resource = archive.fetch_mut("test_data/song.txt")?;
 	let song = str::from_utf8(&resource.data).unwrap();
 

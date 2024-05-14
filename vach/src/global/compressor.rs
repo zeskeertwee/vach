@@ -2,9 +2,9 @@
 #![cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 
 use std::io::{self, Read, Write};
-use crate::prelude::Flags;
 
-use super::{error::InternalError, result::InternalResult};
+use crate::prelude::Flags;
+use super::error::*;
 
 use lz4_flex as lz4;
 use snap;

@@ -3,10 +3,7 @@
 
 use {
 	rand::rngs::OsRng,
-	crate::{
-		crypto,
-		global::{error::InternalError, result::InternalResult},
-	},
+	crate::{crypto, global::error::*},
 	std::io::Read,
 };
 
