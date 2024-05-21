@@ -8,4 +8,8 @@ perf.data
 perf.data.old
 workspace.code-workspace
 .cargo/config.toml
-**.vach
+
+# Test Data
+vach/test_data/encrypted
+vach/test_data/signed
+vach/test_data/simple
