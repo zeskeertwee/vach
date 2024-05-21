@@ -48,8 +48,6 @@ impl<'a> Builder<'a> {
 	/// Appends a read handle wrapped in a [`Leaf`] into the processing queue.
 	/// The `data` is wrapped in the default [`Leaf`], without cloning the original data.
 	/// The second argument is the `ID` with which the embedded data will be tagged
-	/// ### Errors
-	/// - if a Leaf with the specified ID exists.
 	pub fn add<D: Read + Send + Sync + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
 		let leaf = Leaf::new(data)
 			.id(id.as_ref().to_string())
@@ -67,9 +65,6 @@ impl<'a> Builder<'a> {
 	/// Loads all files from a directory, parses them into [`Leaf`]s and appends them into the processing queue.
 	/// An optional [`Leaf`] is passed as a template from which the new [`Leaf`]s shall implement, pass `None` to use the [`Builder`] internal default template.
 	/// Appended [`Leaf`]s have an `ID` in the form of of: `directory_name/file_name`. For example: `sounds/footstep.wav1, `sample/script.data`
-	/// ## Errors
-	/// - Any of the underlying calls to the filesystem fail.
-	/// - The internal call to `Builder::add_leaf()` fails.
 	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult {
 		use std::fs;
 
@@ -96,10 +91,8 @@ impl<'a> Builder<'a> {
 		Ok(())
 	}
 
-	/// Append a preconstructed [`Leaf`] into the processing queue.
-	/// [`Leaf`]s added directly do not implement data from the [`Builder`]s internal template.
-	/// ### Errors
-	/// - Returns an error if a [`Leaf`] with the specified `ID` exists.
+	/// Directly add a [`Leaf`] to the [`Builder`]
+	/// [`Leaf`]s added directly do not inherit  data from the [`Builder`]s template.
 	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult {
 		// Make sure no two leaves are written with the same ID
 		if !self.id_set.insert(leaf.id.clone()) {
@@ -188,11 +181,6 @@ impl<'a> Builder<'a> {
 
 	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
 	/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
-	///
-	/// ### Errors
-	/// - Underlying `io` errors
-	/// - If the optional compression or compression features aren't enabled
-	/// - If the requirements of a given stage, compression or encryption, are not met. Like not providing a keypair if a [`Leaf`] is to be encrypted.
 	pub fn dump<W: Write + Seek + Send>(self, mut target: W, config: &BuilderConfig) -> InternalResult<u64> {
 		let Builder { mut leafs, .. } = self;
 
@@ -279,7 +267,7 @@ impl<'a> Builder<'a> {
 			#[cfg(feature = "crypto")]
 			if result.sign {
 				if let Some(keypair) = &config.keypair {
-					let entry_bytes = result.entry.encode(true)?;
+					let entry_bytes = result.entry.to_bytes(true)?;
 					result.data.extend_from_slice(&entry_bytes); // DON"T FORGET TO TRUNCATE IF MODIFICATIONS ARE MADE
 
 					// Include registry data in the signature
@@ -289,7 +277,7 @@ impl<'a> Builder<'a> {
 			}
 
 			// write to registry buffer, this one might include the Signature
-			let entry_bytes = result.entry.encode(false)?;
+			let entry_bytes = result.entry.to_bytes(false)?;
 			registry.write_all(&entry_bytes)?;
 
 			// Call the progress callback bound within the [`BuilderConfig`]

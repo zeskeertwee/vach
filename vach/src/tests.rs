@@ -7,7 +7,7 @@ use crate::prelude::*;
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
-const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../../test_data/pair.pub");
+const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
 const SIGNED_TARGET: &str = "test_data/signed/target.vach";
@@ -137,12 +137,15 @@ fn builder_with_signature() -> InternalResult {
 	let mut build_config = BuilderConfig::default().callback(&cb);
 
 	build_config.load_keypair(KEYPAIR.as_slice())?;
+	builder.add_dir("test_data", None)?;
 
-	let template = Leaf::default().sign(true);
-	builder.add_dir("test_data", Some(&template))?;
+	// sign and no sign!
+	builder.add_leaf(Leaf::default().id("not_signed"))?;
 
-	// Tests conditional signing
-	builder.add_leaf(Leaf::default().id("not_signed").sign(false))?;
+	let signed = Leaf::new(b"Don't forget to recite your beatitudes!" as &[u8])
+		.id("signed")
+		.sign(true);
+	builder.add_leaf(signed)?;
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
@@ -169,18 +172,15 @@ fn fetch_with_signature() -> InternalResult {
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
-	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
-	assert!(!not_signed_resource.authenticated);
-
-	// The adjacent resource was flagged to not be signed
-	let not_signed_resource = archive.fetch_mut("not_signed")?;
+	dbg!(&archive.entries());
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 
 	// Check authenticity of retrieved data
 	let song = song.trim();
-	println!("{}", song);
 	assert_eq!(song.len(), 1977);
+
+	let resource = archive.fetch_mut("signed")?;
 
 	assert!(resource.authenticated);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));

@@ -42,8 +42,6 @@ impl RegistryEntry {
 	}
 
 	/// Given a read handle, will proceed to read and parse bytes into a [`RegistryEntry`] struct. (de-serialization)
-	/// ### Errors
-	/// Produces `io` errors and if the bytes in the id section is not valid UTF-8
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<RegistryEntry> {
 		let mut buffer: [u8; RegistryEntry::MIN_SIZE] = [0u8; RegistryEntry::MIN_SIZE];
 		handle.read_exact(&mut buffer)?;
@@ -98,7 +96,7 @@ impl RegistryEntry {
 	}
 
 	/// Serializes a [`RegistryEntry`] struct into an array of bytes
-	pub(crate) fn encode(&self, skip_signature: bool) -> InternalResult<Vec<u8>> {
+	pub(crate) fn to_bytes(&self, skip_signature: bool) -> InternalResult<Vec<u8>> {
 		// Make sure the ID is not too big or else it will break the archive
 		let id = self.id.as_ref();
 

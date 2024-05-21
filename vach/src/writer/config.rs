@@ -102,8 +102,6 @@ impl<'a> BuilderConfig<'a> {
 
 	// Keypair helpers
 	/// Parses and stores a keypair from a source.
-	/// ### Errors
-	/// If the call to `::utils::read_keypair()` fails to parse the data from the handle
 	#[cfg(feature = "crypto")]
 	pub fn load_keypair<T: std::io::Read>(&mut self, handle: T) -> crate::global::error::InternalResult {
 		crate::crypto_utils::read_keypair(handle).map(|kp| self.keypair = Some(kp))

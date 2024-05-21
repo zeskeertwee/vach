@@ -77,9 +77,6 @@ impl Flags {
 	/// flag.set(0b0000_1000_0000_0001, false).unwrap(); // 0 flags remain zero
 	/// assert_eq!(flag.bits(), 0b1000_0000_0000_0000);
 	/// ```
-	///
-	/// ### Errors
-	///  - Trying to set a bit in the forbidden section of the flags
 	pub fn set(&mut self, bit: u32, toggle: bool) -> InternalResult<u32> {
 		if (Flags::RESERVED_MASK & bit) != 0 {
 			return Err(InternalError::RestrictedFlagAccessError);

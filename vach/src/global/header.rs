@@ -50,10 +50,6 @@ impl ArchiveConfig {
 	/// // config.load_public_key(&keypair_bytes).unwrap();
 	/// config.load_public_key(&keypair_bytes[32..]).unwrap();
 	/// ```
-	///
-	/// ### Errors
-	///  - If parsing of the public key fails
-	///  - `io` errors
 	#[inline]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
@@ -147,8 +143,6 @@ impl Header {
 	pub const CAPACITY_SIZE: usize = 2;
 
 	/// Validates a `Header` with a template [ArchiveConfig]
-	/// ### Errors
-	///  - (in)validation of magic and archive version
 	pub(crate) fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult {
 		// Validate magic
 		if header.magic != config.magic {
@@ -163,8 +157,6 @@ impl Header {
 		Ok(())
 	}
 
-	/// ### Errors
-	///  - `io` errors
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
 		let mut buffer: [u8; Header::BASE_SIZE] = [0u8; Header::BASE_SIZE];
 		handle.read_exact(&mut buffer)?;

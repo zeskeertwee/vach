@@ -73,7 +73,7 @@ impl<T> Archive<T> {
 
 	// Decompress and|or decrypt the data
 	#[inline(never)]
-	fn process(&self, entry: &RegistryEntry, id: &str, mut raw: Vec<u8>) -> InternalResult<(Vec<u8>, bool)> {
+	fn process(&self, entry: &RegistryEntry, mut raw: Vec<u8>) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		// buffer_a originally contains the raw data
@@ -88,7 +88,7 @@ impl<T> Archive<T> {
 			if let Some(signature) = entry.signature {
 				let raw_size = raw.len();
 
-				let entry_bytes = entry.encode(true)?;
+				let entry_bytes = entry.to_bytes(true)?;
 				raw.extend_from_slice(&entry_bytes);
 
 				is_secure = pk.verify_strict(&raw, &signature).is_ok();
@@ -136,7 +136,11 @@ impl<T> Archive<T> {
 					Compressor::new(source.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut target)?
 				} else {
 					return InternalResult::Err(InternalError::OtherError(
-						format!("Unable to determine the compression algorithm used for entry with ID: {id}").into(),
+						format!(
+							"Unable to determine the compression algorithm used for entry: {}",
+							entry
+						)
+						.into(),
 					));
 				};
 
@@ -164,8 +168,6 @@ where
 	/// ```skip
 	/// Archive::with_config(HANDLE, &ArchiveConfig::default())?;
 	/// ```
-	/// ### Errors
-	/// - If the internal call to `Archive::with_config(-)` returns an error
 	#[inline(always)]
 	pub fn new(handle: T) -> InternalResult<Archive<T>> {
 		Archive::with_config(handle, &ArchiveConfig::default())
@@ -173,11 +175,6 @@ where
 
 	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
 	/// Pass a reference to [ArchiveConfig] and it will be used to validate the source and for further configuration.
-	/// ### Errors
-	///  - If parsing fails, an `Err(---)` is returned.
-	///  - The archive fails to validate
-	///  - `io` errors
-	///  - If any `ID`s are not valid UTF-8
 	pub fn with_config(mut handle: T, config: &ArchiveConfig) -> InternalResult<Archive<T>> {
 		// Start reading from the start of the input
 		handle.seek(SeekFrom::Start(0))?;
@@ -194,31 +191,20 @@ where
 			entries.insert(entry.id.clone(), entry);
 		}
 
-		#[cfg(feature = "crypto")]
-		{
-			// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
-			let decryptor = config
+		let archive = Archive {
+			header,
+			handle: Mutex::new(handle),
+			entries,
+
+			#[cfg(feature = "crypto")]
+			key: config.public_key,
+			#[cfg(feature = "crypto")]
+			decryptor: config
 				.public_key
 				.as_ref()
-				.map(|pk| crypto::Encryptor::new(pk, config.magic));
-
-			Ok(Archive {
-				header,
-				handle: Mutex::new(handle),
-				key: config.public_key,
-				entries,
-				decryptor,
-			})
-		}
-
-		#[cfg(not(feature = "crypto"))]
-		{
-			Ok(Archive {
-				header,
-				handle: Mutex::new(handle),
-				entries,
-			})
-		}
+				.map(|pk| crypto::Encryptor::new(pk, config.magic)),
+		};
+		Ok(archive)
 	}
 
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
@@ -265,7 +251,7 @@ where
 
 			// Prepare contextual variables
 			// Decompress and|or decrypt the data
-			let (buffer, is_secure) = self.process(&entry, id.as_ref(), raw)?;
+			let (buffer, is_secure) = self.process(&entry, raw)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
@@ -290,7 +276,7 @@ where
 
 			// Prepare contextual variables
 			// Decompress and|or decrypt the data
-			let (buffer, is_secure) = self.process(&entry, id.as_ref(), raw)?;
+			let (buffer, is_secure) = self.process(&entry, raw)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,

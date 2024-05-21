@@ -187,9 +187,7 @@ pub mod builder {
 #[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
-	pub use crate::global::{
-		reg_entry::RegistryEntry, header::ArchiveConfig, error::*, flags::Flags,
-	};
+	pub use crate::global::{reg_entry::RegistryEntry, header::ArchiveConfig, error::*, flags::Flags};
 	#[cfg(feature = "compression")]
 	pub use crate::global::compressor::CompressionAlgorithm;
 }

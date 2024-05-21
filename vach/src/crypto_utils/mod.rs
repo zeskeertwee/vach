@@ -22,8 +22,6 @@ pub fn gen_keypair() -> crypto::SigningKey {
 }
 
 /// Use this to read and parse a `Keypair` from a read stream
-/// ### Errors
-///  - If the data can't be parsed into a keypair
 pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<crypto::SigningKey> {
 	let mut keypair_bytes = [0; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;
@@ -31,20 +29,12 @@ pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<crypto::SigningKey
 }
 
 /// Read and parse a public key from a read stream
-///
-/// ### Errors
-///  - If parsing of the public key fails
-///  - `io` errors
 pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<crypto::VerifyingKey> {
 	let mut keypair_bytes = [0; crate::PUBLIC_KEY_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;
 	crypto::VerifyingKey::from_bytes(&keypair_bytes).map_err(|err| InternalError::ParseError(err.to_string()))
 }
 /// Read and parse a secret key from a read stream
-///
-/// ### Errors
-///  - If parsing of the secret key fails
-///  - `io` errors
 pub fn read_secret_key<T: Read>(mut handle: T) -> InternalResult<crypto::SigningKey> {
 	let mut secret_bytes = [0; crate::SECRET_KEY_LENGTH];
 	handle.read_exact(&mut secret_bytes)?;
