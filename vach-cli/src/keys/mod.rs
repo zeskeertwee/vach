@@ -42,7 +42,7 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.short('j')
 			.long("jobs")
 			.value_name(key_names::JOBS)
-			.help("How many threads to spawn during archive processing, defaults to current number of threads")
+			.help("How many threads to spawn during archive processing, defaults to number of threads on system")
 			.required(false)
 			.takes_value(true)
 			.number_of_values(1),

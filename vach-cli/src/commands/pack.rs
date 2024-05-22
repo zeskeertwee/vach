@@ -209,6 +209,7 @@ impl CommandTrait for Evaluator {
 			.map(|v| v.parse::<usize>().ok())
 			.flatten()
 			.unwrap_or(num_cpus::get());
+
 		let builder_config = BuilderConfig {
 			flags,
 			magic,
