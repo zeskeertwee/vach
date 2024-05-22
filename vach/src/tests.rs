@@ -159,20 +159,15 @@ fn fetch_with_signature() -> InternalResult {
 	config.load_public_key(keypair)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch_mut("test_data/song.txt")?;
-	let song = str::from_utf8(&resource.data).unwrap();
+	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
+	assert_eq!(resource.data.len(), 106537);
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 
-	// Check authenticity of retrieved data
-	let song = song.trim();
-	assert_eq!(song.len(), 1977);
-
 	let resource = archive.fetch_mut("signed")?;
-
 	assert!(resource.authenticated);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
