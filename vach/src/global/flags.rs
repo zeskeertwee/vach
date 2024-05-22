@@ -3,7 +3,7 @@ use super::error::*;
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal [bitflags](https://crates.io/crates/bitflags) of sorts.
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Flags {
 	pub(crate) bits: u32,

@@ -10,6 +10,6 @@ workspace.code-workspace
 .cargo/config.toml
 
 # Test Data
-vach/test_data/encrypted
-vach/test_data/signed
-vach/test_data/simple
+vach/test_data/encrypted/target.vach
+vach/test_data/signed/target.vach
+vach/test_data/simple/target.vach

@@ -26,15 +26,11 @@ fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::new(target)?;
 
-	dbg!(archive.entries());
-
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = entry.flags;
 
 	assert_eq!(flags.bits(), entry.flags.bits());
 	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
-
-	dbg!(flags);
 
 	Ok(())
 }
@@ -131,11 +127,7 @@ fn fetch_no_signature() -> InternalResult {
 fn builder_with_signature() -> InternalResult {
 	let mut builder = Builder::default();
 
-	let cb = |entry: &RegistryEntry| {
-		dbg!(entry);
-	};
-	let mut build_config = BuilderConfig::default().callback(&cb);
-
+	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(KEYPAIR.as_slice())?;
 	builder.add_dir("test_data", None)?;
 

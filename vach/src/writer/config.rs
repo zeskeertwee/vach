@@ -27,8 +27,8 @@ pub struct BuilderConfig<'a> {
 	/// use vach::prelude::{RegistryEntry, BuilderConfig, Leaf};
 	///
 	/// let builder_config = BuilderConfig::default();
-	/// fn callback(leaf: &Leaf, reg_entry: &RegistryEntry) {
-	///   println!("Leaf: {leaf:?} has been processed into Entry: {reg_entry:?}")
+	/// fn callback(reg_entry: &RegistryEntry) {
+	///   println!("Processed Entry: {:?}", reg_entry)
 	/// }
 	///
 	/// builder_config.callback(&callback);
