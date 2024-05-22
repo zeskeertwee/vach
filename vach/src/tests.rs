@@ -172,7 +172,6 @@ fn fetch_with_signature() -> InternalResult {
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
-	dbg!(&archive.entries());
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 

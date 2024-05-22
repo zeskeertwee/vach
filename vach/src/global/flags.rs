@@ -129,7 +129,7 @@ impl fmt::Debug for Flags {
 
 		write!(
 			f,
-			"Flags[{}{}{}]: <{}u16 : {:#016b}>",
+			"Flags[{}{}{}]: <{}u32 : {:#032b}>",
 			compressed, encrypted, signed, self.bits, self.bits
 		)
 	}

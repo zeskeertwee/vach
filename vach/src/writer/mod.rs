@@ -267,12 +267,13 @@ impl<'a> Builder<'a> {
 			#[cfg(feature = "crypto")]
 			if result.sign {
 				if let Some(keypair) = &config.keypair {
+					result.entry.flags.force_set(Flags::SIGNED_FLAG, true);
+
 					let entry_bytes = result.entry.to_bytes(true)?;
-					result.data.extend_from_slice(&entry_bytes); // DON"T FORGET TO TRUNCATE IF MODIFICATIONS ARE MADE
+					result.data.extend_from_slice(&entry_bytes);
 
 					// Include registry data in the signature
 					result.entry.signature = Some(keypair.sign(&result.data));
-					result.entry.flags.force_set(Flags::SIGNED_FLAG, true);
 				};
 			}
 
@@ -327,144 +328,6 @@ impl<'a> Builder<'a> {
 		target.seek(SeekFrom::Start(Header::BASE_SIZE as _))?;
 		target.write_all(&registry)?;
 
-		// // Define all arc-mutexes
-		// let leaf_offset_arc = Arc::new(AtomicU64::new(leaf_offset));
-		// let total_arc = Arc::new(AtomicUsize::new(Header::BASE_SIZE));
-		// let wtr_arc = Arc::new(Mutex::new(target));
-		// let reg_buffer_arc = Arc::new(Mutex::new(reg_buffer_sync));
-
-		// #[cfg(feature = "multithreaded")]
-		// let iter_mut = self.leafs.as_mut_slice().par_iter_mut();
-
-		// #[cfg(not(feature = "multithreaded"))]
-		// let iter_mut = self.leafs.iter_mut();
-
-		// // Populate the archive glob
-		// iter_mut.try_for_each(|leaf: &mut Leaf<'a>| -> InternalResult {
-		// 	let mut entry: RegistryEntry = leaf.into();
-		// 	let mut raw = Vec::new();
-
-		// 	// Compression comes first
-		// 	#[cfg(feature = "compression")]
-		// 	match leaf.compress {
-		// 		CompressMode::Never => {
-		// 			leaf.handle.read_to_end(&mut raw)?;
-		// 		},
-		// 		CompressMode::Always => {
-		// 			Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
-
-		// 			entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-		// 			entry.flags.force_set(leaf.compression_algo.into(), true);
-		// 		},
-		// 		CompressMode::Detect => {
-		// 			let mut buffer = Vec::new();
-		// 			leaf.handle.read_to_end(&mut buffer)?;
-
-		// 			let mut compressed_data = Vec::new();
-		// 			Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
-
-		// 			if compressed_data.len() <= buffer.len() {
-		// 				entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-		// 				entry.flags.force_set(leaf.compression_algo.into(), true);
-
-		// 				raw = compressed_data;
-		// 			} else {
-		// 				buffer.as_slice().read_to_end(&mut raw)?;
-		// 			};
-		// 		},
-		// 	}
-
-		// 	// If the compression feature is turned off, simply reads into buffer
-		// 	#[cfg(not(feature = "compression"))]
-		// 	{
-		// 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-		// 			return Err(InternalError::MissingFeatureError("compression"));
-		// 		};
-
-		// 		leaf.handle.read_to_end(&mut raw)?;
-		// 	}
-
-		// 	// Encryption comes second
-		// 	#[cfg(feature = "crypto")]
-		// 	if leaf.encrypt {
-		// 		if let Some(ex) = &encryptor {
-		// 			raw = ex.encrypt(&raw)?;
-
-		// 			entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
-		// 		}
-		// 	}
-
-		// 	// Write processed leaf-contents and update offsets within `MutexGuard` protection
-		// 	let glob_length = raw.len() as u64;
-
-		// 	{
-		// 		// Lock writer
-		// 		let mut wtr = wtr_arc.lock();
-
-		// 		// Lock leaf_offset
-		// 		let leaf_offset = leaf_offset_arc.load(Ordering::SeqCst);
-
-		// 		wtr.seek(SeekFrom::Start(leaf_offset))?;
-		// 		wtr.write_all(&raw)?;
-
-		// 		// Update offset locations
-		// 		entry.location = leaf_offset;
-		// 		leaf_offset_arc.fetch_add(glob_length, Ordering::SeqCst);
-
-		// 		// Update number of bytes written
-		// 		total_arc.fetch_add(glob_length as usize, Ordering::SeqCst);
-
-		// 		// Update the offset of the entry to be the length of the glob
-		// 		entry.offset = glob_length;
-		// 	};
-
-		// 	#[cfg(feature = "crypto")]
-		// 	if leaf.sign {
-		// 		if let Some(keypair) = &config.keypair {
-		// 			raw.extend_from_slice(leaf.id.as_bytes());
-
-		// 			// The reason we include the path in the signature is to prevent mangling in the registry,
-		// 			// For example, you may mangle the registry, causing this leaf to be addressed by a different reg_entry
-		// 			// The path of that reg_entry + The data, when used to validate the signature, will produce an invalid signature. Invalidating the query
-		// 			entry.signature = Some(keypair.sign(&raw));
-		// 			entry.flags.force_set(Flags::SIGNED_FLAG, true);
-
-		// 			// RAW has exhausted it's usefulness, we save memory by deallocating
-		// 			drop(raw);
-		// 		};
-		// 	}
-		// 	// Fetch bytes
-		// 	let mut entry_bytes = entry.bytes(&(leaf.id.len() as u16))?;
-		// 	entry_bytes.extend_from_slice(leaf.id.as_bytes());
-
-		// 	// Write to the registry-buffer and update total number of bytes written
-		// 	{
-		// 		let mut reg_buffer = reg_buffer_arc.lock();
-
-		// 		reg_buffer.write_all(&entry_bytes)?;
-		// 		total_arc.fetch_add(entry_bytes.len(), Ordering::SeqCst);
-		// 	}
-
-		// 	// Call the progress callback bound within the [`BuilderConfig`]
-		// 	if let Some(callback) = config.progress_callback {
-		// 		callback(&leaf, &entry)
-		// 	}
-
-		// 	Ok(())
-		// })?;
-
-		// // Write out the contents of the registry
-		// {
-		// 	let mut wtr = wtr_arc.lock();
-
-		// 	let reg_buffer = reg_buffer_arc.lock();
-
-		// 	wtr.seek(SeekFrom::Start(Header::BASE_SIZE as u64))?;
-		// 	wtr.write_all(reg_buffer.as_slice())?;
-		// };
-
-		// // Return total number of bytes written
-		// Ok(total_arc.load(Ordering::SeqCst))
 		Ok(bytes_written)
 	}
 }
