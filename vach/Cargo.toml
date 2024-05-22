@@ -6,8 +6,8 @@ version = "0.5.5"
 
 edition = "2021"
 authors = [
-	"Jasper Fortuin <zeskeertwee@gmail.com>",
 	"Newton Toto <nyachiengatoto@gmail.com>",
+	"Jasper Fortuin <zeskeertwee@gmail.com>",
 ]
 description = "A simple archiving format, designed for storing assets in compact secure containers"
 license = "MIT"
