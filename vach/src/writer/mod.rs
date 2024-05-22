@@ -1,6 +1,6 @@
 use std::{
-	io::{Write, Seek, SeekFrom, Read},
 	collections::HashSet,
+	io::{Read, Seek, SeekFrom, Write},
 	path::Path,
 	sync::Arc,
 };
@@ -288,12 +288,13 @@ impl<'a> Builder<'a> {
 		};
 
 		#[cfg(feature = "multithreaded")]
-		let (tx, rx) = mpsc::channel();
+		let (tx, rx) = mpsc::sync_channel(leafs.len());
 
 		#[cfg(feature = "multithreaded")]
 		{
 			thread::scope(|s| -> InternalResult<()> {
-				let chunk_size = leafs.len() / config.num_threads;
+				let count = leafs.len();
+				let chunk_size = (leafs.len() / config.num_threads).max(leafs.len());
 				let chunks = leafs.chunks_mut(chunk_size);
 				let encryptor = encryptor.as_ref();
 
@@ -310,11 +311,23 @@ impl<'a> Builder<'a> {
 				}
 
 				// Process IO, read results from
-				while let Ok(result) = rx.recv() {
-					write(result)?
+				let mut results = 0;
+				loop {
+					match rx.try_recv() {
+						Ok(r) => {
+							results += 1;
+							write(r)?
+						},
+						Err(e) => match e {
+							mpsc::TryRecvError::Empty => {
+								if results >= count {
+									break Ok(());
+								}
+							},
+							mpsc::TryRecvError::Disconnected => break Ok(()),
+						},
+					}
 				}
-
-				Ok(())
 			})?;
 		};
 

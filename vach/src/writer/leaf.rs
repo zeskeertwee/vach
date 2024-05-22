@@ -198,8 +198,7 @@ impl<'a> Default for Leaf<'a> {
 impl<'a> fmt::Debug for Leaf<'a> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut d = f.debug_struct("Leaf");
-		d.field("handle", &"[Box<dyn io::Read>]")
-			.field("id", &self.id)
+		d.field("id", &self.id)
 			.field("content_version", &self.content_version)
 			.field("flags", &self.flags);
 

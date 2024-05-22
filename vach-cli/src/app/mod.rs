@@ -10,7 +10,7 @@ const AUTHORS: &str = env!("CARGO_PKG_AUTHORS");
 pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 	Command::new("vach-cli")
 		.author(self::AUTHORS)
-		.about("A command-line interface for unpacking and packing .vach files")
+		.about("A command-line interface for unpacking and packing files")
 		.version(self::VERSION)
 		.subcommand(
 			Command::new("keypair")
@@ -31,7 +31,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 			Command::new("verify")
 				.author(AUTHORS)
 				.version(commands::verify::VERSION)
-				.about("Verifies the validity of a .vach file")
+				.about("Verifies the validity of an archive")
 				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::INPUT).unwrap()),
 		)
@@ -39,7 +39,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 			Command::new("list")
 				.author(AUTHORS)
 				.version(commands::list::VERSION)
-				.about("Lists all the entries in a .vach archive and their metadata")
+				.about("Lists all the entries in a archive and their metadata")
 				.arg(key_map.get(key_names::INPUT).unwrap())
 				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::SORT).unwrap()),
@@ -48,19 +48,23 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 			Command::new("unpack")
 				.author(AUTHORS)
 				.version(commands::unpack::VERSION)
-				.about("Unpacks a .vach archive")
+				.about("Unpacks a archive")
+				// Files
 				.arg(key_map.get(key_names::OUTPUT).unwrap())
 				.arg(key_map.get(key_names::INPUT).unwrap())
+				// encryption
 				.arg(key_map.get(key_names::KEYPAIR).unwrap())
 				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::PUBLIC_KEY).unwrap())
+				// modifiers
+				.arg(key_map.get(key_names::JOBS).unwrap())
 				.arg(key_map.get(key_names::TRUNCATE).unwrap()),
 		)
 		.subcommand(
 			Command::new("pipe")
 				.author(AUTHORS)
 				.version(commands::pipe::VERSION)
-				.about("Pipes the contents of a .vach archive to stdout")
+				.about("Pipes a Resource from an archive to stdout")
 				.arg(key_map.get(key_names::INPUT).unwrap())
 				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::PUBLIC_KEY).unwrap())
@@ -71,7 +75,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 			Command::new("pack")
 				.author(AUTHORS)
 				.version(commands::pack::VERSION)
-				.about("Packages all input files into a .vach archive")
+				.about("Packages all input files into a archive")
 				// Output file
 				.arg(key_map.get(key_names::OUTPUT).unwrap())
 				// Data sources
@@ -83,6 +87,7 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.arg(key_map.get(key_names::KEYPAIR).unwrap())
 				.arg(key_map.get(key_names::SECRET_KEY).unwrap())
 				// Modifiers
+				.arg(key_map.get(key_names::JOBS).unwrap())
 				.arg(key_map.get(key_names::FLAGS).unwrap())
 				.arg(key_map.get(key_names::COMPRESS_MODE).unwrap())
 				.arg(key_map.get(key_names::COMPRESS_ALGO).unwrap())

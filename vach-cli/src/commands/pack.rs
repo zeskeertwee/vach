@@ -197,17 +197,24 @@ impl CommandTrait for Evaluator {
 		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
-		let callback = |leaf: &Leaf, _: &RegistryEntry| {
+		let callback = |entry: &RegistryEntry| {
 			progress.inc(1);
-			progress.set_message(leaf.id.clone())
+			let message = entry.id.as_ref();
+			progress.set_message(message.to_string());
 		};
 
 		// Build a builder-config using the above extracted data
+		let num_threads = args
+			.value_of(key_names::JOBS)
+			.map(|v| v.parse::<usize>().ok())
+			.flatten()
+			.unwrap_or(num_cpus::get());
 		let builder_config = BuilderConfig {
 			flags,
 			magic,
 			keypair: kp,
 			progress_callback: Some(&callback),
+			num_threads,
 		};
 
 		// Construct the builder
@@ -247,9 +254,11 @@ impl CommandTrait for Evaluator {
 		// Inform of success in input queue
 		progress.inc(2);
 
-		builder.dump(output_file, &builder_config)?;
-		progress.println(format!("Generated a new archive @ {}", output_path));
-		drop(builder);
+		let bytes_written = builder.dump(output_file, &builder_config)?;
+		progress.println(format!(
+			"Generated a new archive @ {}; Bytes written: {}",
+			output_path, bytes_written
+		));
 
 		// Truncate original files
 		if truncate {

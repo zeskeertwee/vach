@@ -19,7 +19,8 @@ name = "vach"
 path = "src/main.rs"
 
 [dependencies]
-vach = { version = "0.5.5", features = ["all"] }
+vach = { path = "../vach", features = ["all"] }
+num_cpus = "1.16.0"
 clap = "3.1.15"
 indicatif = "0.17.8"
 anyhow = "1.0.81"

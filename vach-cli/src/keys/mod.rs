@@ -2,6 +2,8 @@ use clap::Arg;
 use std::collections::HashMap;
 
 pub mod key_names {
+	pub(crate) const JOBS: &str = "JOBS";
+
 	pub(crate) const OUTPUT: &str = "OUTPUT";
 	pub(crate) const INPUT: &str = "INPUT";
 	pub(crate) const RESOURCE: &str = "RESOURCE";
@@ -30,9 +32,22 @@ pub mod key_names {
 
 pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 	/* please only use this function once during the lifecycle of the program */
-	let mut map = HashMap::with_capacity(19);
+	let mut map = HashMap::with_capacity(20);
 
 	/* The various keys usable in the CLI */
+	// Number of threads to spawn during processing
+	map.insert(
+		key_names::JOBS,
+		Arg::new(key_names::JOBS)
+			.short('j')
+			.long("jobs")
+			.value_name(key_names::JOBS)
+			.help("How many threads to spawn during archive processing, defaults to current number of threads")
+			.required(false)
+			.takes_value(true)
+			.number_of_values(1),
+	);
+
 	// A general output target
 	map.insert(
 		key_names::OUTPUT,

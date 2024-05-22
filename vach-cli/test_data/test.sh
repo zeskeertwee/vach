@@ -5,19 +5,16 @@ set -xe
 # # Variables
 EXCLUDE=test.sh
 ARTIFACTS="keypair.sk keypair.pk keypair.kp signed.vach custom.vach encrypted.vach"
-VACH="cargo run -q --release --"
+VACH="cargo run --release --"
 
 # # Delete any previous artifacts
 rm -f $ARTIFACTS
 
 # # Prelude
 echo "Starting vach-cli tests..."
-echo
-sleep 1s
 
 # # Cargo tests
-cargo check -q
-cargo build -q --release
+cargo build --release
 
 # # Create simple archive with simple input, no compression only signatures
 $VACH pack --output signed.vach --directory-r ./ --compress-mode detect --compress-algo brotli --hash --exclude $EXCLUDE
