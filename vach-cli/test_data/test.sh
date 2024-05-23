@@ -5,37 +5,34 @@ set -xe
 # # Variables
 EXCLUDE=test.sh
 ARTIFACTS="keypair.sk keypair.pk keypair.kp signed.vach custom.vach encrypted.vach"
-VACH="cargo run -q --release --"
+CMD="cargo run -q --release --"
 
 # # Delete any previous artifacts
 rm -f $ARTIFACTS
 
 # # Prelude
 echo "Starting vach-cli tests..."
-echo
-sleep 1s
 
 # # Cargo tests
-cargo check -q
-cargo build -q --release
+cargo build --release
 
 # # Create simple archive with simple input, no compression only signatures
-$VACH pack --output signed.vach --directory-r ./ --compress-mode detect --compress-algo brotli --hash --exclude $EXCLUDE
+$CMD pack --output signed.vach --directory-r ./ --compress-mode detect --compress-algo brotli --hash --exclude $EXCLUDE
 
 # # Split the resulting keypair
-$VACH split -i keypair.kp
-$VACH list -i signed.vach
+$CMD split -i keypair.kp
+$CMD list -i signed.vach
 
 # # Generate a compressed archive with custom magic
-$VACH pack -o custom.vach -m CSTOM -i GamerProfile.xml -x $EXCLUDE
-$VACH list -i custom.vach -m CSTOM
+$CMD pack -o custom.vach -m CSTOM -i GamerProfile.xml -x $EXCLUDE
+$CMD list -i custom.vach -m CSTOM
 
 # # Generate an encrypted, signed and compressed archive
-$VACH pack -o encrypted.vach -d lolcalt -ea -c always -s keypair.sk
-$VACH list -i encrypted.vach
+$CMD pack -o encrypted.vach -d lolcalt -ea -c always -s keypair.sk
+$CMD list -i encrypted.vach
 
 # Unpack the encrypted archive
-$VACH unpack -i encrypted.vach -k keypair.kp
+$CMD unpack -i encrypted.vach -k keypair.kp
 
 # # Delete any previous artifacts
 rm -f $ARTIFACTS

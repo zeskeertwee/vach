@@ -2,10 +2,10 @@ use std::fs::{self, File};
 use std::str::FromStr;
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::PathBuf;
+use std::thread;
 use std::time::Instant;
 
 use vach::prelude::{ArchiveConfig, Archive, InternalError};
-use vach::rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use vach::crypto_utils;
 use indicatif::{ProgressBar, ProgressStyle};
 
@@ -80,7 +80,12 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
-		extract_archive(&archive, output_path)?;
+		let num_threads = args
+			.value_of(key_names::JOBS)
+			.map(|v| v.parse::<usize>().ok())
+			.flatten()
+			.unwrap_or(num_cpus::get());
+		extract_archive(&archive, num_threads, output_path)?;
 
 		// Delete original archive
 		if truncate {
@@ -92,7 +97,9 @@ impl CommandTrait for Evaluator {
 	}
 }
 
-fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_folder: PathBuf) -> anyhow::Result<()> {
+fn extract_archive<T: Read + Seek + Send + Sync>(
+	archive: &Archive<T>, jobs: usize, target_folder: PathBuf,
+) -> anyhow::Result<()> {
 	// For measuring the time difference
 	let time = Instant::now();
 	fs::create_dir_all(&target_folder)?;
@@ -114,30 +121,45 @@ fn extract_archive<T: Read + Seek + Send + Sync>(archive: &Archive<T>, target_fo
 			.tick_chars("⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀"),
 	);
 
-	// ignore the unprofessional match clause
-	if let Err(err) = archive.entries().par_iter().try_for_each(|(id, entry)| {
-		// Set's the Progress Bar message
-		pbar.set_message(id.to_string());
+	// Extract all entries in parallel
+	let entries = archive.entries().iter().map(|(_, entry)| entry).collect::<Vec<_>>();
+	let chunk_size = (archive.entries().len() / jobs).max(archive.entries().len());
 
-		// Process filesystem
-		let mut save_path = target_folder.clone();
-		save_path.push(id);
+	thread::scope(|s| -> anyhow::Result<()> {
+		for chunk in entries.chunks(chunk_size) {
+			let pbar = pbar.clone();
+			let target_folder = target_folder.clone();
 
-		if let Some(parent_dir) = save_path.ancestors().nth(1) {
-			fs::create_dir_all(parent_dir)?;
-		};
+			s.spawn(move || -> anyhow::Result<()> {
+				for entry in chunk {
+					let id = entry.id.as_ref();
 
-		// Write to file and update process queue
-		let mut file = File::create(save_path)?;
-		let resource = archive.fetch(id)?;
-		file.write_all(&resource.data)?;
+					// Set's the Progress Bar message
+					pbar.set_message(id.to_string());
 
-		// Increment Progress Bar
-		pbar.inc(entry.offset);
+					// Process filesystem
+					let mut save_path = target_folder.clone();
+					save_path.push(id);
+
+					if let Some(parent_dir) = save_path.ancestors().nth(1) {
+						fs::create_dir_all(parent_dir)?;
+					};
+
+					// Write to file and update process queue
+					let mut file = File::create(save_path)?;
+					let resource = archive.fetch(id)?;
+					file.write_all(&resource.data)?;
+
+					// Increment Progress Bar
+					pbar.inc(entry.offset);
+				}
+
+				Ok(())
+			});
+		}
+
 		Ok(())
-	}) {
-		return Err(err);
-	};
+	})?;
 
 	// Finished extracting
 	pbar.finish();

@@ -30,8 +30,8 @@ impl Read for FileWrapper {
 		};
 		let result = file.read(buf);
 
-		// Intercepts a file once it's finished reading to drop it, thus avoiding OS filesystem limitations easily
-		// Meaning we can safely drop the `fs::File` stored in this file wrapper
+		// Once the file is done reading, we drop the file handle
+		// TOo avoid hitting OS limitations
 		if let Ok(0) = result {
 			self.1.take();
 		};
@@ -107,7 +107,7 @@ impl CommandTrait for Evaluator {
 		};
 
 		// Extract the inputs
-		let mut inputs: Vec<FileWrapper> = vec![];
+		let mut inputs = vec![];
 
 		// Used to filter invalid inputs and excluded inputs
 		let path_filter = |path: &PathBuf| match path.canonicalize() {
@@ -188,8 +188,8 @@ impl CommandTrait for Evaluator {
 			kp = Some(generated);
 		}
 
-		let pbar = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
-		pbar.set_style(
+		let progress = ProgressBar::new(inputs.len() as u64 + 5 + if truncate { 3 } else { 0 });
+		progress.set_style(
 			ProgressStyle::default_bar()
 				.template(super::PROGRESS_BAR_STYLE)?
 				.progress_chars("█░-")
@@ -197,17 +197,25 @@ impl CommandTrait for Evaluator {
 		);
 
 		// Since it wraps it's internal state in an arc, we can safely clone and send across threads
-		let callback = |leaf: &Leaf, _: &RegistryEntry| {
-			pbar.inc(1);
-			pbar.set_message(leaf.id.clone())
+		let callback = |entry: &RegistryEntry| {
+			progress.inc(1);
+			let message = entry.id.as_ref();
+			progress.set_message(message.to_string());
 		};
 
 		// Build a builder-config using the above extracted data
+		let num_threads = args
+			.value_of(key_names::JOBS)
+			.map(|v| v.parse::<usize>().ok())
+			.flatten()
+			.unwrap_or(num_cpus::get());
+
 		let builder_config = BuilderConfig {
 			flags,
 			magic,
 			keypair: kp,
 			progress_callback: Some(&callback),
+			num_threads,
 		};
 
 		// Construct the builder
@@ -234,42 +242,37 @@ impl CommandTrait for Evaluator {
 		// Process the files
 		for wrapper in &mut inputs {
 			if !wrapper.0.exists() {
-				pbar.println(format!("Skipping {}, does not exist!", wrapper.0.to_string_lossy()));
-
-				pbar.inc(1);
+				println!("Skipping {}, does not exist!", wrapper.0.to_string_lossy());
+				progress.inc(1);
 
 				continue;
 			}
 
-			let id = wrapper
-				.0
-				.to_string_lossy()
-				.trim_start_matches("./")
-				.trim_start_matches(".\\")
-				.to_string();
-			println!("Preparing {} for packaging", id);
+			let id = wrapper.0.to_string_lossy().into_owned();
 			builder.add(wrapper, &id)?;
 		}
 
 		// Inform of success in input queue
-		pbar.inc(2);
+		progress.inc(2);
 
-		builder.dump(output_file, &builder_config)?;
-		pbar.println(format!("Generated a new archive @ {}", output_path));
-		drop(builder);
+		let bytes_written = builder.dump(output_file, &builder_config)?;
+		progress.println(format!(
+			"Generated a new archive @ {}; Bytes written: {}",
+			output_path, bytes_written
+		));
 
 		// Truncate original files
 		if truncate {
 			for wrapper in inputs {
 				std::fs::remove_file(&wrapper.0)?;
-				pbar.finish();
-				pbar.println(format!("Truncated original file @ {}", wrapper.0.to_string_lossy()));
+				progress.println(format!("Truncated original file @ {}", wrapper.0.to_string_lossy()));
 			}
 
-			pbar.inc(3);
+			progress.inc(3);
 		};
 
-		pbar.inc(3);
+		progress.inc(3);
+		progress.finish();
 
 		Ok(())
 	}

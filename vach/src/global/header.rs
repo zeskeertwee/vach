@@ -2,7 +2,7 @@ use std::{fmt, io::Read, str};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
-use super::{error::InternalError, result::InternalResult, flags::Flags};
+use super::{error::*, flags::Flags};
 
 /// Used to configure and give extra information to the [`Archive`](crate::archive::Archive) loader.
 /// Used exclusively in archive source and integrity validation.
@@ -50,10 +50,6 @@ impl ArchiveConfig {
 	/// // config.load_public_key(&keypair_bytes).unwrap();
 	/// config.load_public_key(&keypair_bytes[32..]).unwrap();
 	/// ```
-	///
-	/// ### Errors
-	///  - If parsing of the public key fails
-	///  - `io` errors
 	#[inline]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
@@ -92,10 +88,10 @@ impl fmt::Display for ArchiveConfig {
 			"[ArchiveConfig] magic: {}, has_public_key: {}",
 			match str::from_utf8(&self.magic) {
 				Ok(magic) => {
-					magic
+					magic.to_string()
 				},
 				Err(_) => {
-					return fmt::Result::Err(fmt::Error);
+					format!("{:?}", &self.magic)
 				},
 			},
 			has_pk
@@ -147,8 +143,6 @@ impl Header {
 	pub const CAPACITY_SIZE: usize = 2;
 
 	/// Validates a `Header` with a template [ArchiveConfig]
-	/// ### Errors
-	///  - (in)validation of magic and archive version
 	pub(crate) fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult {
 		// Validate magic
 		if header.magic != config.magic {
@@ -163,12 +157,8 @@ impl Header {
 		Ok(())
 	}
 
-	/// ### Errors
-	///  - `io` errors
 	pub(crate) fn from_handle<T: Read>(mut handle: T) -> InternalResult<Header> {
-		#![allow(clippy::uninit_assumed_init)]
 		let mut buffer: [u8; Header::BASE_SIZE] = [0u8; Header::BASE_SIZE];
-
 		handle.read_exact(&mut buffer)?;
 
 		// Construct header

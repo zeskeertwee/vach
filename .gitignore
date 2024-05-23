@@ -1,4 +1,5 @@
 /target
+vach-benchmarks/target
 
 .vscode
 .idea
@@ -7,4 +8,8 @@ perf.data
 perf.data.old
 workspace.code-workspace
 .cargo/config.toml
-**.vach
+
+# Test Data
+vach/test_data/encrypted/target.vach
+vach/test_data/signed/target.vach
+vach/test_data/simple/target.vach

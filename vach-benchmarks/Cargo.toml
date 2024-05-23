@@ -7,7 +7,12 @@ publish = false
 
 [dependencies]
 criterion = "0.5.1"
-vach = { path = "../vach", features = ["all"] }
+vach = { path = "../vach", features = [
+	"builder",
+	"archive",
+	"crypto",
+	"compression",
+] }
 
 [[bench]]
 name = "benchmark"

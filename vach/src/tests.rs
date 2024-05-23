@@ -7,7 +7,7 @@ use crate::prelude::*;
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
-const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../../test_data/pair.pub");
+const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
 const SIGNED_TARGET: &str = "test_data/signed/target.vach";
@@ -26,15 +26,11 @@ fn custom_bitflags() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let archive = Archive::new(target)?;
 
-	dbg!(archive.entries());
-
 	let entry = archive.fetch_entry("poem").unwrap();
 	let flags = entry.flags;
 
 	assert_eq!(flags.bits(), entry.flags.bits());
 	assert!(flags.contains(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4));
-
-	dbg!(flags);
 
 	Ok(())
 }
@@ -110,7 +106,7 @@ fn builder_no_signature() -> InternalResult {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "archive"))]
-fn simple_fetch() -> InternalResult {
+fn fetch_no_signature() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
 	let mut archive = Archive::new(target)?;
 	let resource = archive.fetch_mut("wasm")?;
@@ -131,17 +127,17 @@ fn simple_fetch() -> InternalResult {
 fn builder_with_signature() -> InternalResult {
 	let mut builder = Builder::default();
 
-	let cb = |_: &Leaf, entry: &RegistryEntry| {
-		dbg!(entry);
-	};
-	let mut build_config = BuilderConfig::default().callback(&cb);
-
+	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(KEYPAIR.as_slice())?;
+	builder.add_dir("test_data", None)?;
 
-	builder.add_dir("test_data", Some(&Leaf::default().sign(true)))?;
+	// sign and no sign!
+	builder.add_leaf(Leaf::default().id("not_signed"))?;
 
-	// Tests conditional signing
-	builder.add_leaf(Leaf::default().id("not_signed").sign(false))?;
+	let signed = Leaf::new(b"Don't forget to recite your beatitudes!" as &[u8])
+		.id("signed")
+		.sign(true);
+	builder.add_leaf(signed)?;
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
@@ -163,32 +159,15 @@ fn fetch_with_signature() -> InternalResult {
 	config.load_public_key(keypair)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch_mut("test_data/song.txt")?;
-	let song = str::from_utf8(&resource.data).unwrap();
+	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
+	assert_eq!(resource.data.len(), 106537);
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
 	assert!(!not_signed_resource.authenticated);
 
-	// The adjacent resource was flagged to not be signed
-	let not_signed_resource = archive.fetch_mut("not_signed")?;
-	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
-	assert!(!not_signed_resource.authenticated);
-
-	// Check authenticity of retrieved data
-	println!("{}", song);
-
-	// Windows bullshit
-	#[cfg(target_os = "windows")]
-	{
-		assert_eq!(song.len(), 2041);
-	}
-	#[cfg(not(any(target_os = "windows", target_os = "ios")))]
-	{
-		assert_eq!(song.len(), 1977);
-	}
-
+	let resource = archive.fetch_mut("signed")?;
 	assert!(resource.authenticated);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
@@ -197,7 +176,7 @@ fn fetch_with_signature() -> InternalResult {
 
 #[test]
 #[cfg(feature = "crypto")]
-fn edcryptor_test() -> InternalResult {
+fn decryptor_test() -> InternalResult {
 	use crate::crypto_utils::gen_keypair;
 
 	let vk = gen_keypair().verifying_key();
@@ -241,7 +220,7 @@ fn builder_with_encryption() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "archive", feature = "crypto"))]
+#[cfg(all(feature = "archive", feature = "crypto", feature = "compression"))]
 fn fetch_from_encrypted() -> InternalResult {
 	let target = File::open(ENCRYPTED_TARGET)?;
 
@@ -251,12 +230,18 @@ fn fetch_from_encrypted() -> InternalResult {
 	config.load_public_key(public_key)?;
 
 	let mut archive = Archive::with_config(target, &config)?;
-	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
 
-	assert_eq!(resource.data.len(), 106537);
-	assert!(resource.authenticated);
-	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
-	assert!(resource.flags.contains(Flags::ENCRYPTED_FLAG));
+	// read data
+	let not_signed = archive.fetch_mut("stitches.snitches")?;
+	let data = std::str::from_utf8(&not_signed.data).unwrap();
+	assert_eq!(data, "Snitches get stitches, iOS sucks");
+
+	let signed = archive.fetch_mut("test_data/quicksort.wasm")?;
+
+	assert_eq!(signed.data.len(), 106537);
+	assert!(signed.authenticated);
+	assert!(!signed.flags.contains(Flags::COMPRESSED_FLAG));
+	assert!(signed.flags.contains(Flags::ENCRYPTED_FLAG));
 
 	Ok(())
 }
@@ -283,7 +268,7 @@ fn consolidated_example() -> InternalResult {
 	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
-	let template = Leaf::default().encrypt(true).version(59);
+	let template = Leaf::default().encrypt(true).version(59).sign(true);
 	builder.add_leaf(Leaf::new(data_1).id("d1").template(&template))?;
 	builder.add_leaf(Leaf::new(data_2).id("d2").template(&template))?;
 	builder.add_leaf(Leaf::new(data_3).id("d3").template(&template))?;

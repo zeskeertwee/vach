@@ -1,19 +1,18 @@
 use std::{
-	str,
-	io::{Read, Seek, SeekFrom},
 	collections::HashMap,
+	io::{Read, Seek, SeekFrom},
+	ops::DerefMut,
+	str,
+	sync::{Arc, Mutex},
 };
 
 use super::resource::Resource;
 use crate::global::{
-	error::InternalError,
+	error::*,
 	flags::Flags,
 	header::{Header, ArchiveConfig},
 	reg_entry::RegistryEntry,
-	result::InternalResult,
 };
-
-use parking_lot::Mutex;
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -33,9 +32,9 @@ pub struct Archive<T> {
 	/// Since all other work is done per thread
 	handle: Mutex<T>,
 
-	// Archive metadata
+	// Registry Data
 	header: Header,
-	entries: HashMap<String, RegistryEntry>,
+	entries: HashMap<Arc<str>, RegistryEntry>,
 
 	// Optional parts
 	#[cfg(feature = "crypto")]
@@ -67,13 +66,14 @@ impl<T> std::fmt::Display for Archive<T> {
 
 impl<T> Archive<T> {
 	/// Consume the [Archive] and return the underlying handle
-	pub fn into_inner(self) -> T {
+	/// `None` if underlying
+	pub fn into_inner(self) -> Result<T, std::sync::PoisonError<T>> {
 		self.handle.into_inner()
 	}
 
 	// Decompress and|or decrypt the data
 	#[inline(never)]
-	fn process(&self, entry: &RegistryEntry, id: &str, mut raw: Vec<u8>) -> InternalResult<(Vec<u8>, bool)> {
+	fn process(&self, entry: &RegistryEntry, mut raw: Vec<u8>) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		// buffer_a originally contains the raw data
@@ -84,15 +84,16 @@ impl<T> Archive<T> {
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
 		#[cfg(feature = "crypto")]
 		if let Some(pk) = self.key {
-			let raw_size = raw.len();
-
 			// If there is an error the data is flagged as invalid
 			if let Some(signature) = entry.signature {
-				raw.extend_from_slice(id.as_bytes());
-				is_secure = pk.verify_strict(&raw, &signature).is_ok();
-			}
+				let raw_size = raw.len();
 
-			raw.truncate(raw_size);
+				let entry_bytes = entry.to_bytes(true)?;
+				raw.extend_from_slice(&entry_bytes);
+
+				is_secure = pk.verify_strict(&raw, &signature).is_ok();
+				raw.truncate(raw_size);
+			}
 		}
 
 		// Add read layers
@@ -135,7 +136,11 @@ impl<T> Archive<T> {
 					Compressor::new(source.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut target)?
 				} else {
 					return InternalResult::Err(InternalError::OtherError(
-						format!("Unable to determine the compression algorithm used for entry with ID: {id}").into(),
+						format!(
+							"Unable to determine the compression algorithm used for entry: {}",
+							entry
+						)
+						.into(),
 					));
 				};
 
@@ -163,8 +168,6 @@ where
 	/// ```skip
 	/// Archive::with_config(HANDLE, &ArchiveConfig::default())?;
 	/// ```
-	/// ### Errors
-	/// - If the internal call to `Archive::with_config(-)` returns an error
 	#[inline(always)]
 	pub fn new(handle: T) -> InternalResult<Archive<T>> {
 		Archive::with_config(handle, &ArchiveConfig::default())
@@ -172,11 +175,6 @@ where
 
 	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
 	/// Pass a reference to [ArchiveConfig] and it will be used to validate the source and for further configuration.
-	/// ### Errors
-	///  - If parsing fails, an `Err(---)` is returned.
-	///  - The archive fails to validate
-	///  - `io` errors
-	///  - If any `ID`s are not valid UTF-8
 	pub fn with_config(mut handle: T, config: &ArchiveConfig) -> InternalResult<Archive<T>> {
 		// Start reading from the start of the input
 		handle.seek(SeekFrom::Start(0))?;
@@ -189,44 +187,24 @@ where
 
 		// Construct entries map
 		for _ in 0..header.capacity {
-			let (entry, id) = RegistryEntry::from_handle(&mut handle)?;
-			entries.insert(id, entry);
+			let entry = RegistryEntry::from_handle(&mut handle)?;
+			entries.insert(entry.id.clone(), entry);
 		}
 
-		#[cfg(feature = "crypto")]
-		{
-			// Build decryptor
-			let use_decryption = entries
-				.iter()
-				.any(|(_, entry)| entry.flags.contains(Flags::ENCRYPTED_FLAG));
+		let archive = Archive {
+			header,
+			handle: Mutex::new(handle),
+			entries,
 
-			// Errors where no decryptor has been instantiated will be returned once a fetch is made to an encrypted resource
-			let decryptor = use_decryption
-				.then(|| {
-					config
-						.public_key
-						.as_ref()
-						.map(|pk| crypto::Encryptor::new(pk, config.magic))
-				})
-				.flatten();
-
-			Ok(Archive {
-				header,
-				handle: Mutex::new(handle),
-				key: config.public_key,
-				entries,
-				decryptor,
-			})
-		}
-
-		#[cfg(not(feature = "crypto"))]
-		{
-			Ok(Archive {
-				header,
-				handle: Mutex::new(handle),
-				entries,
-			})
-		}
+			#[cfg(feature = "crypto")]
+			key: config.public_key,
+			#[cfg(feature = "crypto")]
+			decryptor: config
+				.public_key
+				.as_ref()
+				.map(|pk| crypto::Encryptor::new(pk, config.magic)),
+		};
+		Ok(archive)
 	}
 
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
@@ -237,7 +215,7 @@ where
 
 	/// Returns an immutable reference to the underlying [`HashMap`]. This hashmap stores [`RegistryEntry`] values and uses `String` keys.
 	#[inline(always)]
-	pub fn entries(&self) -> &HashMap<String, RegistryEntry> {
+	pub fn entries(&self) -> &HashMap<Arc<str>, RegistryEntry> {
 		&self.entries
 	}
 
@@ -248,32 +226,32 @@ where
 	}
 }
 
-/// Given a data source and a [`RegistryEntry`], gets the adjacent raw data
-pub(crate) fn read_entry<T: Seek + Read>(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-	let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
-	handle.seek(SeekFrom::Start(entry.location))?;
-
-	let mut take = handle.take(entry.offset);
-	take.read_to_end(&mut buffer)?;
-
-	Ok(buffer)
-}
-
 impl<T> Archive<T>
 where
 	T: Read + Seek,
 {
+	/// Given a data source and a [`RegistryEntry`], gets the adjacent raw data
+	pub(crate) fn read_raw(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
+		let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
+		handle.seek(SeekFrom::Start(entry.location))?;
+
+		let mut take = handle.take(entry.offset);
+		take.read_to_end(&mut buffer)?;
+
+		Ok(buffer)
+	}
+
 	/// Cheaper alternative to `fetch` that works best for single threaded applications.
 	/// It does not lock the underlying [Mutex], since it requires a mutable reference.
 	/// Therefore the borrow checker statically guarantees the operation is safe. Refer to [`Mutex::get_mut`](Mutex).
 	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
-			let raw = read_entry(self.handle.get_mut(), &entry)?;
+			let raw = Archive::read_raw(self.handle.get_mut().unwrap(), &entry)?;
 
 			// Prepare contextual variables
 			// Decompress and|or decrypt the data
-			let (buffer, is_secure) = self.process(&entry, id.as_ref(), raw)?;
+			let (buffer, is_secure) = self.process(&entry, raw)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
@@ -292,13 +270,13 @@ where
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = {
-				let mut guard = self.handle.lock();
-				read_entry(guard.by_ref(), &entry)?
+				let mut guard = self.handle.lock().unwrap();
+				Archive::read_raw(guard.deref_mut(), &entry)?
 			};
 
 			// Prepare contextual variables
 			// Decompress and|or decrypt the data
-			let (buffer, is_secure) = self.process(&entry, id.as_ref(), raw)?;
+			let (buffer, is_secure) = self.process(&entry, raw)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,

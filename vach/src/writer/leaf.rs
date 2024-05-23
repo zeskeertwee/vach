@@ -1,19 +1,33 @@
+#[cfg(feature = "compression")]
+use crate::global::compressor::CompressionAlgorithm;
 use crate::global::{reg_entry::RegistryEntry, flags::Flags};
 
-#[cfg(feature = "compression")]
-use {crate::global::compressor::CompressionAlgorithm, super::compress_mode::CompressMode};
+use std::{fmt, io::Read, sync::Arc};
 
-use std::{io::Read, fmt};
+/// Configures how `Leaf`s should be compressed.
+/// Default is `CompressMode::Never`.
+#[derive(Debug, Clone, Copy, Default)]
+#[cfg(feature = "compression")]
+#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
+pub enum CompressMode {
+	/// The data is never compressed and is embedded as is.
+	#[default]
+	Never,
+	/// The data will always be compressed
+	Always,
+	/// The compressed data is used, only if it is smaller than the original data.
+	Detect,
+}
 
 /// A wrapper around an [`io::Read`](std::io::Read) handle.
 /// Allows for multiple types of data implementing [`io::Read`](std::io::Read) to be used under one struct.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
 	/// The lifetime simply reflects to the [`Builder`](crate::builder::Builder)'s lifetime, meaning the handle must live longer than or the same as the Builder
-	pub(crate) handle: Box<dyn Read + Send + 'a>,
+	pub(crate) handle: Box<dyn Read + Send + Sync + 'a>,
 
 	/// The `ID` under which the embedded data will be referenced
-	pub id: String,
+	pub id: Arc<str>,
 	/// The version of the content, allowing you to track obsolete data.
 	pub content_version: u8,
 	/// The flags that will go into the archive write target.
@@ -50,7 +64,7 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::new(Cursor::new(vec![]));
 	///```
-	pub fn new<R: Read + Send + 'a>(handle: R) -> Leaf<'a> {
+	pub fn new<R: Read + Send + Sync + 'a>(handle: R) -> Leaf<'a> {
 		Leaf {
 			handle: Box::new(handle),
 			..Default::default()
@@ -111,8 +125,8 @@ impl<'a> Leaf<'a> {
 	///
 	/// let leaf = Leaf::default().id("whatzitouya");
 	/// ```
-	pub fn id<S: ToString>(mut self, id: S) -> Self {
-		self.id = id.to_string();
+	pub fn id<S: AsRef<str>>(mut self, id: S) -> Self {
+		self.id = Arc::from(id.as_ref());
 		self
 	}
 
@@ -164,7 +178,7 @@ impl<'a> Default for Leaf<'a> {
 		Leaf {
 			handle: Box::<&[u8]>::new(&[]),
 
-			id: Default::default(),
+			id: Arc::from(""),
 			flags: Default::default(),
 			content_version: Default::default(),
 
@@ -184,8 +198,7 @@ impl<'a> Default for Leaf<'a> {
 impl<'a> fmt::Debug for Leaf<'a> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut d = f.debug_struct("Leaf");
-		d.field("handle", &"[Box<dyn io::Read>]")
-			.field("id", &self.id)
+		d.field("id", &self.id)
 			.field("content_version", &self.content_version)
 			.field("flags", &self.flags);
 
@@ -207,9 +220,11 @@ impl<'a> fmt::Debug for Leaf<'a> {
 
 impl From<&mut Leaf<'_>> for RegistryEntry {
 	fn from(leaf: &mut Leaf<'_>) -> Self {
-		let mut entry = RegistryEntry::empty();
-		entry.content_version = leaf.content_version;
-		entry.flags = leaf.flags;
-		entry
+		RegistryEntry {
+			id: leaf.id.clone(),
+			flags: leaf.flags,
+			content_version: leaf.content_version,
+			..RegistryEntry::empty()
+		}
 	}
 }

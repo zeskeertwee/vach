@@ -1,9 +1,10 @@
 use std::fmt;
-use super::{error::InternalError, result::InternalResult};
+use super::error::*;
 
 /// Abstracted flag access and manipulation `struct`.
 /// A knock-off minimal [bitflags](https://crates.io/crates/bitflags) of sorts.
-#[derive(Copy, Clone, Default, PartialEq)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(transparent)]
 pub struct Flags {
 	pub(crate) bits: u32,
 }
@@ -23,7 +24,7 @@ impl Flags {
 	pub const LZ4_COMPRESSED: u32 = 0b_0100_0000_0000_0000_0000_0000_0000_0000;
 	/// This entry was compressed using the [snappy](https://crates.io/crates/snap) scheme for balanced compression properties
 	pub const SNAPPY_COMPRESSED: u32 = 0b_0010_0000_0000_0000_0000_0000_0000_0000;
-	/// This entry was compressed using the [brotli](https://crates.io/crates/brotli) scheme for higher compression ratios but *much* (depends on the quality of compression) slower compression speed
+	/// This entry was compressed using the [brotli](https://crates.io/crates/brotli) scheme for higher compression ratios but slower compression speed
 	pub const BROTLI_COMPRESSED: u32 = 0b_0001_0000_0000_0000_0000_0000_0000_0000;
 
 	/// The flag that denotes that the archive source has signatures
@@ -76,9 +77,6 @@ impl Flags {
 	/// flag.set(0b0000_1000_0000_0001, false).unwrap(); // 0 flags remain zero
 	/// assert_eq!(flag.bits(), 0b1000_0000_0000_0000);
 	/// ```
-	///
-	/// ### Errors
-	///  - Trying to set a bit in the forbidden section of the flags
 	pub fn set(&mut self, bit: u32, toggle: bool) -> InternalResult<u32> {
 		if (Flags::RESERVED_MASK & bit) != 0 {
 			return Err(InternalError::RestrictedFlagAccessError);
@@ -131,7 +129,7 @@ impl fmt::Debug for Flags {
 
 		write!(
 			f,
-			"Flags[{}{}{}]: <{}u16 : {:#016b}>",
+			"Flags[{}{}{}]: <{}u32 : {:#032b}>",
 			compressed, encrypted, signed, self.bits, self.bits
 		)
 	}
