@@ -1,4 +1,3 @@
-use std::fs::OpenOptions;
 use std::{
 	fs::File,
 	io::{Write, Read, self},
