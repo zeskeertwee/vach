@@ -6,6 +6,7 @@ use std::{
 use std::path::PathBuf;
 use std::collections::HashSet;
 
+use tempfile::NamedTempFile;
 use vach::prelude::*;
 use vach::crypto_utils;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -234,10 +235,7 @@ impl CommandTrait for Evaluator {
 			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
 		};
 
-		let output_file = match OpenOptions::new().write(true).create_new(true).open(output_path) {
-			Ok(file) => file,
-			Err(err) => anyhow::bail!("Unable to generate archive @ {}: [IO::Error] {}", output_path, err),
-		};
+		let mut temporary_file = NamedTempFile::new().unwrap();
 
 		// Process the files
 		for wrapper in &mut inputs {
@@ -254,8 +252,9 @@ impl CommandTrait for Evaluator {
 
 		// Inform of success in input queue
 		progress.inc(2);
+		let bytes_written = builder.dump(&mut temporary_file, &builder_config)?;
+		temporary_file.persist(output_path)?;
 
-		let bytes_written = builder.dump(output_file, &builder_config)?;
 		progress.println(format!(
 			"Generated a new archive @ {}; Bytes written: {}",
 			output_path, bytes_written
