@@ -26,7 +26,7 @@ impl CommandTrait for Evaluator {
 
 		let output_path = match args.value_of(key_names::OUTPUT) {
 			Some(path) => PathBuf::from_str(path)?,
-			None => anyhow::bail!("Please provide an output path using the -o or --output key"),
+			None => Default::default(),
 		};
 
 		if output_path.is_file() {
