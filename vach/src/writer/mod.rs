@@ -294,7 +294,8 @@ impl<'a> Builder<'a> {
 		{
 			thread::scope(|s| -> InternalResult<()> {
 				let count = leafs.len();
-				let chunk_size = (leafs.len() / config.num_threads).max(leafs.len());
+				let chunk_size = leafs.len() / config.num_threads.min(1);
+
 				let chunks = leafs.chunks_mut(chunk_size);
 				let encryptor = encryptor.as_ref();
 

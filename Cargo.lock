@@ -1094,16 +1094,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "term_size"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e4129646ca0ed8f45d09b929036bafad5377103edd06e50bf574b353d2b08d9"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "termcolor"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1188,9 +1178,9 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df0f7c862de2709c7a39741492c0f2bf9f48518dc7ade68a61f82da1da909221"
+checksum = "d6e089a362e16a5ccf60ffa945c8bb29e4f9bea9a2d6b5b6b0463e032c0c9279"
 dependencies = [
  "aes-gcm",
  "brotli",
@@ -1203,7 +1193,7 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "aes-gcm",
  "brotli",
@@ -1220,7 +1210,7 @@ name = "vach-benchmarks"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "vach 0.6.1",
+ "vach 0.6.2",
 ]
 
 [[package]]
@@ -1233,8 +1223,7 @@ dependencies = [
  "num_cpus",
  "tabled",
  "tempfile",
- "term_size",
- "vach 0.6.0",
+ "vach 0.6.1",
  "walkdir",
 ]
 

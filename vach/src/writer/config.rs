@@ -1,5 +1,3 @@
-use std::{fmt::Debug, num::NonZeroUsize};
-
 use crate::global::{flags::Flags, reg_entry::RegistryEntry};
 
 #[cfg(feature = "crypto")]
@@ -10,7 +8,7 @@ use crate::crypto;
 pub struct BuilderConfig<'a> {
 	/// Number of threads to spawn during `Builder::dump`, defaults to 4
 	#[cfg(feature = "multithreaded")]
-	pub num_threads: NonZeroUsize,
+	pub num_threads: usize,
 	/// Used to write a unique magic sequence into the write target.
 	pub magic: [u8; crate::MAGIC_LENGTH],
 	/// Flags to be written into the `Header` section of the write target.
@@ -36,7 +34,7 @@ pub struct BuilderConfig<'a> {
 	pub progress_callback: Option<&'a dyn Fn(&RegistryEntry)>,
 }
 
-impl<'a> Debug for BuilderConfig<'a> {
+impl<'a> std::fmt::Debug for BuilderConfig<'a> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let mut f = f.debug_struct("BuilderConfig");
 
@@ -112,7 +110,7 @@ impl<'a> Default for BuilderConfig<'a> {
 	fn default() -> BuilderConfig<'a> {
 		BuilderConfig {
 			#[cfg(feature = "multithreaded")]
-			num_threads: NonZeroUsize::new(4).unwrap(),
+			num_threads: 4,
 			flags: Flags::default(),
 			magic: *crate::DEFAULT_MAGIC,
 			progress_callback: None,
