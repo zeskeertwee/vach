@@ -1,6 +1,7 @@
 use std::{
 	fs::File,
-	io::{Write, Read, self},
+	io::{self, Read, Write},
+	num::NonZeroUsize,
 };
 use std::path::PathBuf;
 use std::collections::HashSet;
@@ -215,7 +216,7 @@ impl CommandTrait for Evaluator {
 			magic,
 			keypair: kp,
 			progress_callback: Some(&callback),
-			num_threads,
+			num_threads: `NonZeroUsize::new(num_threads).expect("Jobs can't be zero")`,
 		};
 
 		// Construct the builder

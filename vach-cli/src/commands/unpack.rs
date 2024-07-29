@@ -80,11 +80,16 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
-		let num_threads = args
+		let mut num_threads = args
 			.value_of(key_names::JOBS)
 			.map(|v| v.parse::<usize>().ok())
 			.flatten()
 			.unwrap_or(num_cpus::get());
+
+		if num_threads == 0 {
+			num_threads = num_cpus::get()
+		}
+
 		extract_archive(&archive, num_threads, output_path)?;
 
 		// Delete original archive
