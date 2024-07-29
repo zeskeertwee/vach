@@ -13,3 +13,6 @@ workspace.code-workspace
 vach/test_data/encrypted/target.vach
 vach/test_data/signed/target.vach
 vach/test_data/simple/target.vach
+
+# Cargo
+.cargo

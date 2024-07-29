@@ -1178,21 +1178,6 @@ dependencies = [
 
 [[package]]
 name = "vach"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e089a362e16a5ccf60ffa945c8bb29e4f9bea9a2d6b5b6b0463e032c0c9279"
-dependencies = [
- "aes-gcm",
- "brotli",
- "ed25519-dalek",
- "lz4_flex",
- "rand",
- "snap",
- "thiserror",
-]
-
-[[package]]
-name = "vach"
 version = "0.6.2"
 dependencies = [
  "aes-gcm",
@@ -1201,6 +1186,21 @@ dependencies = [
  "lz4_flex",
  "rand",
  "rayon",
+ "snap",
+ "thiserror",
+]
+
+[[package]]
+name = "vach"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e49e72cbb0d222f15fb0f48df1c6f92f1b050675623c78797493c9980326a2c"
+dependencies = [
+ "aes-gcm",
+ "brotli",
+ "ed25519-dalek",
+ "lz4_flex",
+ "rand",
  "snap",
  "thiserror",
 ]
@@ -1223,7 +1223,7 @@ dependencies = [
  "num_cpus",
  "tabled",
  "tempfile",
- "vach 0.6.1",
+ "vach 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir",
 ]
 
