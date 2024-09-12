@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::global::{flags::Flags, reg_entry::RegistryEntry};
 
 #[cfg(feature = "crypto")]
@@ -36,7 +34,7 @@ pub struct BuilderConfig<'a> {
 	pub progress_callback: Option<&'a dyn Fn(&RegistryEntry)>,
 }
 
-impl<'a> Debug for BuilderConfig<'a> {
+impl<'a> std::fmt::Debug for BuilderConfig<'a> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		let mut f = f.debug_struct("BuilderConfig");
 

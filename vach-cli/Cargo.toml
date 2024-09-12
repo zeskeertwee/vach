@@ -19,11 +19,11 @@ name = "vach"
 path = "src/main.rs"
 
 [dependencies]
-vach = { version = "0.6", features = ["all"] }
+vach = { version = "0.6.2", features = ["all"] }
 num_cpus = "1.16.0"
 clap = "3.1.15"
 indicatif = "0.17.8"
-anyhow = "1.0.81"
+anyhow = "1.0.86"
 tabled = "0.15.0"
 walkdir = "2.5.0"
-term_size = "0.3.2"
+tempfile = "3.10.1"
