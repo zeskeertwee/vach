@@ -78,7 +78,7 @@ impl<T> Archive<T> {
 
 		// buffer_a originally contains the raw data
 		let mut decrypted = None;
-		let mut is_secure = false;
+		let mut verified = false;
 
 		// Signature validation
 		// Validate signature only if a public key is passed with Some(PUBLIC_KEY)
@@ -91,7 +91,7 @@ impl<T> Archive<T> {
 				let entry_bytes = entry.to_bytes(true)?;
 				raw.extend_from_slice(&entry_bytes);
 
-				is_secure = pk.verify_strict(&raw, &signature).is_ok();
+				verified = pk.verify_strict(&raw, &signature).is_ok();
 				raw.truncate(raw_size);
 			}
 		}
@@ -144,15 +144,15 @@ impl<T> Archive<T> {
 					));
 				};
 
-				Ok((target, is_secure))
+				Ok((target, verified))
 			}
 
 			#[cfg(not(feature = "compression"))]
 			Err(InternalError::MissingFeatureError("compression"))
 		} else {
 			match decrypted {
-				Some(decrypted) => Ok((decrypted, is_secure)),
-				None => Ok((raw, is_secure)),
+				Some(decrypted) => Ok((decrypted, verified)),
+				None => Ok((raw, verified)),
 			}
 		}
 	}
@@ -251,13 +251,13 @@ where
 
 			// Prepare contextual variables
 			// Decompress and|or decrypt the data
-			let (buffer, is_secure) = self.process(&entry, raw)?;
+			let (buffer, verified) = self.process(&entry, raw)?;
 
 			Ok(Resource {
 				content_version: entry.content_version,
 				flags: entry.flags,
 				data: buffer.into_boxed_slice(),
-				authenticated: is_secure,
+				verified,
 			})
 		} else {
 			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
@@ -282,7 +282,7 @@ where
 				content_version: entry.content_version,
 				flags: entry.flags,
 				data: buffer.into_boxed_slice(),
-				authenticated: is_secure,
+				verified: is_secure,
 			})
 		} else {
 			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));

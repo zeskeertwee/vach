@@ -99,7 +99,7 @@ fn builder_no_signature() -> InternalResult {
 	)?;
 
 	let mut target = File::create(SIMPLE_TARGET)?;
-	builder.dump(&mut target, &build_config)?;
+	builder.dump(&mut target, build_config)?;
 
 	Ok(())
 }
@@ -112,7 +112,7 @@ fn fetch_no_signature() -> InternalResult {
 	let resource = archive.fetch_mut("wasm")?;
 
 	assert_eq!(resource.data.len(), 106537);
-	assert!(!resource.authenticated);
+	assert!(!resource.verified);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 
 	let hello = archive.fetch_mut("greeting")?;
@@ -142,7 +142,7 @@ fn builder_with_signature() -> InternalResult {
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
 		"Number of bytes written: {}, into signed archive.",
-		builder.dump(&mut target, &build_config)?
+		builder.dump(&mut target, build_config)?
 	);
 
 	Ok(())
@@ -165,10 +165,10 @@ fn fetch_with_signature() -> InternalResult {
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
 	assert!(!not_signed_resource.flags.contains(Flags::SIGNED_FLAG));
-	assert!(!not_signed_resource.authenticated);
+	assert!(!not_signed_resource.verified);
 
 	let resource = archive.fetch_mut("signed")?;
-	assert!(resource.authenticated);
+	assert!(resource.verified);
 	assert!(resource.flags.contains(Flags::SIGNED_FLAG));
 
 	Ok(())
@@ -213,7 +213,7 @@ fn builder_with_encryption() -> InternalResult {
 	let mut target = File::create(ENCRYPTED_TARGET)?;
 	println!(
 		"Number of bytes written: {}, into encrypted and fully compressed archive.",
-		builder.dump(&mut target, &build_config)?
+		builder.dump(&mut target, build_config)?
 	);
 
 	Ok(())
@@ -239,7 +239,7 @@ fn fetch_from_encrypted() -> InternalResult {
 	let signed = archive.fetch_mut("test_data/quicksort.wasm")?;
 
 	assert_eq!(signed.data.len(), 106537);
-	assert!(signed.authenticated);
+	assert!(signed.verified);
 	assert!(!signed.flags.contains(Flags::COMPRESSED_FLAG));
 	assert!(signed.flags.contains(Flags::ENCRYPTED_FLAG));
 
@@ -275,10 +275,10 @@ fn consolidated_example() -> InternalResult {
 
 	// Dump data
 	let then = Instant::now();
-	builder.dump(&mut target, &config)?;
+	builder.dump(&mut target, config)?;
 
 	// Just because
-	println!("Building took: {}us", then.elapsed().as_micros());
+	println!("Building took: {:?}", then.elapsed());
 
 	// Load data
 	let mut config = ArchiveConfig::default().magic(*MAGIC);
@@ -287,7 +287,7 @@ fn consolidated_example() -> InternalResult {
 	let then = Instant::now();
 	let mut archive = Archive::with_config(target, &config)?;
 
-	println!("Archive initialization took: {}us", then.elapsed().as_micros());
+	println!("Archive initialization took: {:?}", then.elapsed());
 
 	// Quick assertions
 	let then = Instant::now();
@@ -295,7 +295,7 @@ fn consolidated_example() -> InternalResult {
 	assert_eq!(archive.fetch_mut("d2")?.data.as_ref(), data_2);
 	assert_eq!(archive.fetch_mut("d3")?.data.as_ref(), data_3);
 
-	println!("Fetching took: {}us on average", then.elapsed().as_micros() / 4u128);
+	println!("Fetching took: {:?} on average", then.elapsed() / 3);
 
 	// All seems ok
 	Ok(())
@@ -330,7 +330,7 @@ fn test_compressors() -> InternalResult {
 			.compress(CompressMode::Always),
 	)?;
 
-	builder.dump(&mut target, &BuilderConfig::default())?;
+	builder.dump(&mut target, BuilderConfig::default())?;
 
 	let mut archive = Archive::new(&mut target)?;
 
@@ -386,7 +386,7 @@ fn test_batch_fetching() -> InternalResult {
 	ids.push("ERRORS".to_string());
 
 	// Process data
-	builder.dump(&mut target, &BuilderConfig::default())?;
+	builder.dump(&mut target, BuilderConfig::default())?;
 
 	let archive = Archive::new(target)?;
 	let mut resources = ids

@@ -1,21 +1,17 @@
 use std::fmt;
 use crate::global::flags::Flags;
 
-/// Basically processed data obtained from an archive.
-/// Contains `data`, `flags` and `content_version` fields.
-/// Is returned by [`archive.fetch(...)`](crate::archive::Archive)
-#[non_exhaustive]
+/// Basically processed data obtained from an archive returned by [`archive.fetch(...)`](crate::archive::Archive::fetch) and [`archive.fetch_mut(...)`](crate::archive::Archive::fetch_mut)
 #[derive(Debug)]
 pub struct Resource {
-	/// The processed data, stored as a vector of bytes `Vec<u8>`.
+	/// The parsed data
 	pub data: Box<[u8]>,
 	/// The flags extracted from the archive's registry entry
 	pub flags: Flags,
-	/// The content version of the extracted archive entry
+	/// The content version of stored in the registry entry
 	pub content_version: u8,
-	/// A [`Resource`] is checked for authenticity, corruption or obsolescence against it's signature.
-	/// If the checks pass, then this becomes true, this is always false if the `crypto` feature is off or if the data had no signature
-	pub authenticated: bool,
+	/// If a [`Resource's`](Resource) bytes were signed and the signature check passed
+	pub verified: bool,
 }
 
 impl fmt::Display for Resource {

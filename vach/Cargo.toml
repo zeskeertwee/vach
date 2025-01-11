@@ -15,7 +15,7 @@ repository = "https://github.com/zeskeertwee/vach"
 categories = ["games", "compression"]
 keywords = ["archive", "filesystem", "compression", "game", "assets"]
 documentation = "https://docs.rs/vach"
-readme = "README.md"
+readme = "../README.md"
 include = ["Cargo.toml", "Cargo.lock", "src/*"]
 
 [dependencies]

@@ -61,9 +61,8 @@ let target = File::open("sounds.vach")?;
 let mut archive = Archive::new(target)?;
 let resource: Resource = archive.fetch_mut("ambient")?;
 
-// By default all resources are flagged as NOT authenticated
-println!("{}", Sound::new(&resource.data)?);
-assert!(!resource.authenticated);
+// By default all resources are flagged as NOT verified
+assert!(!resource.verified);
 
 let resource = archive.fetch_mut("ftstep")?;
 ```
@@ -106,8 +105,7 @@ let archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
 let mut resource = archive.fetch_mut("ambient")?;
-println!("{}", Sound::new(&resource.data)?);
-assert!(resource.authenticated);
+assert!(resource.verified);
 ```
 
 ##### > Serialize and de-serialize a `Keypair`, `SecretKey` and `PublicKey`

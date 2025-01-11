@@ -16,9 +16,9 @@ use crate::keys::key_names;
 
 pub const VERSION: &str = "0.0.5";
 
-struct FileWrapper(PathBuf, Option<File>);
+struct FileAutoDropper(PathBuf, Option<File>);
 
-impl Read for FileWrapper {
+impl Read for FileAutoDropper {
 	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
 		// If no file is defined open it
 		let file = match self.1.as_mut() {
@@ -28,11 +28,11 @@ impl Read for FileWrapper {
 				self.1.as_mut().unwrap()
 			},
 		};
-		let result = file.read(buf);
 
-		// Once the file is done reading, we drop the file handle
-		// TOo avoid hitting OS limitations
+		let result = file.read(buf);
 		if let Ok(0) = result {
+			// Once the file is done reading, we drop the file handle
+			// To avoid hitting OS limitations
 			self.1.take();
 		};
 
@@ -125,7 +125,7 @@ impl CommandTrait for Evaluator {
 		if let Some(val) = args.values_of(key_names::INPUT) {
 			val.map(PathBuf::from)
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(FileWrapper(p, None)));
+				.for_each(|p| inputs.push(FileAutoDropper(p, None)));
 		};
 
 		// Extract directory inputs
@@ -136,7 +136,7 @@ impl CommandTrait for Evaluator {
 					.into_iter()
 					.map(|v| v.unwrap().into_path())
 					.filter(|f| path_filter(f))
-					.for_each(|p| inputs.push(FileWrapper(p, None)))
+					.for_each(|p| inputs.push(FileAutoDropper(p, None)))
 			});
 		};
 
@@ -145,7 +145,7 @@ impl CommandTrait for Evaluator {
 			val.flat_map(|dir| walkdir::WalkDir::new(dir).into_iter())
 				.map(|v| v.unwrap().into_path())
 				.filter(|f| path_filter(f))
-				.for_each(|p| inputs.push(FileWrapper(p, None)));
+				.for_each(|p| inputs.push(FileAutoDropper(p, None)));
 		}
 
 		// Read valueless flags

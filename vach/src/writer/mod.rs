@@ -10,7 +10,6 @@ use std::{thread, sync::mpsc};
 
 mod config;
 mod leaf;
-mod prepared;
 
 pub use config::BuilderConfig;
 pub use leaf::Leaf;
@@ -36,6 +35,78 @@ pub struct Builder<'a> {
 	pub(crate) leafs: Vec<Leaf<'a>>,
 	pub(crate) id_set: HashSet<Arc<str>>,
 	leaf_template: Leaf<'a>,
+}
+
+// Processed data ready to be inserted into a `Write + Clone` target during Building
+pub(crate) struct Prepared {
+	pub(crate) data: Vec<u8>,
+	pub(crate) entry: RegistryEntry,
+	#[cfg(feature = "crypto")]
+	pub(crate) sign: bool,
+}
+
+impl Prepared {
+	// Process Leaf into Prepared Data, externalised for multithreading purposes
+	fn from_leaf<'a>(leaf: &mut Leaf<'a>, encryptor: Option<&Encryptor>) -> InternalResult<Prepared> {
+		let mut entry: RegistryEntry = leaf.into();
+		let mut raw = Vec::new(); // 10MB
+
+		// Compression comes first
+		#[cfg(feature = "compression")]
+		match leaf.compress {
+			CompressMode::Never => {
+				leaf.handle.read_to_end(&mut raw)?;
+			},
+			CompressMode::Always => {
+				Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
+
+				entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
+				entry.flags.force_set(leaf.compression_algo.into(), true);
+			},
+			CompressMode::Detect => {
+				let mut buffer = Vec::new();
+				leaf.handle.read_to_end(&mut buffer)?;
+
+				let mut compressed_data = Vec::new();
+				Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
+
+				if compressed_data.len() <= buffer.len() {
+					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
+					entry.flags.force_set(leaf.compression_algo.into(), true);
+
+					raw = compressed_data;
+				} else {
+					buffer.as_slice().read_to_end(&mut raw)?;
+				};
+			},
+		}
+
+		// If the compression feature is turned off, simply reads into buffer
+		#[cfg(not(feature = "compression"))]
+		{
+			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+				return Err(InternalError::MissingFeatureError("compression"));
+			};
+
+			leaf.handle.read_to_end(&mut raw)?;
+		}
+
+		// Encryption comes second
+		#[cfg(feature = "crypto")]
+		if leaf.encrypt {
+			if let Some(ex) = encryptor {
+				raw = ex.encrypt(&raw)?;
+				entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
+			}
+		}
+
+		Ok(Prepared {
+			data: raw,
+			entry,
+			#[cfg(feature = "crypto")]
+			sign: leaf.sign,
+		})
+	}
 }
 
 impl<'a> Builder<'a> {
@@ -113,75 +184,14 @@ impl<'a> Builder<'a> {
 	/// builder.add(b"JEB" as &[u8], "JEB_NAME").unwrap();
 	/// // `JEB` is compressed and has a version of 12
 	/// ```
-	pub fn template(mut self, template: Leaf<'a>) -> Builder {
+	pub fn template(mut self, template: Leaf<'a>) -> Builder<'a> {
 		self.leaf_template = template;
 		self
 	}
 
-	fn process_leaf(leaf: &mut Leaf<'a>, encryptor: Option<&Encryptor>) -> InternalResult<prepared::Prepared> {
-		let mut entry: RegistryEntry = leaf.into();
-		let mut raw = Vec::new(); // 10MB
-
-		// Compression comes first
-		#[cfg(feature = "compression")]
-		match leaf.compress {
-			CompressMode::Never => {
-				leaf.handle.read_to_end(&mut raw)?;
-			},
-			CompressMode::Always => {
-				Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
-
-				entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-				entry.flags.force_set(leaf.compression_algo.into(), true);
-			},
-			CompressMode::Detect => {
-				let mut buffer = Vec::new();
-				leaf.handle.read_to_end(&mut buffer)?;
-
-				let mut compressed_data = Vec::new();
-				Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
-
-				if compressed_data.len() <= buffer.len() {
-					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-					entry.flags.force_set(leaf.compression_algo.into(), true);
-
-					raw = compressed_data;
-				} else {
-					buffer.as_slice().read_to_end(&mut raw)?;
-				};
-			},
-		}
-
-		// If the compression feature is turned off, simply reads into buffer
-		#[cfg(not(feature = "compression"))]
-		{
-			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-				return Err(InternalError::MissingFeatureError("compression"));
-			};
-
-			leaf.handle.read_to_end(&mut raw)?;
-		}
-
-		// Encryption comes second
-		#[cfg(feature = "crypto")]
-		if leaf.encrypt {
-			if let Some(ex) = encryptor {
-				raw = ex.encrypt(&raw)?;
-				entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
-			}
-		}
-
-		Ok(prepared::Prepared {
-			data: raw,
-			entry,
-			#[cfg(feature = "crypto")]
-			sign: leaf.sign,
-		})
-	}
-
 	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
 	/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
-	pub fn dump<W: Write + Seek + Send>(self, mut target: W, config: &BuilderConfig) -> InternalResult<u64> {
+	pub fn dump<W: Write + Seek + Send>(self, mut target: W, mut config: BuilderConfig) -> InternalResult<u64> {
 		let Builder { mut leafs, .. } = self;
 
 		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
@@ -193,7 +203,7 @@ impl<'a> Builder<'a> {
 					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
 					leaf.id.len() + RegistryEntry::MIN_SIZE + {
 						#[cfg(feature = "crypto")]
-						if config.keypair.is_some() && leaf.sign {
+						if config.signing_key.is_some() && leaf.sign {
 							crate::SIGNATURE_LENGTH
 						} else {
 							0
@@ -205,7 +215,8 @@ impl<'a> Builder<'a> {
 					}
 				})
 				.reduce(|l1, l2| l1 + l2)
-				.unwrap_or(0) + Header::BASE_SIZE
+				.unwrap_or(0)
+				+ Header::BASE_SIZE
 		} as u64;
 
 		// Start at the very start of the file
@@ -216,7 +227,7 @@ impl<'a> Builder<'a> {
 		let mut temp = config.flags;
 
 		#[cfg(feature = "crypto")]
-		if config.keypair.is_some() {
+		if config.signing_key.is_some() {
 			temp.force_set(Flags::SIGNED_FLAG, true);
 		};
 
@@ -230,7 +241,7 @@ impl<'a> Builder<'a> {
 		let encryptor = {
 			let use_encryption = leafs.iter().any(|leaf| leaf.encrypt);
 			if use_encryption {
-				if let Some(keypair) = config.keypair.as_ref() {
+				if let Some(keypair) = config.signing_key.as_ref() {
 					Some(Encryptor::new(&keypair.verifying_key(), config.magic))
 				} else {
 					return Err(InternalError::NoKeypairError);
@@ -247,7 +258,7 @@ impl<'a> Builder<'a> {
 		let mut registry = Vec::with_capacity(leaf_offset as usize - Header::BASE_SIZE);
 
 		#[allow(unused_mut)]
-		let mut write = |result: InternalResult<prepared::Prepared>| -> InternalResult<()> {
+		let mut write = |result: InternalResult<Prepared>| -> InternalResult<()> {
 			let mut result = result?;
 			let bytes = result.data.len() as u64;
 
@@ -266,7 +277,7 @@ impl<'a> Builder<'a> {
 			// write out registry entry
 			#[cfg(feature = "crypto")]
 			if result.sign {
-				if let Some(keypair) = &config.keypair {
+				if let Some(keypair) = &config.signing_key {
 					result.entry.flags.force_set(Flags::SIGNED_FLAG, true);
 
 					let entry_bytes = result.entry.to_bytes(true)?;
@@ -282,7 +293,9 @@ impl<'a> Builder<'a> {
 			registry.write_all(&entry_bytes)?;
 
 			// Call the progress callback bound within the [`BuilderConfig`]
-			config.progress_callback.inspect(|c| c(&result.entry));
+			if let Some(callback) = config.progress_callback.as_mut() {
+				callback(&result.entry, &result.data);
+			}
 
 			Ok(())
 		};
@@ -291,10 +304,11 @@ impl<'a> Builder<'a> {
 		let (tx, rx) = mpsc::sync_channel(leafs.len());
 
 		#[cfg(feature = "multithreaded")]
-		{
+		if !leafs.is_empty() {
 			thread::scope(|s| -> InternalResult<()> {
 				let count = leafs.len();
-				let chunk_size = leafs.len() / config.num_threads.min(1);
+				#[rustfmt::skip]
+				let chunk_size = if config.num_threads.get() > count { 6 } else { count / config.num_threads };
 
 				let chunks = leafs.chunks_mut(chunk_size);
 				let encryptor = encryptor.as_ref();
@@ -305,7 +319,7 @@ impl<'a> Builder<'a> {
 
 					s.spawn(move || {
 						for leaf in chunk {
-							let res = Builder::process_leaf(leaf, encryptor);
+							let res = Prepared::from_leaf(leaf, encryptor);
 							queue.send(res).unwrap();
 						}
 					});
@@ -335,7 +349,7 @@ impl<'a> Builder<'a> {
 		#[cfg(not(feature = "multithreaded"))]
 		leafs
 			.iter_mut()
-			.map(|l| Builder::process_leaf(l, encryptor.as_ref()))
+			.map(|l| Prepared::from_leaf(l, encryptor.as_ref()))
 			.try_for_each(write)?;
 
 		// write out Registry

@@ -80,15 +80,12 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
-		let mut num_threads = args
+		let num_threads = args
 			.value_of(key_names::JOBS)
 			.map(|v| v.parse::<usize>().ok())
 			.flatten()
+			.filter(|s| *s > 0)
 			.unwrap_or(num_cpus::get());
-
-		if num_threads == 0 {
-			num_threads = num_cpus::get()
-		}
 
 		extract_archive(&archive, num_threads, output_path)?;
 
@@ -118,7 +115,6 @@ fn extract_archive<T: Read + Seek + Send + Sync>(
 
 	let pbar = ProgressBar::new(total_size);
 
-	// NOTE: More styling is to come
 	pbar.set_style(
 		ProgressStyle::default_bar()
 			.template(super::PROGRESS_BAR_STYLE)?

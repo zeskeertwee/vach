@@ -18,7 +18,7 @@
  <a href="https://docs.rs/vach">Docs</a> | <a href="https://github.com/zeskeertwee/vach">Repo</a>
 </p>
 
-`vach`, pronounced like "puck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/vach/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
+`vach`, pronounced like "duck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. It was, in fact, designed by the [SCP](https://en.wikipedia.org/wiki/SCP_Foundation) to keep your anomalous assets compact and secure during transmission. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization. Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/vach/blob/main/spec/main.txt)**. Any and *all* help will be much appreciated, especially proof reading the docs and code review.
 
 ---
 
@@ -79,9 +79,8 @@ let target = File::open("sounds.vach")?;
 let mut archive = Archive::new(target)?;
 let resource: Resource = archive.fetch_mut("ambient")?;
 
-// By default all resources are flagged as NOT authenticated
-println!("{}", Sound::new(&resource.data)?);
-assert!(!resource.authenticated);
+// By default all resources are flagged as NOT verified
+assert!(!resource.verified);
 ```
 
 ##### > Build a signed `.vach` file
@@ -147,8 +146,7 @@ let mut archive = Archive::with_config(target, &config)?;
 
 // Resources are marked as secure (=true) if the signatures match the data
 let resource = archive.fetch_mut("ambient")?;
-println!("{}", Sound::new(&resource.data)?);
-assert!(resource.authenticated);
+assert!(resource.verified);
 ```
 
 ##### > A quick consolidated example
