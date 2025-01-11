@@ -1,5 +1,5 @@
 [workspace]
-members = ["vach", "vach-cli", "vach-benchmarks"]
+members = ["./crates/*"]
 resolver = "2"
 
 [profile.bench]
