@@ -1,54 +1,58 @@
+#![allow(non_camel_case_types)]
+
 use std::{ffi, fs, io, mem, os::raw, slice};
 use vach::prelude::*;
 
-extern "C" {
-	fn vach_error(msg: *const raw::c_char, len: raw::c_ulong);
-}
+mod errors;
 
-fn report<'a, T>(msg: &'a str) -> *const T {
-	unsafe {
-		vach_error(msg.as_ptr() as _, msg.len() as _);
-		std::ptr::null()
-	}
-}
-
+/// The version of the library
 #[no_mangle]
 pub extern "C" fn version() -> raw::c_ushort {
 	vach::VERSION
 }
 
+/// The length of the magic string in the file header
+pub const V_MAGIC_LENGTH: usize = 5;
+/// The length of a public key
+pub const V_PUBLIC_KEY_LENGTH: usize = 32;
+
+/// Archive loader configuration
+pub type v_archive_config = raw::c_void;
+
+/// Create new loader configuration
 #[no_mangle]
 pub extern "C" fn new_archive_config(
-	magic: *const [u8; vach::MAGIC_LENGTH], pk_bytes: *const [u8; vach::PUBLIC_KEY_LENGTH],
-) -> *const ArchiveConfig {
+	magic: *const [raw::c_uchar; V_MAGIC_LENGTH], pk_bytes: *const [raw::c_uchar; V_PUBLIC_KEY_LENGTH], error_p: *mut ffi::c_int,
+) -> *const v_archive_config {
 	let magic = match unsafe { magic.as_ref().map(|m| *m) } {
 		Some(m) => m,
 		None => {
-			return report("Invalid magic, magic is NULL");
+			return errors::report(error_p, errors::E_PARAMETER_IS_NULL);
 		},
 	};
 
 	let pk_bytes = match unsafe { pk_bytes.as_ref() } {
 		Some(vk) => vk,
-		None => return report("Invalid public key, public key is NULL"),
+		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
 	let Ok(pk) = VerifyingKey::from_bytes(pk_bytes) else {
-		return report("Invalid public key, bytes are invalid");
+		return errors::report(error_p, errors::E_PARSE_ERROR);
 	};
 
 	let config = ArchiveConfig::new(magic, Some(pk));
-	Box::into_raw(Box::new(config))
+	Box::into_raw(Box::new(config)) as _
 }
 
+/// Free archive loader configuration
 #[no_mangle]
-pub extern "C" fn free_archive_config(config: *mut ArchiveConfig) {
-	if !config.is_null() {
+pub extern "C" fn free_archive_config(config: *mut v_archive_config) {
+	if !(config as *mut ArchiveConfig).is_null() {
 		let _ = unsafe { Box::from_raw(config) };
 	}
 }
 
-pub enum ArchiveInner {
+pub(crate) enum ArchiveInner {
 	File(fs::File),
 	Buffer(mem::ManuallyDrop<io::Cursor<&'static [u8]>>),
 }
@@ -71,74 +75,81 @@ impl io::Seek for ArchiveInner {
 	}
 }
 
+/// An Archive instance, bound to either a file or a buffer
+pub type v_archive = raw::c_void;
+
+/// Create a new archive from a file
 #[no_mangle]
 pub extern "C" fn new_archive_from_file(
-	path: *const raw::c_char, config: *const ArchiveConfig,
-) -> *const Archive<ArchiveInner> {
+	path: *const raw::c_char, config: *const v_archive_config, error_p: *mut ffi::c_int,
+) -> *mut v_archive {
 	let path = match unsafe { std::ffi::CStr::from_ptr(path).to_str() } {
 		Ok(p) => p,
-		Err(msg) => return report(&msg.to_string()),
+		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
 	};
 
 	let Ok(file) = fs::File::open(path) else {
-		return report("Unable to open file");
+		return errors::report(error_p, errors::E_GENERIC_IO_ERROR);
 	};
 
-	let config = match unsafe { config.as_ref() } {
+	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
 		Some(c) => c,
-		None => return report("Invalid config, config is NULL"),
+		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
-	let inner = ArchiveInner::File(file);
-	let Ok(archive) = Archive::with_config(inner, config) else {
-		return report("Unable to create archive");
+	let archive = match Archive::with_config(ArchiveInner::File(file), config) {
+		Ok(archive) => archive,
+		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
 
-	Box::into_raw(Box::new(archive))
+	Box::into_raw(Box::new(archive)) as _
 }
 
+/// Create a new archive from a buffer
 #[no_mangle]
 pub extern "C" fn new_archive_from_buffer(
-	config: *const ArchiveConfig, data: *const raw::c_uchar, len: raw::c_ulonglong,
-) -> *const Archive<ArchiveInner> {
+	config: *const v_archive_config, data: *const raw::c_uchar, len: raw::c_ulonglong, error_p: *mut ffi::c_int,
+) -> *mut v_archive {
 	if data.is_null() {
-		return report("Invalid data, data is NULL");
+		return errors::report(error_p, errors::E_PARAMETER_IS_NULL);
 	}
 
 	let source = unsafe { slice::from_raw_parts(data, len as _) };
 	let buffer = mem::ManuallyDrop::new(io::Cursor::new(source));
 
-	let config = match unsafe { config.as_ref() } {
+	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
 		Some(c) => c,
-		None => return report("Invalid config, config is NULL"),
+		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
-	let inner = ArchiveInner::Buffer(buffer);
-	let Ok(archive) = Archive::with_config(inner, config) else {
-		return report("Unable to initialize archive");
+	let archive = match Archive::with_config(ArchiveInner::Buffer(buffer), config) {
+		Ok(archive) => archive,
+		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
 
-	Box::into_raw(Box::new(archive))
+	Box::into_raw(Box::new(archive)) as _
 }
 
 #[no_mangle]
-pub extern "C" fn free_archive(archive: *mut Archive<ArchiveInner>) {
-	if !archive.is_null() {
+pub extern "C" fn free_archive(archive: *mut v_archive) {
+	if !(archive as *mut Archive<ArchiveInner>).is_null() {
 		let _ = unsafe { Box::from_raw(archive) };
 	}
 }
 
+/// A list archive entry IDs
 #[repr(C)]
-pub struct Entries {
+pub struct v_entries {
 	count: raw::c_ulong,
 	list: *mut *mut raw::c_char,
 }
 
+/// Get a list of archive entry IDs
 #[no_mangle]
-pub extern "C" fn archive_get_entries(archive: *mut Archive<ArchiveInner>) -> *const Entries {
-	let archive = match unsafe { archive.as_mut() } {
+pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut ffi::c_int) -> *const v_entries {
+	let archive = match unsafe { (archive as *const Archive<ArchiveInner>).as_ref() } {
 		Some(a) => a,
-		None => return report("Invalid archive, archive is NULL"),
+		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
 	let mut entries = archive
@@ -150,7 +161,7 @@ pub extern "C" fn archive_get_entries(archive: *mut Archive<ArchiveInner>) -> *c
 	// ensures capacity == len
 	entries.shrink_to_fit();
 
-	let entries = Entries {
+	let entries = v_entries {
 		count: entries.len() as _,
 		list: entries.as_mut_ptr(),
 	};
@@ -159,7 +170,7 @@ pub extern "C" fn archive_get_entries(archive: *mut Archive<ArchiveInner>) -> *c
 }
 
 #[no_mangle]
-pub extern "C" fn free_entries(entries: *mut Entries) {
+pub extern "C" fn free_entries(entries: *mut v_entries) {
 	if !entries.is_null() {
 		let entries = unsafe { Box::from_raw(entries) };
 
@@ -170,8 +181,9 @@ pub extern "C" fn free_entries(entries: *mut Entries) {
 	}
 }
 
+/// An archive resource
 #[repr(C)]
-pub struct Resource {
+pub struct v_resource {
 	data: *mut raw::c_uchar,
 	len: raw::c_ulonglong,
 	flags: raw::c_uint,
@@ -179,28 +191,27 @@ pub struct Resource {
 	verified: bool,
 }
 
+/// Fetch a resource, WITHOUT locking the internal Mutex
 #[no_mangle]
 pub extern "C" fn archive_fetch_resource(
-	archive: *mut Archive<ArchiveInner>, id: *const raw::c_char,
-) -> *const Resource {
+	archive: *mut v_archive, id: *const raw::c_char, error_p: *mut ffi::c_int,
+) -> *const v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
-		Err(msg) => return report(&msg.to_string()),
+		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
 	};
 
-	let archive = match unsafe { archive.as_mut() } {
+	let archive = match unsafe { (archive as *mut Archive<ArchiveInner>).as_mut() } {
 		Some(a) => a,
-		None => return report("Invalid archive, archive is NULL"),
+		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
 	let resource = match archive.fetch_mut(path) {
 		Ok(resource) => resource,
-		Err(err) => {
-			return report(&err.to_string());
-		},
+		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
 
-	let resource = Resource {
+	let resource = v_resource {
 		len: resource.data.len() as _,
 		data: Box::leak(resource.data).as_mut_ptr(),
 		flags: resource.flags.bits(),
@@ -211,28 +222,27 @@ pub extern "C" fn archive_fetch_resource(
 	Box::into_raw(Box::new(resource))
 }
 
+/// Fetch a resource, LOCKS the internal Mutex
 #[no_mangle]
 pub extern "C" fn archive_fetch_resource_lock(
-	archive: *const Archive<ArchiveInner>, id: *const raw::c_char,
-) -> *const Resource {
+	archive: *const v_archive, id: *const raw::c_char, error_p: *mut ffi::c_int,
+) -> *const v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
-		Err(msg) => return report(&msg.to_string()),
+		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
 	};
 
-	let archive = match unsafe { archive.as_ref() } {
+	let archive = match unsafe { (archive as *const Archive<ArchiveInner>).as_ref() } {
 		Some(a) => a,
-		None => return report("Invalid archive, archive is NULL"),
+		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
 	let resource = match archive.fetch(path) {
 		Ok(resource) => resource,
-		Err(err) => {
-			return report(&err.to_string());
-		},
+		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
 
-	let resource = Resource {
+	let resource = v_resource {
 		len: resource.data.len() as _,
 		data: Box::leak(resource.data).as_mut_ptr(),
 		flags: resource.flags.bits(),
@@ -244,7 +254,7 @@ pub extern "C" fn archive_fetch_resource_lock(
 }
 
 #[no_mangle]
-pub extern "C" fn free_resource(resource: *mut Resource) {
+pub extern "C" fn free_resource(resource: *mut v_resource) {
 	if let Some(resource) = unsafe { resource.as_mut() } {
 		let resource = unsafe { Box::from_raw(resource) };
 

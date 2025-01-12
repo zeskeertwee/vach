@@ -14,3 +14,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 vach = { path = "../vach", features = ["archive", "crypto", "compression"] }
+
+[build-dependencies]
+cbindgen = "*"
