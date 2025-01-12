@@ -9,6 +9,7 @@ fn main() {
 	let mut bindings = Builder::new()
 		.with_crate(crate_dir)
 		.with_no_includes()
+		.with_sys_include("stdbool")
 		.with_language(Language::C)
 		.with_line_length(300)
 		.with_pragma_once(true)

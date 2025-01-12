@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool>
+
 // The length of the magic string in the file header
 #define V_MAGIC_LENGTH 5
 

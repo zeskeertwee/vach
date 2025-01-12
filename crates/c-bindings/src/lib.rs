@@ -153,18 +153,18 @@ pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut f
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
-	let mut entries = archive
+	let list = archive
 		.entries()
 		.keys()
 		.map(|k| ffi::CString::new(k.as_bytes()).unwrap().into_raw())
 		.collect::<Vec<_>>();
 
 	// ensures capacity == len
-	entries.shrink_to_fit();
+	let list = list.into_boxed_slice();
 
 	let entries = v_entries {
-		count: entries.len() as _,
-		list: entries.as_mut_ptr(),
+		count: list.len() as _,
+		list: Box::leak(list).as_mut_ptr(),
 	};
 
 	Box::into_raw(Box::new(entries))
@@ -175,7 +175,10 @@ pub extern "C" fn free_entries(entries: *mut v_entries) {
 	if !entries.is_null() {
 		let entries = unsafe { Box::from_raw(entries) };
 
-		let list = unsafe { Vec::from_raw_parts(entries.list, entries.count as _, entries.count as _) };
+		// reallocate box
+		let slice = unsafe { slice::from_raw_parts_mut(entries.list, entries.count as _) };
+		let list = unsafe { Box::from_raw(slice) };
+
 		for entry in list {
 			let _ = unsafe { ffi::CString::from_raw(entry) };
 		}
