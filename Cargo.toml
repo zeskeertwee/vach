@@ -1,5 +1,5 @@
 [workspace]
-members = ["./crates/*", "crates/c-bindings"]
+members = ["./crates/*"]
 resolver = "2"
 
 [profile.bench]

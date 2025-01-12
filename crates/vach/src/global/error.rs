@@ -40,7 +40,7 @@ pub enum InternalError {
 	#[error("[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!")]
 	RestrictedFlagAccessError,
 	/// When a [`Leaf`](crate::builder::Leaf) has an ID that is longer than `crate::MAX_ID_LENGTH`, contains the overflowing `ID`
-	#[error("[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {0} has an overflowing ID of length: {}", crate::MAX_ID_LENGTH, .0.len())]
+	#[error("[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID of length: {}", crate::MAX_ID_LENGTH, .0, .0.len())]
 	IDSizeOverflowError(String),
 	/// An error that is thrown when the current archive attempts to load an incompatible version, contains the incompatible version
 	#[error("The provided archive source has version: {}. While the current implementation has a spec-version: {}. The provided source is incompatible!", .0, crate::VERSION)]

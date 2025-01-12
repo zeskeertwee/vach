@@ -135,6 +135,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "brotli"
+version = "7.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc97b8f16f944bba54f0433f07e30be199b6dc2bd25937444bbad560bcea29bd"
+dependencies = [
+ "alloc-no-stdlib",
+ "alloc-stdlib",
+ "brotli-decompressor",
+]
+
+[[package]]
 name = "brotli-decompressor"
 version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -161,13 +172,6 @@ name = "byteorder"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
-
-[[package]]
-name = "c-bindings"
-version = "0.1.0"
-dependencies = [
- "vach 0.6.2",
-]
 
 [[package]]
 name = "cast"
@@ -1124,7 +1128,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d452f284b73e6d76dd36758a0c8684b1d5be31f92b89d07fd5822175732206fc"
+dependencies = [
+ "thiserror-impl 2.0.11",
 ]
 
 [[package]]
@@ -1132,6 +1145,17 @@ name = "thiserror-impl"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26afc1baea8a989337eeb52b6e72a039780ce45c3edfcc9c5b9d112feeb173c2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1197,13 +1221,13 @@ name = "vach"
 version = "0.6.2"
 dependencies = [
  "aes-gcm",
- "brotli",
+ "brotli 7.0.0",
  "ed25519-dalek",
  "lz4_flex",
  "rand",
  "rayon",
  "snap",
- "thiserror",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -1213,12 +1237,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e49e72cbb0d222f15fb0f48df1c6f92f1b050675623c78797493c9980326a2c"
 dependencies = [
  "aes-gcm",
- "brotli",
+ "brotli 6.0.0",
  "ed25519-dalek",
  "lz4_flex",
  "rand",
  "snap",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

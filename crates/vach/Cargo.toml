@@ -19,7 +19,7 @@ readme = "../../README.md"
 include = ["Cargo.toml", "Cargo.lock", "src/*"]
 
 [dependencies]
-thiserror = "1.0.63"
+thiserror = "2.0.11"
 
 # Authentication dependencies
 ed25519-dalek = { version = "2.1.1", optional = true }
@@ -33,7 +33,7 @@ lz4_flex = { version = "0.11.3", optional = true, default-features = false, feat
 	"frame",
 ] }
 snap = { version = "1.1.1", optional = true }
-brotli = { version = "6.0.0", optional = true }
+brotli = { version = "7.0.0", optional = true }
 
 [dev-dependencies]
 rayon = "1.10.0"
@@ -48,6 +48,9 @@ builder = []
 crypto = ["ed25519-dalek", "aes-gcm", "rand"]
 multithreaded = []
 compression = ["snap", "lz4_flex", "brotli"]
+
+# C-API
+capi = ["archive", "crypto", "compression"]
 
 [package.metadata.docs.rs]
 all-features = true
