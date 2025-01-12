@@ -22,25 +22,26 @@ pub type v_archive_config = raw::c_void;
 /// Create new loader configuration
 #[no_mangle]
 pub extern "C" fn new_archive_config(
-	magic: *const [raw::c_uchar; V_MAGIC_LENGTH], pk_bytes: *const [raw::c_uchar; V_PUBLIC_KEY_LENGTH], error_p: *mut ffi::c_int,
+	magic: *const [raw::c_uchar; V_MAGIC_LENGTH], pk_bytes: *const [raw::c_uchar; V_PUBLIC_KEY_LENGTH],
+	error_p: *mut ffi::c_int,
 ) -> *const v_archive_config {
 	let magic = match unsafe { magic.as_ref().map(|m| *m) } {
 		Some(m) => m,
-		None => {
-			return errors::report(error_p, errors::E_PARAMETER_IS_NULL);
+		None => *vach::DEFAULT_MAGIC,
+	};
+
+	let pk = match unsafe { pk_bytes.as_ref() } {
+		Some(bytes) => {
+			let Ok(pk) = VerifyingKey::from_bytes(bytes) else {
+				return errors::report(error_p, errors::E_PARSE_ERROR);
+			};
+
+			Some(pk)
 		},
+		None => None,
 	};
 
-	let pk_bytes = match unsafe { pk_bytes.as_ref() } {
-		Some(vk) => vk,
-		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
-	};
-
-	let Ok(pk) = VerifyingKey::from_bytes(pk_bytes) else {
-		return errors::report(error_p, errors::E_PARSE_ERROR);
-	};
-
-	let config = ArchiveConfig::new(magic, Some(pk));
+	let config = ArchiveConfig::new(magic, pk);
 	Box::into_raw(Box::new(config)) as _
 }
 
@@ -94,7 +95,7 @@ pub extern "C" fn new_archive_from_file(
 
 	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
 		Some(c) => c,
-		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
+		None => &ArchiveConfig::default(),
 	};
 
 	let archive = match Archive::with_config(ArchiveInner::File(file), config) {
