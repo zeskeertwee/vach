@@ -17,7 +17,7 @@ pub const V_MAGIC_LENGTH: usize = 5;
 pub const V_PUBLIC_KEY_LENGTH: usize = 32;
 
 /// Archive loader configuration
-pub type v_archive_config = raw::c_void;
+pub type v_archive_config = raw::c_char;
 
 /// Create new loader configuration
 #[no_mangle]
@@ -77,7 +77,7 @@ impl io::Seek for ArchiveInner {
 }
 
 /// An Archive instance, bound to either a file or a buffer
-pub type v_archive = raw::c_void;
+pub type v_archive = raw::c_uchar;
 
 /// Create a new archive from a file
 #[no_mangle]

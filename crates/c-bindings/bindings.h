@@ -34,10 +34,10 @@
 #define E_CRYPTO_ERROR -9
 
 // Archive loader configuration
-typedef void v_archive_config;
+typedef char v_archive_config;
 
 // An Archive instance, bound to either a file or a buffer
-typedef void v_archive;
+typedef unsigned char v_archive;
 
 // A list archive entry IDs
 typedef struct v_entries {
