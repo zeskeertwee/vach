@@ -1,5 +1,5 @@
 use std::{ffi, fs, io, mem, os::raw, slice};
-use vach::prelude::*;
+use crate::prelude::*;
 
 extern "C" {
 	fn vach_error(msg: *const raw::c_char, len: raw::c_ulong);
