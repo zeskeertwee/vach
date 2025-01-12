@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdbool>
+#include <stdbool.h>
 
 // The length of the magic string in the file header
 #define V_MAGIC_LENGTH 5
@@ -60,7 +60,7 @@ typedef struct v_resource {
 unsigned short version(void);
 
 // Create new loader configuration
-const v_archive_config *new_archive_config(const unsigned char (*magic)[V_MAGIC_LENGTH], const unsigned char (*pk_bytes)[V_PUBLIC_KEY_LENGTH], int *error_p);
+v_archive_config *new_archive_config(const unsigned char (*magic)[V_MAGIC_LENGTH], const unsigned char (*pk_bytes)[V_PUBLIC_KEY_LENGTH], int *error_p);
 
 // Free archive loader configuration
 void free_archive_config(v_archive_config *config);
@@ -74,14 +74,14 @@ v_archive *new_archive_from_buffer(const v_archive_config *config, const unsigne
 void free_archive(v_archive *archive);
 
 // Get a list of archive entry IDs
-const struct v_entries *archive_get_entries(const v_archive *archive, int *error_p);
+struct v_entries *archive_get_entries(const v_archive *archive, int *error_p);
 
-void free_entries(const struct v_entries *entries);
+void free_entries(struct v_entries *entries);
 
 // Fetch a resource, WITHOUT locking the internal Mutex
-const struct v_resource *archive_fetch_resource(v_archive *archive, const char *id, int *error_p);
+struct v_resource *archive_fetch_resource(v_archive *archive, const char *id, int *error_p);
 
 // Fetch a resource, LOCKS the internal Mutex
-const struct v_resource *archive_fetch_resource_lock(const v_archive *archive, const char *id, int *error_p);
+struct v_resource *archive_fetch_resource_lock(const v_archive *archive, const char *id, int *error_p);
 
-void free_resource(const struct v_resource *resource);
+void free_resource(struct v_resource *resource);

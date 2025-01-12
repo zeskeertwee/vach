@@ -24,7 +24,7 @@ pub type v_archive_config = raw::c_char;
 pub extern "C" fn new_archive_config(
 	magic: *const [raw::c_uchar; V_MAGIC_LENGTH], pk_bytes: *const [raw::c_uchar; V_PUBLIC_KEY_LENGTH],
 	error_p: *mut ffi::c_int,
-) -> *const v_archive_config {
+) -> *mut v_archive_config {
 	let magic = match unsafe { magic.as_ref().map(|m| *m) } {
 		Some(m) => m,
 		None => *vach::DEFAULT_MAGIC,
@@ -147,7 +147,7 @@ pub struct v_entries {
 
 /// Get a list of archive entry IDs
 #[no_mangle]
-pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut ffi::c_int) -> *const v_entries {
+pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut ffi::c_int) -> *mut v_entries {
 	let archive = match unsafe { (archive as *const Archive<ArchiveInner>).as_ref() } {
 		Some(a) => a,
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
@@ -159,7 +159,6 @@ pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut f
 		.map(|k| ffi::CString::new(k.as_bytes()).unwrap().into_raw())
 		.collect::<Vec<_>>();
 
-	// ensures capacity == len
 	let list = list.into_boxed_slice();
 
 	let entries = v_entries {
@@ -171,9 +170,9 @@ pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut f
 }
 
 #[no_mangle]
-pub extern "C" fn free_entries(entries: *const v_entries) {
+pub extern "C" fn free_entries(entries: *mut v_entries) {
 	if !entries.is_null() {
-		let entries = unsafe { Box::from_raw(entries as *mut v_entries) };
+		let entries = unsafe { Box::from_raw(entries) };
 
 		// reallocate box
 		let slice = unsafe { slice::from_raw_parts_mut(entries.list, entries.count as _) };
@@ -199,7 +198,7 @@ pub struct v_resource {
 #[no_mangle]
 pub extern "C" fn archive_fetch_resource(
 	archive: *mut v_archive, id: *const raw::c_char, error_p: *mut ffi::c_int,
-) -> *const v_resource {
+) -> *mut v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
 		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
@@ -230,7 +229,7 @@ pub extern "C" fn archive_fetch_resource(
 #[no_mangle]
 pub extern "C" fn archive_fetch_resource_lock(
 	archive: *const v_archive, id: *const raw::c_char, error_p: *mut ffi::c_int,
-) -> *const v_resource {
+) -> *mut v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
 		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
@@ -258,7 +257,7 @@ pub extern "C" fn archive_fetch_resource_lock(
 }
 
 #[no_mangle]
-pub extern "C" fn free_resource(resource: *const v_resource) {
+pub extern "C" fn free_resource(resource: *mut v_resource) {
 	if let Some(resource) = unsafe { (resource as *mut v_resource).as_mut() } {
 		let resource = unsafe { Box::from_raw(resource) };
 
