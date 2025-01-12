@@ -49,9 +49,6 @@ crypto = ["ed25519-dalek", "aes-gcm", "rand"]
 multithreaded = []
 compression = ["snap", "lz4_flex", "brotli"]
 
-# C-API
-capi = ["archive", "crypto", "compression"]
-
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
