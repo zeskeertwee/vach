@@ -241,9 +241,7 @@ where
 		Ok(buffer)
 	}
 
-	/// Cheaper alternative to `fetch` that works best for single threaded applications.
-	/// It does not lock the underlying [Mutex], since it requires a mutable reference.
-	/// Therefore the borrow checker statically guarantees the operation is safe. Refer to [`Mutex::get_mut`](Mutex).
+	/// Cheaper alternative to [`fetch`](Archive::fetch) that doesn't lock the underlying [Mutex]
 	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
 		// The reason for this function's unnecessary complexity is it uses the provided functions independently, thus preventing an unnecessary allocation [MAYBE TOO MUCH?]
 		if let Some(entry) = self.fetch_entry(&id) {

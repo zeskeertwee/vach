@@ -7,6 +7,7 @@ use crate::prelude::*;
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
+#[cfg(feature = "crypto")]
 const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
