@@ -14,12 +14,12 @@ fn report<'a, T>(msg: &'a str) -> *const T {
 
 #[no_mangle]
 pub extern "C" fn version() -> raw::c_ushort {
-	vach::VERSION
+	crate::VERSION
 }
 
 #[no_mangle]
 pub extern "C" fn new_archive_config(
-	magic: *const [u8; vach::MAGIC_LENGTH], pk_bytes: *const [u8; vach::PUBLIC_KEY_LENGTH],
+	magic: *const [u8; crate::MAGIC_LENGTH], pk_bytes: *const [u8; crate::PUBLIC_KEY_LENGTH],
 ) -> *const ArchiveConfig {
 	let magic = match unsafe { magic.as_ref().map(|m| *m) } {
 		Some(m) => m,
