@@ -76,7 +76,7 @@ void free_archive(v_archive *archive);
 // Get a list of archive entry IDs
 const struct v_entries *archive_get_entries(const v_archive *archive, int *error_p);
 
-void free_entries(struct v_entries *entries);
+void free_entries(const struct v_entries *entries);
 
 // Fetch a resource, WITHOUT locking the internal Mutex
 const struct v_resource *archive_fetch_resource(v_archive *archive, const char *id, int *error_p);
@@ -84,4 +84,4 @@ const struct v_resource *archive_fetch_resource(v_archive *archive, const char *
 // Fetch a resource, LOCKS the internal Mutex
 const struct v_resource *archive_fetch_resource_lock(const v_archive *archive, const char *id, int *error_p);
 
-void free_resource(struct v_resource *resource);
+void free_resource(const struct v_resource *resource);

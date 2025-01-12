@@ -171,9 +171,9 @@ pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut f
 }
 
 #[no_mangle]
-pub extern "C" fn free_entries(entries: *mut v_entries) {
+pub extern "C" fn free_entries(entries: *const v_entries) {
 	if !entries.is_null() {
-		let entries = unsafe { Box::from_raw(entries) };
+		let entries = unsafe { Box::from_raw(entries as *mut v_entries) };
 
 		// reallocate box
 		let slice = unsafe { slice::from_raw_parts_mut(entries.list, entries.count as _) };
@@ -258,8 +258,8 @@ pub extern "C" fn archive_fetch_resource_lock(
 }
 
 #[no_mangle]
-pub extern "C" fn free_resource(resource: *mut v_resource) {
-	if let Some(resource) = unsafe { resource.as_mut() } {
+pub extern "C" fn free_resource(resource: *const v_resource) {
+	if let Some(resource) = unsafe { (resource as *mut v_resource).as_mut() } {
 		let resource = unsafe { Box::from_raw(resource) };
 
 		// TODO: test if this leaks memory
