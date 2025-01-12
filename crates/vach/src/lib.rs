@@ -192,7 +192,3 @@ pub mod archive {
 
 /// Some utility functions to keep you happy
 pub mod crypto_utils;
-
-/// C Bindings
-#[cfg(feature = "capi")]
-pub(crate) mod capi;
