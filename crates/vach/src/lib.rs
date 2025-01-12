@@ -135,16 +135,13 @@ pub use rand;
 pub const VERSION: u16 = 30;
 
 /// Size of a secret key
-#[cfg(feature = "crypto")]
-pub const SECRET_KEY_LENGTH: usize = ed25519_dalek::SECRET_KEY_LENGTH;
+pub const SECRET_KEY_LENGTH: usize = 32;
 
 /// Size of a public key
-#[cfg(feature = "crypto")]
-pub const PUBLIC_KEY_LENGTH: usize = ed25519_dalek::PUBLIC_KEY_LENGTH;
+pub const PUBLIC_KEY_LENGTH: usize = 32;
 
 /// Size of a signature
-#[cfg(feature = "crypto")]
-pub const SIGNATURE_LENGTH: usize = ed25519_dalek::SIGNATURE_LENGTH;
+pub const SIGNATURE_LENGTH: usize = 64;
 
 /// Maximum size for any ID
 pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
