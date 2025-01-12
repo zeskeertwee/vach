@@ -9,6 +9,7 @@ include = ["src/*", "Cargo.toml"]
 repository = "https://github.com/zeskeertwee/vach"
 
 [lib]
+name = "vach"
 crate-type = ["cdylib"]
 
 [dependencies]
