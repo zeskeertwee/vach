@@ -174,7 +174,7 @@ pub extern "C" fn free_entries(entries: *mut Entries) {
 pub struct Resource {
 	data: *mut raw::c_uchar,
 	len: raw::c_ulonglong,
-	flags: raw::c_ulong,
+	flags: raw::c_uint,
 	content_version: raw::c_uchar,
 	verified: bool,
 }
