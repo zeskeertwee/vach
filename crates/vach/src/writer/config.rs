@@ -110,7 +110,7 @@ impl<'a> Default for BuilderConfig<'a> {
 			#[cfg(feature = "multithreaded")]
 			num_threads: unsafe { NonZeroUsize::new_unchecked(4) },
 			flags: Flags::default(),
-			magic: *crate::DEFAULT_MAGIC,
+			magic: crate::DEFAULT_MAGIC,
 			progress_callback: None,
 			#[cfg(feature = "crypto")]
 			signing_key: None,

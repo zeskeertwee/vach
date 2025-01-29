@@ -10,6 +10,7 @@ fn main() {
 		.with_crate(crate_dir)
 		.with_no_includes()
 		.with_sys_include("stdbool.h")
+		.with_sys_include("stdint.h")
 		.with_language(Language::C)
 		.with_line_length(300)
 		.with_pragma_once(true)

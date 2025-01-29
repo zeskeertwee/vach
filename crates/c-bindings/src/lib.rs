@@ -1,13 +1,13 @@
 #![allow(non_camel_case_types)]
 
-use std::{ffi, fs, io, os::raw, slice};
+use std::{fs, io, slice, ffi};
 use vach::prelude::*;
 
 mod errors;
 
 /// The version of the library
 #[no_mangle]
-pub extern "C" fn version() -> raw::c_ushort {
+pub extern "C" fn version() -> u16 {
 	vach::VERSION
 }
 
@@ -17,17 +17,16 @@ pub const V_MAGIC_LENGTH: usize = 5;
 pub const V_PUBLIC_KEY_LENGTH: usize = 32;
 
 /// Archive loader configuration
-pub type v_archive_config = raw::c_char;
+pub type v_archive_config = i8;
 
 /// Create new loader configuration
 #[no_mangle]
 pub extern "C" fn new_archive_config(
-	magic: *const [raw::c_uchar; V_MAGIC_LENGTH], pk_bytes: *const [raw::c_uchar; V_PUBLIC_KEY_LENGTH],
-	error_p: *mut ffi::c_int,
+	magic: *const [u8; V_MAGIC_LENGTH], pk_bytes: *const [u8; V_PUBLIC_KEY_LENGTH], error_p: *mut i32,
 ) -> *mut v_archive_config {
 	let magic = match unsafe { magic.as_ref().map(|m| *m) } {
 		Some(m) => m,
-		None => *vach::DEFAULT_MAGIC,
+		None => vach::DEFAULT_MAGIC,
 	};
 
 	let mut config = ArchiveConfig::new(magic, None);
@@ -72,12 +71,12 @@ impl io::Seek for ArchiveInner {
 }
 
 /// An Archive instance, bound to either a file or a buffer
-pub type v_archive = raw::c_uchar;
+pub type v_archive = u8;
 
 /// Create a new archive from a file
 #[no_mangle]
 pub extern "C" fn new_archive_from_file(
-	path: *const raw::c_char, config: *const v_archive_config, error_p: *mut ffi::c_int,
+	path: *const i8, config: *const v_archive_config, error_p: *mut i32,
 ) -> *mut v_archive {
 	let path = match unsafe { std::ffi::CStr::from_ptr(path).to_str() } {
 		Ok(p) => p,
@@ -105,13 +104,13 @@ pub extern "C" fn new_archive_from_file(
 /// Create a new archive from a buffer
 #[no_mangle]
 pub extern "C" fn new_archive_from_buffer(
-	config: *const v_archive_config, data: *const raw::c_uchar, len: raw::c_ulonglong, error_p: *mut ffi::c_int,
+	config: *const v_archive_config, data: *const u8, len: usize, error_p: *mut i32,
 ) -> *mut v_archive {
 	if data.is_null() {
 		return errors::report(error_p, errors::E_PARAMETER_IS_NULL);
 	}
 
-	let source = unsafe { slice::from_raw_parts(data, len as _) };
+	let source = unsafe { slice::from_raw_parts(data, len) };
 	let buffer = io::Cursor::new(source);
 
 	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
@@ -137,13 +136,13 @@ pub extern "C" fn free_archive(archive: *mut v_archive) {
 /// A list archive entry IDs
 #[repr(C)]
 pub struct v_entries {
-	count: raw::c_ulong,
-	list: *mut *mut raw::c_char,
+	count: usize,
+	list: *mut *mut i8,
 }
 
 /// Get a list of archive entry IDs
 #[no_mangle]
-pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut ffi::c_int) -> *mut v_entries {
+pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut i32) -> *mut v_entries {
 	let archive = match unsafe { (archive as *const Archive<ArchiveInner>).as_ref() } {
 		Some(a) => a,
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
@@ -158,7 +157,7 @@ pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut f
 	let list = list.into_boxed_slice();
 
 	let entries = v_entries {
-		count: list.len() as _,
+		count: list.len(),
 		list: Box::leak(list).as_mut_ptr(),
 	};
 
@@ -171,7 +170,7 @@ pub extern "C" fn free_entries(entries: *mut v_entries) {
 		let entries = unsafe { Box::from_raw(entries) };
 
 		// reallocate box
-		let slice = unsafe { slice::from_raw_parts_mut(entries.list, entries.count as _) };
+		let slice = unsafe { slice::from_raw_parts_mut(entries.list, entries.count) };
 		let list = unsafe { Box::from_raw(slice) };
 
 		for entry in list {
@@ -183,18 +182,16 @@ pub extern "C" fn free_entries(entries: *mut v_entries) {
 /// An archive resource
 #[repr(C)]
 pub struct v_resource {
-	data: *mut raw::c_uchar,
-	len: raw::c_ulonglong,
-	flags: raw::c_uint,
-	content_version: raw::c_uchar,
+	data: *mut u8,
+	len: usize,
+	flags: ffi::c_uint,
+	content_version: u8,
 	verified: bool,
 }
 
 /// Fetch a resource, WITHOUT locking the internal Mutex
 #[no_mangle]
-pub extern "C" fn archive_fetch_resource(
-	archive: *mut v_archive, id: *const raw::c_char, error_p: *mut ffi::c_int,
-) -> *mut v_resource {
+pub extern "C" fn archive_fetch_resource(archive: *mut v_archive, id: *const i8, error_p: *mut i32) -> *mut v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
 		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
@@ -211,7 +208,7 @@ pub extern "C" fn archive_fetch_resource(
 	};
 
 	let resource = v_resource {
-		len: resource.data.len() as _,
+		len: resource.data.len(),
 		data: Box::leak(resource.data).as_mut_ptr(),
 		flags: resource.flags.bits(),
 		content_version: resource.content_version,
@@ -224,7 +221,7 @@ pub extern "C" fn archive_fetch_resource(
 /// Fetch a resource, LOCKS the internal Mutex
 #[no_mangle]
 pub extern "C" fn archive_fetch_resource_lock(
-	archive: *const v_archive, id: *const raw::c_char, error_p: *mut ffi::c_int,
+	archive: *const v_archive, id: *const i8, error_p: *mut i32,
 ) -> *mut v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
@@ -242,7 +239,7 @@ pub extern "C" fn archive_fetch_resource_lock(
 	};
 
 	let resource = v_resource {
-		len: resource.data.len() as _,
+		len: resource.data.len(),
 		data: Box::leak(resource.data).as_mut_ptr(),
 		flags: resource.flags.bits(),
 		content_version: resource.content_version,
@@ -257,7 +254,7 @@ pub extern "C" fn free_resource(resource: *mut v_resource) {
 	if let Some(resource) = unsafe { (resource as *mut v_resource).as_mut() } {
 		let resource = unsafe { Box::from_raw(resource) };
 
-		let data = unsafe { slice::from_raw_parts_mut(resource.data, resource.len as _) };
+		let data = unsafe { slice::from_raw_parts_mut(resource.data, resource.len) };
 		drop(unsafe { Box::from_raw(data) });
 	}
 }

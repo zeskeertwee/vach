@@ -103,7 +103,7 @@ impl fmt::Display for ArchiveConfig {
 impl Default for ArchiveConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		ArchiveConfig::new(*crate::DEFAULT_MAGIC, None)
+		ArchiveConfig::new(crate::DEFAULT_MAGIC, None)
 	}
 }
 
@@ -127,7 +127,7 @@ impl Default for Header {
 	#[inline(always)]
 	fn default() -> Header {
 		Header {
-			magic: *crate::DEFAULT_MAGIC,
+			magic: crate::DEFAULT_MAGIC,
 			flags: Flags::default(),
 			arch_version: crate::VERSION,
 			capacity: 0,
