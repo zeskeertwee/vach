@@ -32,7 +32,7 @@ pub(crate) fn v_error_to_id<T>(error_p: *mut raw::c_int, error: prelude::Interna
 			prelude::InternalError::CryptoError(_) | prelude::InternalError::NoKeypairError => E_CRYPTO_ERROR,
 			prelude::InternalError::IncompatibleArchiveVersionError(_) => E_MALFORMED_ARCHIVE_SOURCE,
 			prelude::InternalError::DeCompressionError(_) => E_GENERIC_IO_ERROR,
-			_ => -7, // Builder Errors
+			_ => -7, // TODO: Builder Errors
 		};
 	}
 

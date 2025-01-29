@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use std::{ffi, fs, io, mem, os::raw, slice};
+use std::{ffi, fs, io, os::raw, slice};
 use vach::prelude::*;
 
 mod errors;
@@ -30,18 +30,13 @@ pub extern "C" fn new_archive_config(
 		None => *vach::DEFAULT_MAGIC,
 	};
 
-	let pk = match unsafe { pk_bytes.as_ref() } {
-		Some(bytes) => {
-			let Ok(pk) = VerifyingKey::from_bytes(bytes) else {
-				return errors::report(error_p, errors::E_PARSE_ERROR);
-			};
-
-			Some(pk)
-		},
-		None => None,
+	let mut config = ArchiveConfig::new(magic, None);
+	if let Some(bytes) = unsafe { pk_bytes.as_ref() } {
+		if let Err(e) = config.load_public_key(bytes.as_slice()) {
+			return errors::v_error_to_id(error_p, e);
+		};
 	};
 
-	let config = ArchiveConfig::new(magic, pk);
 	Box::into_raw(Box::new(config)) as _
 }
 
@@ -49,13 +44,13 @@ pub extern "C" fn new_archive_config(
 #[no_mangle]
 pub extern "C" fn free_archive_config(config: *mut v_archive_config) {
 	if !(config as *mut ArchiveConfig).is_null() {
-		let _ = unsafe { Box::from_raw(config) };
+		drop(unsafe { Box::from_raw(config) });
 	}
 }
 
 pub(crate) enum ArchiveInner {
 	File(fs::File),
-	Buffer(mem::ManuallyDrop<io::Cursor<&'static [u8]>>),
+	Buffer(io::Cursor<&'static [u8]>),
 }
 
 impl io::Read for ArchiveInner {
@@ -89,8 +84,9 @@ pub extern "C" fn new_archive_from_file(
 		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
 	};
 
-	let Ok(file) = fs::File::open(path) else {
-		return errors::report(error_p, errors::E_GENERIC_IO_ERROR);
+	let file = match fs::File::open(path) {
+		Ok(file) => file,
+		Err(e) => return errors::v_error_to_id(error_p, InternalError::IOError(e)),
 	};
 
 	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
@@ -116,7 +112,7 @@ pub extern "C" fn new_archive_from_buffer(
 	}
 
 	let source = unsafe { slice::from_raw_parts(data, len as _) };
-	let buffer = mem::ManuallyDrop::new(io::Cursor::new(source));
+	let buffer = io::Cursor::new(source);
 
 	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
 		Some(c) => c,
@@ -134,7 +130,7 @@ pub extern "C" fn new_archive_from_buffer(
 #[no_mangle]
 pub extern "C" fn free_archive(archive: *mut v_archive) {
 	if !(archive as *mut Archive<ArchiveInner>).is_null() {
-		let _ = unsafe { Box::from_raw(archive) };
+		drop(unsafe { Box::from_raw(archive) });
 	}
 }
 
@@ -179,7 +175,7 @@ pub extern "C" fn free_entries(entries: *mut v_entries) {
 		let list = unsafe { Box::from_raw(slice) };
 
 		for entry in list {
-			let _ = unsafe { ffi::CString::from_raw(entry) };
+			drop(unsafe { ffi::CString::from_raw(entry) });
 		}
 	}
 }
@@ -261,8 +257,7 @@ pub extern "C" fn free_resource(resource: *mut v_resource) {
 	if let Some(resource) = unsafe { (resource as *mut v_resource).as_mut() } {
 		let resource = unsafe { Box::from_raw(resource) };
 
-		// TODO: test if this leaks memory
 		let data = unsafe { slice::from_raw_parts_mut(resource.data, resource.len as _) };
-		let _ = unsafe { Box::from_raw(data) };
+		drop(unsafe { Box::from_raw(data) });
 	}
 }
