@@ -3,12 +3,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// The length of the magic string in the file header
-#define V_MAGIC_LENGTH 5
-
-// The length of a public key
-#define V_PUBLIC_KEY_LENGTH 32
-
 // One parameter passed to a function was NULL
 #define E_PARAMETER_IS_NULL -1
 
@@ -35,6 +29,12 @@
 
 // Generic cryptographic error, signature verification failed or otherwise
 #define E_CRYPTO_ERROR -9
+
+// The length of the magic string in the file header
+#define V_MAGIC_LENGTH 5
+
+// The length of a public key
+#define V_PUBLIC_KEY_LENGTH 32
 
 // Archive loader configuration
 typedef int8_t v_archive_config;
