@@ -17,7 +17,7 @@ pub use super::global::compressor::Compressor;
 #[inline(always)]
 pub fn gen_keypair() -> crypto::SigningKey {
 	let mut bytes = [0u8; 32];
-	(&mut OsRng).fill_bytes(&mut bytes);
+	OsRng.fill_bytes(&mut bytes);
 	crypto::SigningKey::from_bytes(&bytes)
 }
 

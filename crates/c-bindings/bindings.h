@@ -3,6 +3,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// The length of the magic string in the file header
+#define V_MAGIC_LENGTH 5
+
+// The length of a public key
+#define V_PUBLIC_KEY_LENGTH 32
+
 // One parameter passed to a function was NULL
 #define E_PARAMETER_IS_NULL -1
 
@@ -30,22 +36,16 @@
 // Generic cryptographic error, signature verification failed or otherwise
 #define E_CRYPTO_ERROR -9
 
-// The length of the magic string in the file header
-#define V_MAGIC_LENGTH 5
-
-// The length of a public key
-#define V_PUBLIC_KEY_LENGTH 32
-
 // Archive loader configuration
-typedef int8_t v_archive_config;
+typedef void v_archive_config;
 
 // An Archive instance, bound to either a file or a buffer
-typedef uint8_t v_archive;
+typedef void v_archive;
 
 // A list archive entry IDs
 typedef struct v_entries {
   uintptr_t count;
-  int8_t **list;
+  char **paths;
 } v_entries;
 
 // An archive resource
@@ -67,7 +67,7 @@ v_archive_config *new_archive_config(const uint8_t (*magic)[V_MAGIC_LENGTH], con
 void free_archive_config(v_archive_config *config);
 
 // Create a new archive from a file
-v_archive *new_archive_from_file(const int8_t *path, const v_archive_config *config, int32_t *error_p);
+v_archive *new_archive_from_file(const char *path, const v_archive_config *config, int32_t *error_p);
 
 // Create a new archive from a buffer
 v_archive *new_archive_from_buffer(const v_archive_config *config, const uint8_t *data, uintptr_t len, int32_t *error_p);
@@ -80,9 +80,9 @@ struct v_entries *archive_get_entries(const v_archive *archive, int32_t *error_p
 void free_entries(struct v_entries *entries);
 
 // Fetch a resource, WITHOUT locking the internal Mutex
-struct v_resource *archive_fetch_resource(v_archive *archive, const int8_t *id, int32_t *error_p);
+struct v_resource *archive_fetch_resource(v_archive *archive, const char *id, int32_t *error_p);
 
-// Fetch a resource, LOCKS the internal Mutex
+// Fetch a resource, LOCKS the internal Mutex. For use in multithreaded environments
 struct v_resource *archive_fetch_resource_lock(const v_archive *archive, const int8_t *id, int32_t *error_p);
 
 void free_resource(struct v_resource *resource);

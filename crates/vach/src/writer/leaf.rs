@@ -195,7 +195,7 @@ impl<'a> Default for Leaf<'a> {
 	}
 }
 
-impl<'a> fmt::Debug for Leaf<'a> {
+impl fmt::Debug for Leaf<'_> {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let mut d = f.debug_struct("Leaf");
 		d.field("id", &self.id)

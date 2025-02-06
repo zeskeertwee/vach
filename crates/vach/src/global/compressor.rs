@@ -72,11 +72,12 @@ impl<T: Read> Compressor<T> {
 
 /// Allows the user to specify which of three `Compression Algorithms` to use.
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum CompressionAlgorithm {
 	/// Uses [snappy](https://crates.io/crates/snap) for a well balanced compression experienced
 	Snappy,
 	/// Uses [LZ4](https://crates.io/crates/lz4_flex) for very fast decompression with average compression ratios
+	#[default]
 	LZ4,
 	/// Uses [brotli](https://crates.io/crates/brotli) for higher compression ratios but *much* slower compression speed
 	/// Allows one to specify the quality of the compression, from 1-11. (9 Recommended, 11 for extra compression)
@@ -90,12 +91,6 @@ impl std::fmt::Display for CompressionAlgorithm {
 			CompressionAlgorithm::LZ4 => write!(f, "LZ4"),
 			CompressionAlgorithm::Brotli(_) => write!(f, "Brotli"),
 		}
-	}
-}
-
-impl Default for CompressionAlgorithm {
-	fn default() -> CompressionAlgorithm {
-		CompressionAlgorithm::LZ4
 	}
 }
 

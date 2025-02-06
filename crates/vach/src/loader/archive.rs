@@ -258,7 +258,7 @@ where
 				verified,
 			})
 		} else {
-			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
+			Err(InternalError::MissingResourceError(id.as_ref().to_string()))
 		}
 	}
 
@@ -283,7 +283,7 @@ where
 				verified: is_secure,
 			})
 		} else {
-			return Err(InternalError::MissingResourceError(id.as_ref().to_string()));
+			 Err(InternalError::MissingResourceError(id.as_ref().to_string()))
 		}
 	}
 }

@@ -47,7 +47,7 @@ pub(crate) struct Prepared {
 
 impl Prepared {
 	// Process Leaf into Prepared Data, externalised for multithreading purposes
-	fn from_leaf<'a>(leaf: &mut Leaf<'a>, encryptor: Option<&Encryptor>) -> InternalResult<Prepared> {
+	fn from_leaf(leaf: &mut Leaf<'_>, encryptor: Option<&Encryptor>) -> InternalResult<Prepared> {
 		let mut entry: RegistryEntry = leaf.into();
 		let mut raw = Vec::new(); // 10MB
 
@@ -120,9 +120,7 @@ impl<'a> Builder<'a> {
 	/// The `data` is wrapped in the default [`Leaf`], without cloning the original data.
 	/// The second argument is the `ID` with which the embedded data will be tagged
 	pub fn add<D: Read + Send + Sync + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
-		let leaf = Leaf::new(data)
-			.id(id.as_ref().to_string())
-			.template(&self.leaf_template);
+		let leaf = Leaf::new(data).id(id.as_ref()).template(&self.leaf_template);
 
 		self.add_leaf(leaf)
 	}
@@ -153,7 +151,7 @@ impl<'a> Builder<'a> {
 				let file = fs::File::open(uri)?;
 				let leaf = Leaf::new(file)
 					.template(template.unwrap_or(&self.leaf_template))
-					.id(&format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
+					.id(format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
 
 				self.add_leaf(leaf)?;
 			}

@@ -67,12 +67,7 @@ impl RegistryEntry {
 			// If the `crypto` feature is turned off then the bytes are just read then discarded
 			#[cfg(feature = "crypto")]
 			{
-				let sig = match crypto::Signature::try_from(sig_bytes) {
-					Ok(sig) => sig,
-					Err(err) => return Err(InternalError::ParseError(err.to_string())),
-				};
-
-				signature = Some(sig);
+				signature = Some(crypto::Signature::from(sig_bytes));
 			}
 		};
 

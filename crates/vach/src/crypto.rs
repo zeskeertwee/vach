@@ -29,7 +29,7 @@ impl Encryptor {
 
 		// Build Nonce
 		let mut v = [178, 5, 239, 228, 165, 44, 169, 0, 0, 0, 0, 0];
-		(&mut v[7..12]).copy_from_slice(&magic);
+		v[7..12].copy_from_slice(&magic);
 
 		Encryptor {
 			cipher: Aes256Gcm::new_from_slice(bytes).unwrap(),
