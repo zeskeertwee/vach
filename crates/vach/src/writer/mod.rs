@@ -1,9 +1,4 @@
-use std::{
-	collections::HashSet,
-	io::{Read, Seek, SeekFrom, Write},
-	path::Path,
-	sync::Arc,
-};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 #[cfg(feature = "multithreaded")]
 use std::{thread, sync::mpsc};
@@ -28,14 +23,6 @@ use {crate::crypto::Encryptor, ed25519_dalek::Signer};
 
 #[cfg(not(feature = "crypto"))]
 type Encryptor = ();
-
-/// The archive builder. Provides an interface with which one can configure and build valid `vach` archives.
-#[derive(Default)]
-pub struct Builder<'a> {
-	pub(crate) leafs: Vec<Leaf<'a>>,
-	pub(crate) id_set: HashSet<Arc<str>>,
-	leaf_template: Leaf<'a>,
-}
 
 // Processed data ready to be inserted into a `Write + Clone` target during Building
 pub(crate) struct Prepared {
@@ -109,251 +96,189 @@ impl Prepared {
 	}
 }
 
-impl<'a> Builder<'a> {
-	/// Instantiates a new [`Builder`] with an empty processing queue.
-	#[inline(always)]
-	pub fn new() -> Builder<'a> {
-		Builder::default()
-	}
+/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
+/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
+pub fn dump<'a, W: Write + Seek + Send>(
+	mut target: W, leaves: &mut [Leaf<'a>], config: &BuilderConfig,
+	mut callback: Option<&mut dyn FnMut(&RegistryEntry, &[u8])>,
+) -> InternalResult<u64> {
+	let set = leaves
+		.iter()
+		.map(|l| l.id.as_ref())
+		.collect::<std::collections::HashSet<_>>();
 
-	/// Appends a read handle wrapped in a [`Leaf`] into the processing queue.
-	/// The `data` is wrapped in the default [`Leaf`], without cloning the original data.
-	/// The second argument is the `ID` with which the embedded data will be tagged
-	pub fn add<D: Read + Send + Sync + 'a>(&mut self, data: D, id: impl AsRef<str>) -> InternalResult {
-		let leaf = Leaf::new(data).id(id.as_ref()).template(&self.leaf_template);
+	if set.len() < leaves.len() {
+		for (idx, leaf) in leaves.iter().enumerate() {
+			let slice = &leaves[idx + 1..];
 
-		self.add_leaf(leaf)
-	}
-
-	/// Removes all the [`Leaf`]s from the [`Builder`]. Leaves the `template` intact. Use this to re-use [`Builder`]s instead of instantiating new ones
-	pub fn clear(&mut self) {
-		self.id_set.clear();
-		self.leafs.clear();
-	}
-
-	/// Loads all files from a directory, parses them into [`Leaf`]s and appends them into the processing queue.
-	/// An optional [`Leaf`] is passed as a template from which the new [`Leaf`]s shall implement, pass `None` to use the [`Builder`] internal default template.
-	/// Appended [`Leaf`]s have an `ID` in the form of of: `directory_name/file_name`. For example: `sounds/footstep.wav1, `sample/script.data`
-	pub fn add_dir(&mut self, path: impl AsRef<Path>, template: Option<&Leaf<'a>>) -> InternalResult {
-		use std::fs;
-
-		let directory = fs::read_dir(path)?;
-		for file in directory {
-			let uri = file?.path();
-
-			let v = uri
-				.iter()
-				.map(|u| String::from(u.to_str().unwrap()))
-				.collect::<Vec<String>>();
-
-			if !uri.is_dir() {
-				// Therefore a file
-				let file = fs::File::open(uri)?;
-				let leaf = Leaf::new(file)
-					.template(template.unwrap_or(&self.leaf_template))
-					.id(format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
-
-				self.add_leaf(leaf)?;
+			// find duplicate
+			if slice.iter().any(|l| l.id == leaf.id) {
+				return Err(InternalError::DuplicateLeafID(leaf.id.to_string()));
 			}
+		}
+	}
+
+	// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
+	let mut bytes_written = 0;
+	let mut leaf_offset = {
+		leaves
+			.iter()
+			.map(|leaf| {
+				// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
+				leaf.id.len() + RegistryEntry::MIN_SIZE + {
+					#[cfg(feature = "crypto")]
+					if config.signing_key.is_some() && leaf.sign {
+						crate::SIGNATURE_LENGTH
+					} else {
+						0
+					}
+					#[cfg(not(feature = "crypto"))]
+					{
+						0
+					}
+				}
+			})
+			.reduce(|l1, l2| l1 + l2)
+			.unwrap_or(0)
+			+ Header::BASE_SIZE
+	} as u64;
+
+	// Start at the very start of the file
+	target.seek(SeekFrom::Start(0))?;
+	target.write_all(&config.magic)?;
+
+	// INSERT flags
+	let mut temp = config.flags;
+
+	#[cfg(feature = "crypto")]
+	if config.signing_key.is_some() {
+		temp.force_set(Flags::SIGNED_FLAG, true);
+	};
+
+	// Write remaining Header
+	target.write_all(&temp.bits().to_le_bytes())?;
+	target.write_all(&crate::VERSION.to_le_bytes())?;
+	target.write_all(&(leaves.len() as u16).to_le_bytes())?;
+
+	// Build encryptor
+	#[cfg(feature = "crypto")]
+	let encryptor = {
+		let use_encryption = leaves.iter().any(|leaf| leaf.encrypt);
+		if use_encryption {
+			if let Some(keypair) = config.signing_key.as_ref() {
+				Some(Encryptor::new(&keypair.verifying_key(), config.magic))
+			} else {
+				return Err(InternalError::NoKeypairError);
+			}
+		} else {
+			None
+		}
+	};
+
+	#[cfg(not(feature = "crypto"))]
+	let encryptor = None;
+
+	// Callback for processing IO
+	let mut registry = Vec::with_capacity(leaf_offset as usize - Header::BASE_SIZE);
+
+	#[allow(unused_mut)]
+	let mut write = |result: InternalResult<Prepared>| -> InternalResult<()> {
+		let mut result = result?;
+		let bytes = result.data.len() as u64;
+
+		// write
+		target.seek(SeekFrom::Start(leaf_offset))?;
+		target.write_all(&result.data)?;
+
+		// update entry
+		result.entry.location = leaf_offset;
+		result.entry.offset = bytes;
+
+		// update state
+		leaf_offset += result.data.len() as u64;
+		bytes_written += bytes;
+
+		// write out registry entry
+		#[cfg(feature = "crypto")]
+		if result.sign {
+			if let Some(keypair) = &config.signing_key {
+				result.entry.flags.force_set(Flags::SIGNED_FLAG, true);
+
+				let entry_bytes = result.entry.to_bytes(true)?;
+				result.data.extend_from_slice(&entry_bytes);
+
+				// Include registry data in the signature
+				result.entry.signature = Some(keypair.sign(&result.data));
+			};
+		}
+
+		// write to registry buffer, this one might include the Signature
+		let entry_bytes = result.entry.to_bytes(false)?;
+		registry.write_all(&entry_bytes)?;
+
+		// Call the progress callback bound within the [`BuilderConfig`]
+		if let Some(callback) = callback.as_mut() {
+			callback(&result.entry, &result.data);
 		}
 
 		Ok(())
-	}
+	};
 
-	/// Directly add a [`Leaf`] to the [`Builder`]
-	/// [`Leaf`]s added directly do not inherit  data from the [`Builder`]s template.
-	pub fn add_leaf(&mut self, leaf: Leaf<'a>) -> InternalResult {
-		// Make sure no two leaves are written with the same ID
-		if !self.id_set.insert(leaf.id.clone()) {
-			Err(InternalError::LeafAppendError(leaf.id))
-		} else {
-			self.leafs.push(leaf);
-			Ok(())
-		}
-	}
+	#[cfg(feature = "multithreaded")]
+	let (tx, rx) = mpsc::sync_channel(leaves.len());
 
-	/// Avoid unnecessary boilerplate by auto-templating all [`Leaf`]s added with `Builder::add(--)` with the given template
-	/// ```
-	/// use vach::builder::{Builder, Leaf};
-	///
-	/// let template = Leaf::default().version(12);
-	/// let mut builder = Builder::new().template(template);
-	///
-	/// builder.add(b"JEB" as &[u8], "JEB_NAME").unwrap();
-	/// // `JEB` is compressed and has a version of 12
-	/// ```
-	pub fn template(mut self, template: Leaf<'a>) -> Builder<'a> {
-		self.leaf_template = template;
-		self
-	}
-
-	/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
-	/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
-	pub fn dump<W: Write + Seek + Send>(self, mut target: W, mut config: BuilderConfig) -> InternalResult<u64> {
-		let Builder { mut leafs, .. } = self;
-
-		// Calculate the size of the registry and check for [`Leaf`]s that request for encryption
-		let mut bytes_written = 0;
-		let mut leaf_offset = {
-			leafs
-				.iter()
-				.map(|leaf| {
-					// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature only if a signature is incorporated into the entry
-					leaf.id.len() + RegistryEntry::MIN_SIZE + {
-						#[cfg(feature = "crypto")]
-						if config.signing_key.is_some() && leaf.sign {
-							crate::SIGNATURE_LENGTH
-						} else {
-							0
-						}
-						#[cfg(not(feature = "crypto"))]
-						{
-							0
-						}
-					}
-				})
-				.reduce(|l1, l2| l1 + l2)
-				.unwrap_or(0)
-				+ Header::BASE_SIZE
-		} as u64;
-
-		// Start at the very start of the file
-		target.seek(SeekFrom::Start(0))?;
-		target.write_all(&config.magic)?;
-
-		// INSERT flags
-		let mut temp = config.flags;
-
-		#[cfg(feature = "crypto")]
-		if config.signing_key.is_some() {
-			temp.force_set(Flags::SIGNED_FLAG, true);
-		};
-
-		// Write remaining Header
-		target.write_all(&temp.bits().to_le_bytes())?;
-		target.write_all(&crate::VERSION.to_le_bytes())?;
-		target.write_all(&(leafs.len() as u16).to_le_bytes())?;
-
-		// Build encryptor
-		#[cfg(feature = "crypto")]
-		let encryptor = {
-			let use_encryption = leafs.iter().any(|leaf| leaf.encrypt);
-			if use_encryption {
-				if let Some(keypair) = config.signing_key.as_ref() {
-					Some(Encryptor::new(&keypair.verifying_key(), config.magic))
-				} else {
-					return Err(InternalError::NoKeypairError);
-				}
-			} else {
-				None
-			}
-		};
-
-		#[cfg(not(feature = "crypto"))]
-		let encryptor = None;
-
-		// Callback for processing IO
-		let mut registry = Vec::with_capacity(leaf_offset as usize - Header::BASE_SIZE);
-
-		#[allow(unused_mut)]
-		let mut write = |result: InternalResult<Prepared>| -> InternalResult<()> {
-			let mut result = result?;
-			let bytes = result.data.len() as u64;
-
-			// write
-			target.seek(SeekFrom::Start(leaf_offset))?;
-			target.write_all(&result.data)?;
-
-			// update entry
-			result.entry.location = leaf_offset;
-			result.entry.offset = bytes;
-
-			// update state
-			leaf_offset += result.data.len() as u64;
-			bytes_written += bytes;
-
-			// write out registry entry
-			#[cfg(feature = "crypto")]
-			if result.sign {
-				if let Some(keypair) = &config.signing_key {
-					result.entry.flags.force_set(Flags::SIGNED_FLAG, true);
-
-					let entry_bytes = result.entry.to_bytes(true)?;
-					result.data.extend_from_slice(&entry_bytes);
-
-					// Include registry data in the signature
-					result.entry.signature = Some(keypair.sign(&result.data));
-				};
-			}
-
-			// write to registry buffer, this one might include the Signature
-			let entry_bytes = result.entry.to_bytes(false)?;
-			registry.write_all(&entry_bytes)?;
-
-			// Call the progress callback bound within the [`BuilderConfig`]
-			if let Some(callback) = config.progress_callback.as_mut() {
-				callback(&result.entry, &result.data);
-			}
-
-			Ok(())
-		};
-
-		#[cfg(feature = "multithreaded")]
-		let (tx, rx) = mpsc::sync_channel(leafs.len());
-
-		#[cfg(feature = "multithreaded")]
-		if !leafs.is_empty() {
-			thread::scope(|s| -> InternalResult<()> {
-				let count = leafs.len();
-				#[rustfmt::skip]
+	#[cfg(feature = "multithreaded")]
+	if !leaves.is_empty() {
+		thread::scope(|s| -> InternalResult<()> {
+			let count = leaves.len();
+			#[rustfmt::skip]
 				let chunk_size = if config.num_threads.get() > count { 6 } else { count / config.num_threads };
 
-				let chunks = leafs.chunks_mut(chunk_size);
-				let encryptor = encryptor.as_ref();
+			let chunks = leaves.chunks_mut(chunk_size);
+			let encryptor = encryptor.as_ref();
 
-				// Spawn CPU threads
-				for chunk in chunks {
-					let queue = tx.clone();
+			// Spawn CPU threads
+			for chunk in chunks {
+				let queue = tx.clone();
 
-					s.spawn(move || {
-						for leaf in chunk {
-							let res = Prepared::from_leaf(leaf, encryptor);
-							queue.send(res).unwrap();
-						}
-					});
-				}
-
-				// Process IO, read results from
-				let mut results = 0;
-				loop {
-					match rx.try_recv() {
-						Ok(r) => {
-							results += 1;
-							write(r)?
-						},
-						Err(e) => match e {
-							mpsc::TryRecvError::Empty => {
-								if results >= count {
-									break Ok(());
-								}
-							},
-							mpsc::TryRecvError::Disconnected => break Ok(()),
-						},
+				s.spawn(move || {
+					for leaf in chunk {
+						let res = Prepared::from_leaf(leaf, encryptor);
+						queue.send(res).unwrap();
 					}
+				});
+			}
+
+			// Process IO, read results from
+			let mut results = 0;
+			loop {
+				match rx.try_recv() {
+					Ok(r) => {
+						results += 1;
+						write(r)?
+					},
+					Err(e) => match e {
+						mpsc::TryRecvError::Empty => {
+							if results >= count {
+								break Ok(());
+							}
+						},
+						mpsc::TryRecvError::Disconnected => break Ok(()),
+					},
 				}
-			})?;
-		};
+			}
+		})?;
+	};
 
-		#[cfg(not(feature = "multithreaded"))]
-		leafs
-			.iter_mut()
-			.map(|l| Prepared::from_leaf(l, encryptor.as_ref()))
-			.try_for_each(write)?;
+	#[cfg(not(feature = "multithreaded"))]
+	leaves
+		.iter_mut()
+		.map(|l| Prepared::from_leaf(l, encryptor.as_ref()))
+		.try_for_each(write)?;
 
-		// write out Registry
-		target.seek(SeekFrom::Start(Header::BASE_SIZE as _))?;
-		target.write_all(&registry)?;
+	// write out Registry
+	target.seek(SeekFrom::Start(Header::BASE_SIZE as _))?;
+	target.write_all(&registry)?;
 
-		Ok(bytes_written)
-	}
+	Ok(bytes_written)
 }

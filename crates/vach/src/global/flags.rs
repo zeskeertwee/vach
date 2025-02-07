@@ -16,7 +16,7 @@ impl Flags {
 	/// Any interaction with `Flags::set()` will yield an error.
 	pub const RESERVED_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 	/// The size in bytes of any flags entry
-	pub const SIZE: usize = 32 / 8;
+	pub const BYTES: usize = 4;
 
 	/// This flag shows that the adjacent entry is compressed
 	pub const COMPRESSED_FLAG: u32 = 0b_1000_0000_0000_0000_0000_0000_0000_0000;
@@ -32,8 +32,8 @@ impl Flags {
 	/// The flag that shows data in the leaf in encrypted
 	pub const ENCRYPTED_FLAG: u32 = 0b_0000_0010_0000_0000_0000_0000_0000_0000;
 
-	#[inline(always)]
 	/// Construct a `Flags` struct from a `u32` number
+	#[inline(always)]
 	pub fn from_bits(bits: u32) -> Self {
 		Flags { bits }
 	}

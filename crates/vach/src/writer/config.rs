@@ -1,13 +1,14 @@
 #[cfg(feature = "multithreaded")]
 use std::num::NonZeroUsize;
 
-use crate::global::{flags::Flags, reg_entry::RegistryEntry};
+use crate::global::flags::Flags;
 #[cfg(feature = "crypto")]
 use crate::crypto;
 
 /// Allows for the customization of valid `vach` archives during their construction.
 /// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
-pub struct BuilderConfig<'a> {
+#[derive(Debug, Clone)]
+pub struct BuilderConfig {
 	/// Number of threads to spawn during `Builder::dump`, defaults to 4
 	#[cfg(feature = "multithreaded")]
 	pub num_threads: NonZeroUsize,
@@ -19,49 +20,10 @@ pub struct BuilderConfig<'a> {
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub signing_key: Option<crypto::SigningKey>,
-	/// An optional callback that is called every time a [Leaf](crate::builder::Leaf) finishes processing.
-	/// The callback get passed to it: a reference to the leaf and the generated registry entry. Use the RegEntry to get info on how the data was integrated for the given [`Leaf`].
-	/// > **To avoid** the `implementation of "FnOnce" is not general enough` error consider adding types to the closure's parameters, as this is a type inference error. Rust somehow cannot infer enough information, [link](https://www.reddit.com/r/rust/comments/ntqu68/implementation_of_fnonce_is_not_general_enough/).
-	///
-	/// Usage:
-	/// ```
-	/// use vach::prelude::{RegistryEntry, BuilderConfig, Leaf};
-	///
-	/// let builder_config = BuilderConfig::default();
-	/// fn callback(reg_entry: &RegistryEntry, data: &[u8]) {
-	///   println!("Processed Entry: {:?}. First Bytes: {:?}", reg_entry, &data[0..1])
-	/// }
-	///
-	/// builder_config.callback(&mut callback);
-	/// ```
-	#[allow(clippy::type_complexity)]
-	pub progress_callback: Option<&'a mut dyn FnMut(&RegistryEntry, &[u8])>,
-}
-
-impl std::fmt::Debug for BuilderConfig<'_> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let mut f = f.debug_struct("BuilderConfig");
-
-		f.field("magic", &self.magic);
-		f.field("flags", &self.flags);
-		f.field(
-			"progress_callback",
-			if self.progress_callback.is_some() {
-				&"Some(&dyn Fn(id: &str, reg_entry: &RegistryEntry))"
-			} else {
-				&"None"
-			},
-		);
-
-		#[cfg(feature = "crypto")]
-		f.field("keypair", &self.signing_key);
-
-		f.finish()
-	}
 }
 
 // Helper functions
-impl<'a> BuilderConfig<'a> {
+impl BuilderConfig {
 	/// Setter for the `keypair` field
 	#[cfg(feature = "crypto")]
 	pub fn keypair(mut self, keypair: crypto::SigningKey) -> Self {
@@ -83,19 +45,8 @@ impl<'a> BuilderConfig<'a> {
 	/// use vach::prelude::BuilderConfig;
 	/// let config = BuilderConfig::default().magic(*b"DbAfh");
 	///```
-	pub fn magic(mut self, magic: [u8; 5]) -> BuilderConfig<'a> {
+	pub fn magic(mut self, magic: [u8; 5]) -> BuilderConfig {
 		self.magic = magic;
-		self
-	}
-
-	///```
-	/// use vach::prelude::{BuilderConfig, RegistryEntry, Leaf};
-	///
-	/// let mut callback = |entry: &RegistryEntry, _data: &[u8]| { println!("Number of bytes written: {}", entry.offset) };
-	/// let config = BuilderConfig::default().callback(&mut callback);
-	///```
-	pub fn callback(mut self, callback: &'a mut dyn FnMut(&RegistryEntry, &[u8])) -> BuilderConfig<'a> {
-		self.progress_callback = Some(callback);
 		self
 	}
 
@@ -106,14 +57,13 @@ impl<'a> BuilderConfig<'a> {
 	}
 }
 
-impl<'a> Default for BuilderConfig<'a> {
-	fn default() -> BuilderConfig<'a> {
+impl<'a> Default for BuilderConfig {
+	fn default() -> BuilderConfig {
 		BuilderConfig {
 			#[cfg(feature = "multithreaded")]
 			num_threads: unsafe { NonZeroUsize::new_unchecked(4) },
 			flags: Flags::default(),
 			magic: crate::DEFAULT_MAGIC,
-			progress_callback: None,
 			#[cfg(feature = "crypto")]
 			signing_key: None,
 		}

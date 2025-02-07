@@ -21,6 +21,38 @@ const CUSTOM_FLAG_2: u32 = 0b0000_0000_0000_0000_0000_0100_0000_0000;
 const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
+pub fn leaves_from_dir<'a>(
+	path: impl AsRef<std::path::Path>, template: Option<&Leaf<'a>>,
+) -> InternalResult<Vec<Leaf<'a>>> {
+	use std::fs;
+
+	let mut leaves = vec![];
+	let directory = fs::read_dir(path)?;
+
+	for file in directory {
+		let uri = file?.path();
+
+		let v = uri
+			.iter()
+			.map(|u| String::from(u.to_str().unwrap()))
+			.collect::<Vec<String>>();
+
+		if uri.is_file() {
+			let file = fs::File::open(uri)?;
+
+			let leaf = Leaf::new(file, format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
+			let leaf = match template {
+				Some(t) => leaf.template(t),
+				None => leaf,
+			};
+
+			leaves.push(leaf);
+		}
+	}
+
+	Ok(leaves)
+}
+
 #[test]
 #[cfg(feature = "archive")]
 fn custom_bitflags() -> InternalResult {
@@ -74,33 +106,25 @@ fn flags_set_intersects() {
 #[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
 fn builder_no_signature() -> InternalResult {
-	let mut builder = Builder::default();
 	let build_config = BuilderConfig::default();
-
-	builder.add(File::open("test_data/song.txt")?, "song")?;
-	builder.add(File::open("test_data/lorem.txt")?, "lorem")?;
-	builder.add(File::open("test_data/bee.script")?, "script")?;
-	builder.add(File::open("test_data/quicksort.wasm")?, "wasm")?;
 
 	let mut poem_flags = Flags::default();
 	poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)?;
 
-	builder.add_leaf(
-		Leaf::new(File::open("test_data/poem.txt")?)
+	let mut leaves = [
+		Leaf::new(File::open("test_data/song.txt")?, "song"),
+		Leaf::new(File::open("test_data/lorem.txt")?, "lorem"),
+		Leaf::new(File::open("test_data/bee.script")?, "script"),
+		Leaf::new(File::open("test_data/quicksort.wasm")?, "wasm"),
+		Leaf::new(File::open("test_data/poem.txt")?, "poem")
 			.compress(CompressMode::Always)
 			.version(10)
-			.id("poem")
 			.flags(poem_flags),
-	)?;
-
-	builder.add_leaf(
-		Leaf::new(b"Hello, Cassandra!" as &[u8])
-			.compress(CompressMode::Never)
-			.id("greeting"),
-	)?;
+		Leaf::new(b"Hello, Cassandra!" as &[u8], "greeting").compress(CompressMode::Never),
+	];
 
 	let mut target = File::create(SIMPLE_TARGET)?;
-	builder.dump(&mut target, build_config)?;
+	dump(&mut target, &mut leaves, &build_config, None)?;
 
 	Ok(())
 }
@@ -126,24 +150,18 @@ fn fetch_no_signature() -> InternalResult {
 #[test]
 #[cfg(all(feature = "builder", feature = "crypto"))]
 fn builder_with_signature() -> InternalResult {
-	let mut builder = Builder::default();
-
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(KEYPAIR.as_slice())?;
-	builder.add_dir("test_data", None)?;
 
-	// sign and no sign!
-	builder.add_leaf(Leaf::default().id("not_signed"))?;
+	let mut leaves = leaves_from_dir("test_data", None)?;
 
-	let signed = Leaf::new(b"Don't forget to recite your beatitudes!" as &[u8])
-		.id("signed")
-		.sign(true);
-	builder.add_leaf(signed)?;
+	leaves.push(Leaf::default().id("not_signed"));
+	leaves.push(Leaf::new(b"Don't forget to recite your beatitudes!" as &[u8], "signed").sign(true));
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	println!(
 		"Number of bytes written: {}, into signed archive.",
-		builder.dump(&mut target, build_config)?
+		dump(&mut target, leaves.as_mut_slice(), &build_config, None)?
 	);
 
 	Ok(())
@@ -197,24 +215,22 @@ fn decryptor_test() -> InternalResult {
 #[test]
 #[cfg(all(feature = "compression", feature = "builder", feature = "crypto"))]
 fn builder_with_encryption() -> InternalResult {
-	let mut builder = Builder::new().template(Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true));
-
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(KEYPAIR.as_slice())?;
 
-	builder.add_dir("test_data", None)?;
-	builder.add_leaf(
-		Leaf::new(b"Snitches get stitches, iOS sucks" as &[u8])
+	let template = Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true);
+	let mut leaves = leaves_from_dir("test_data", Some(&template))?;
+	leaves.push(
+		Leaf::new(b"Snitches get stitches, iOS sucks" as &[u8], "stitches.snitches")
 			.sign(false)
 			.compression_algo(CompressionAlgorithm::Brotli(11))
-			.compress(CompressMode::Always)
-			.id("stitches.snitches"),
-	)?;
+			.compress(CompressMode::Always),
+	);
 
 	let mut target = File::create(ENCRYPTED_TARGET)?;
 	println!(
 		"Number of bytes written: {}, into encrypted and fully compressed archive.",
-		builder.dump(&mut target, build_config)?
+		dump(&mut target, leaves.as_mut_slice(), &build_config, None)?
 	);
 
 	Ok(())
@@ -266,17 +282,18 @@ fn consolidated_example() -> InternalResult {
 	let config = BuilderConfig::default()
 		.magic(*MAGIC)
 		.keypair(read_keypair(&keypair_bytes as &[u8])?);
-	let mut builder = Builder::new().template(Leaf::default().encrypt(true));
 
 	// Add data
 	let template = Leaf::default().encrypt(true).version(59).sign(true);
-	builder.add_leaf(Leaf::new(data_1).id("d1").template(&template))?;
-	builder.add_leaf(Leaf::new(data_2).id("d2").template(&template))?;
-	builder.add_leaf(Leaf::new(data_3).id("d3").template(&template))?;
+	let mut leaves = [
+		Leaf::new(data_1, "d1").template(&template),
+		Leaf::new(data_2, "d2").template(&template),
+		Leaf::new(data_3, "d3").template(&template),
+	];
 
 	// Dump data
 	let then = Instant::now();
-	builder.dump(&mut target, config)?;
+	dump(&mut target, &mut leaves, &config, None)?;
 
 	// Just because
 	println!("Building took: {:?}", then.elapsed());
@@ -310,28 +327,21 @@ fn test_compressors() -> InternalResult {
 
 	let input = [12u8; INPUT_LEN];
 	let mut target = Cursor::new(vec![]);
-	let mut builder = Builder::new();
 
-	builder.add_leaf(
-		Leaf::new(input.as_slice())
-			.id("LZ4")
+	let mut leaves = [
+		Leaf::new(input.as_slice(), "LZ4")
 			.compression_algo(CompressionAlgorithm::LZ4)
 			.compress(CompressMode::Always),
-	)?;
-	builder.add_leaf(
-		Leaf::new(input.as_slice())
-			.id("BROTLI")
+		Leaf::new(input.as_slice(), "BROTLI")
 			.compression_algo(CompressionAlgorithm::Brotli(9))
 			.compress(CompressMode::Always),
-	)?;
-	builder.add_leaf(
-		Leaf::new(input.as_slice())
-			.id("SNAPPY")
+		Leaf::new(input.as_slice(), "SNAPPY")
 			.compression_algo(CompressionAlgorithm::Snappy)
 			.compress(CompressMode::Always),
-	)?;
+	];
 
-	builder.dump(&mut target, BuilderConfig::default())?;
+	let builder_config = BuilderConfig::default();
+	dump(&mut target, &mut leaves, &builder_config, None)?;
 
 	let mut archive = Archive::new(&mut target)?;
 
@@ -372,22 +382,22 @@ fn test_batch_fetching() -> InternalResult {
 	const INPUT: [u8; INPUT_LEN] = [69u8; INPUT_LEN];
 
 	let mut target = Cursor::new(vec![]);
-	let mut builder = Builder::new();
 
 	// Define and queue data
 	let mut ids = vec![];
+	let mut leaves = (0..120)
+		.map(|i| {
+			let id = format!("ID {}", i);
+			ids.push(id);
 
-	for i in 0..120 {
-		let id = format!("ID {}", i);
-		ids.push(id);
-
-		builder.add(&INPUT[..], ids[i].as_str())?;
-	}
+			Leaf::new(&INPUT[..], ids[i].as_str())
+		})
+		.collect::<Vec<_>>();
 
 	ids.push("ERRORS".to_string());
 
 	// Process data
-	builder.dump(&mut target, BuilderConfig::default())?;
+	dump(&mut target, leaves.as_mut_slice(), &BuilderConfig::default(), None)?;
 
 	let archive = Archive::new(target)?;
 	let mut resources = ids

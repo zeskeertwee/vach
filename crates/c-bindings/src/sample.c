@@ -5,7 +5,7 @@
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    printf("Usage: %s <path>\n", argv[0]);
+    printf("[No path provided] Usage: %s <path>\n", argv[0]);
     return 1;
   }
 
@@ -30,8 +30,9 @@ int main(int argc, char **argv) {
     char *path = entries->paths[i];
     v_resource *resource = archive_fetch_resource(archive, path, &error_p);
 
+
     // log v_resource data
-    printf("[%d] Path: %s, Len: %llu\n, Flags: %d", i, path, resource->len,
+    printf("[%d] Path: %s, Len: %llu, Flags: %d\n", i, path, resource->len,
            resource->flags);
 
     // free resource

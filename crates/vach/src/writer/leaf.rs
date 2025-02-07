@@ -23,8 +23,8 @@ pub enum CompressMode {
 /// Allows for multiple types of data implementing [`io::Read`](std::io::Read) to be used under one struct.
 /// Also used to configure how data will be processed and embedded into an write target.
 pub struct Leaf<'a> {
-	/// The lifetime simply reflects to the [`Builder`](crate::builder::Builder)'s lifetime, meaning the handle must live longer than or the same as the Builder
-	pub(crate) handle: Box<dyn Read + Send + Sync + 'a>,
+	/// Boxed read handle
+	pub handle: Box<dyn Read + Send + Sync + 'a>,
 
 	/// The `ID` under which the embedded data will be referenced
 	pub id: Arc<str>,
@@ -60,13 +60,13 @@ impl<'a> Leaf<'a> {
 	/// Using the `Default` configuration.
 	///```
 	/// use vach::prelude::Leaf;
-	/// use std::io::Cursor;
 	///
-	/// let leaf = Leaf::new(Cursor::new(vec![]));
+	/// let leaf = Leaf::new([].as_slice(), "example#1");
 	///```
-	pub fn new<R: Read + Send + Sync + 'a>(handle: R) -> Leaf<'a> {
+	pub fn new<R: Read + Send + Sync + 'a, S: AsRef<str>>(handle: R, id: S) -> Leaf<'a> {
 		Leaf {
 			handle: Box::new(handle),
+			id: Arc::from(id.as_ref()),
 			..Default::default()
 		}
 	}
@@ -83,7 +83,7 @@ impl<'a> Leaf<'a> {
 	/// use vach::prelude::Leaf;
 	/// let template = Leaf::default().version(12);
 	///
-	/// let leaf = Leaf::new(Cursor::new(vec![])).template(&template);
+	/// let leaf = Leaf::new([].as_slice(), "example#1").template(&template);
 	/// assert_eq!(&leaf.content_version, &template.content_version);
 	/// ```
 	pub fn template(self, other: &Leaf<'a>) -> Self {

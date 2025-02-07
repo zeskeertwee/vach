@@ -1,8 +1,8 @@
 use std::{fs, io, slice, ffi};
 use vach::prelude::*;
-use super::{errors, DataInner};
+use super::errors;
 
-/// Archive loader configuration
+/// Archive Loader Configuration
 pub type v_archive_config = ffi::c_void;
 
 /// Create new loader configuration
@@ -33,6 +33,31 @@ pub extern "C" fn free_archive_config(config: *mut v_archive_config) {
 	}
 }
 
+/// A wrapper combining `fs::File` and `io::Cursor`, over the C boundary.
+/// Allowing both inner buffers and files to be used for data.
+pub(crate) enum ArchiveInner {
+	File(fs::File),
+	Buffer(io::Cursor<&'static [u8]>),
+}
+
+impl io::Read for ArchiveInner {
+	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+		match self {
+			ArchiveInner::File(f) => f.read(buf),
+			ArchiveInner::Buffer(b) => b.read(buf),
+		}
+	}
+}
+
+impl io::Seek for ArchiveInner {
+	fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
+		match self {
+			ArchiveInner::File(f) => f.seek(pos),
+			ArchiveInner::Buffer(b) => b.seek(pos),
+		}
+	}
+}
+
 /// An Archive instance, bound to either a file or a buffer
 pub type v_archive = ffi::c_void;
 
@@ -56,7 +81,7 @@ pub extern "C" fn new_archive_from_file(
 		None => &ArchiveConfig::default(),
 	};
 
-	let archive = match Archive::with_config(DataInner::File(file), config) {
+	let archive = match Archive::with_config(ArchiveInner::File(file), config) {
 		Ok(archive) => archive,
 		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
@@ -81,7 +106,7 @@ pub extern "C" fn new_archive_from_buffer(
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
-	let archive = match Archive::with_config(DataInner::Buffer(buffer), config) {
+	let archive = match Archive::with_config(ArchiveInner::Buffer(buffer), config) {
 		Ok(archive) => archive,
 		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
@@ -91,7 +116,7 @@ pub extern "C" fn new_archive_from_buffer(
 
 #[no_mangle]
 pub extern "C" fn free_archive(archive: *mut v_archive) {
-	if let Some(a) = unsafe { (archive as *mut Archive<DataInner>).as_mut() } {
+	if let Some(a) = unsafe { (archive as *mut Archive<ArchiveInner>).as_mut() } {
 		drop(unsafe { Box::from_raw(a) });
 	}
 }
@@ -106,7 +131,7 @@ pub struct v_entries {
 /// Get a list of archive entry IDs
 #[no_mangle]
 pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut i32) -> *mut v_entries {
-	let archive = match unsafe { (archive as *const Archive<DataInner>).as_ref() } {
+	let archive = match unsafe { (archive as *const Archive<ArchiveInner>).as_ref() } {
 		Some(a) => a,
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
@@ -162,7 +187,7 @@ pub extern "C" fn archive_fetch_resource(
 		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
 	};
 
-	let archive = match unsafe { (archive as *mut Archive<DataInner>).as_mut() } {
+	let archive = match unsafe { (archive as *mut Archive<ArchiveInner>).as_mut() } {
 		Some(a) => a,
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
@@ -193,7 +218,7 @@ pub extern "C" fn archive_fetch_resource_lock(
 		Err(_) => return errors::report(error_p, errors::E_INVALID_UTF8),
 	};
 
-	let archive = match unsafe { (archive as *const Archive<DataInner>).as_ref() } {
+	let archive = match unsafe { (archive as *const Archive<ArchiveInner>).as_ref() } {
 		Some(a) => a,
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};

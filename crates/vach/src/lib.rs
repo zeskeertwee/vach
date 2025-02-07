@@ -164,6 +164,9 @@ pub mod prelude {
 
 	#[cfg(feature = "builder")]
 	pub use crate::builder::*;
+
+	#[cfg(feature = "compression")]
+	pub use crate::global::compressor::*;
 }
 
 /// Import keypairs and signatures from here, mirrors from `ed25519_dalek`

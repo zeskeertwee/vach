@@ -25,12 +25,12 @@ pub struct RegistryEntry {
 
 impl RegistryEntry {
 	// (flags) + 1(content version) + 8(location) + 8(offset) + 2(path length) + ..Dynamic
-	pub(crate) const MIN_SIZE: usize = Flags::SIZE + 19;
+	pub(crate) const MIN_SIZE: usize = Flags::BYTES + 19;
 
 	#[inline(always)]
 	pub(crate) fn empty() -> RegistryEntry {
 		RegistryEntry {
-			id: Arc::from("<NULL ID>"),
+			id: Arc::from("None"),
 			flags: Flags::empty(),
 			content_version: 0,
 			location: 0,

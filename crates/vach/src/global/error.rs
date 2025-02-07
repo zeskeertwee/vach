@@ -1,4 +1,4 @@
-use std::{error, io, sync::Arc};
+use std::{error, io};
 use thiserror::Error;
 
 /// Internal `Result` type alias used by `vach`. Basically equal to: `Result<T, InternalError>`
@@ -26,9 +26,9 @@ pub enum InternalError {
 	/// Thrown by `Archive::fetch(---)` when a given resource is not found
 	#[error("[VachError::MissingResourceError] Resource not found: {0}")]
 	MissingResourceError(String),
-	/// Thrown when a leaf with an identical ID to a queued leaf is add with the `Builder::add(---)` functions
+	/// Two leaves found with the same ID
 	#[error("[VachError::LeafAppendError] A leaf with the ID: {0} already exists. Consider changing the ID to prevent collisions")]
-	LeafAppendError(Arc<str>),
+	DuplicateLeafID(String),
 	/// Thrown when no `Keypair` is provided and an encrypted [Leaf](crate::builder::Leaf) is encountered
 	#[error("[VachError::NoKeypairError] Unable to continue with cryptographic operation, as no keypair was supplied")]
 	NoKeypairError,

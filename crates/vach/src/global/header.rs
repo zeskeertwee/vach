@@ -111,7 +111,7 @@ impl Default for ArchiveConfig {
 impl Default for ArchiveConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		ArchiveConfig::new(*crate::DEFAULT_MAGIC)
+		ArchiveConfig::new(crate::DEFAULT_MAGIC)
 	}
 }
 
@@ -136,7 +136,7 @@ impl Default for Header {
 }
 
 impl Header {
-	pub const BASE_SIZE: usize = crate::MAGIC_LENGTH + Flags::SIZE + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
+	pub const BASE_SIZE: usize = crate::MAGIC_LENGTH + Flags::BYTES + Self::VERSION_SIZE + Self::CAPACITY_SIZE;
 
 	// Data appears in this order
 	pub const VERSION_SIZE: usize = 2;
