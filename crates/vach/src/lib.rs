@@ -126,11 +126,6 @@ pub(crate) mod loader;
 #[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub(crate) mod writer;
 
-// Re-export
-#[cfg(feature = "crypto")]
-#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-pub use rand;
-
 /// Current [`vach`](crate) spec version. increments by ten with every spec change
 pub const VERSION: u16 = 30;
 

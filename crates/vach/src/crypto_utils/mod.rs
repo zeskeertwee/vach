@@ -2,12 +2,9 @@
 #![cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 
 use {
-	rand::rngs::OsRng,
 	crate::{crypto, global::error::*},
 	std::io::Read,
 };
-
-use rand::RngCore;
 
 // A favour
 #[cfg(feature = "compression")]
@@ -16,8 +13,7 @@ pub use super::global::compressor::Compressor;
 /// Use this function to easily generate a [Keypair](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/struct.Keypair.html) using `OsRng`
 #[inline(always)]
 pub fn gen_keypair() -> crypto::SigningKey {
-	let mut bytes = [0u8; 32];
-	OsRng.fill_bytes(&mut bytes);
+	let bytes = [0u8; 32].map(|_| simplerand::rand());
 	crypto::SigningKey::from_bytes(&bytes)
 }
 

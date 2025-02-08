@@ -6,6 +6,8 @@ mod errors;
 pub mod reader;
 pub mod writer;
 
+// TODO: Document usage
+
 /// The version of the library
 #[no_mangle]
 pub extern "C" fn version() -> u16 {

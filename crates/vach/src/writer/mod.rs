@@ -25,75 +25,73 @@ use {crate::crypto::Encryptor, ed25519_dalek::Signer};
 type Encryptor = ();
 
 // Processed data ready to be inserted into a `Write + Clone` target during Building
-pub(crate) struct Prepared {
+pub(crate) struct ProcessedLeaf {
 	pub(crate) data: Vec<u8>,
 	pub(crate) entry: RegistryEntry,
 	#[cfg(feature = "crypto")]
 	pub(crate) sign: bool,
 }
 
-impl Prepared {
-	// Process Leaf into Prepared Data, externalised for multithreading purposes
-	fn from_leaf(leaf: &mut Leaf<'_>, encryptor: Option<&Encryptor>) -> InternalResult<Prepared> {
-		let mut entry: RegistryEntry = leaf.into();
-		let mut raw = Vec::new(); // 10MB
+// Process Leaf into Prepared Data, externalised for multithreading purposes
+fn process_leaf(leaf: &mut Leaf<'_>, _encryptor: Option<&Encryptor>) -> InternalResult<ProcessedLeaf> {
+	let mut entry: RegistryEntry = leaf.into();
+	let mut raw = Vec::new();
 
-		// Compression comes first
-		#[cfg(feature = "compression")]
-		match leaf.compress {
-			CompressMode::Never => {
-				leaf.handle.read_to_end(&mut raw)?;
-			},
-			CompressMode::Always => {
-				Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
+	// Compression comes first
+	#[cfg(feature = "compression")]
+	match leaf.compress {
+		CompressMode::Never => {
+			leaf.handle.read_to_end(&mut raw)?;
+		},
+		CompressMode::Always => {
+			Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
 
+			entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
+			entry.flags.force_set(leaf.compression_algo.into(), true);
+		},
+		CompressMode::Detect => {
+			let mut buffer = Vec::new();
+			leaf.handle.read_to_end(&mut buffer)?;
+
+			let mut compressed_data = Vec::new();
+			Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
+
+			if compressed_data.len() <= buffer.len() {
 				entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
 				entry.flags.force_set(leaf.compression_algo.into(), true);
-			},
-			CompressMode::Detect => {
-				let mut buffer = Vec::new();
-				leaf.handle.read_to_end(&mut buffer)?;
 
-				let mut compressed_data = Vec::new();
-				Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
-
-				if compressed_data.len() <= buffer.len() {
-					entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
-					entry.flags.force_set(leaf.compression_algo.into(), true);
-
-					raw = compressed_data;
-				} else {
-					buffer.as_slice().read_to_end(&mut raw)?;
-				};
-			},
-		}
-
-		// If the compression feature is turned off, simply reads into buffer
-		#[cfg(not(feature = "compression"))]
-		{
-			if entry.flags.contains(Flags::COMPRESSED_FLAG) {
-				return Err(InternalError::MissingFeatureError("compression"));
+				raw = compressed_data;
+			} else {
+				buffer.as_slice().read_to_end(&mut raw)?;
 			};
-
-			leaf.handle.read_to_end(&mut raw)?;
-		}
-
-		// Encryption comes second
-		#[cfg(feature = "crypto")]
-		if leaf.encrypt {
-			if let Some(ex) = encryptor {
-				raw = ex.encrypt(&raw)?;
-				entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
-			}
-		}
-
-		Ok(Prepared {
-			data: raw,
-			entry,
-			#[cfg(feature = "crypto")]
-			sign: leaf.sign,
-		})
+		},
 	}
+
+	// If the compression feature is turned off, simply reads into buffer
+	#[cfg(not(feature = "compression"))]
+	{
+		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+			return Err(InternalError::MissingFeatureError("compression"));
+		};
+
+		leaf.handle.read_to_end(&mut raw)?;
+	}
+
+	// Encryption comes second
+	#[cfg(feature = "crypto")]
+	if leaf.encrypt {
+		if let Some(ex) = _encryptor {
+			raw = ex.encrypt(&raw)?;
+			entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
+		}
+	}
+
+	Ok(ProcessedLeaf {
+		data: raw,
+		entry,
+		#[cfg(feature = "crypto")]
+		sign: leaf.sign,
+	})
 }
 
 /// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
@@ -182,7 +180,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 	let mut registry = Vec::with_capacity(leaf_offset as usize - Header::BASE_SIZE);
 
 	#[allow(unused_mut)]
-	let mut write = |result: InternalResult<Prepared>| -> InternalResult<()> {
+	let mut write = |result: InternalResult<ProcessedLeaf>| -> InternalResult<()> {
 		let mut result = result?;
 		let bytes = result.data.len() as u64;
 
@@ -232,6 +230,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 		thread::scope(|s| -> InternalResult<()> {
 			let count = leaves.len();
 			#[rustfmt::skip]
+				// if we have an insane number of threads send leafs in chunks of 6
 				let chunk_size = if config.num_threads.get() > count { 6 } else { count / config.num_threads };
 
 			let chunks = leaves.chunks_mut(chunk_size);
@@ -243,7 +242,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 
 				s.spawn(move || {
 					for leaf in chunk {
-						let res = Prepared::from_leaf(leaf, encryptor);
+						let res = process_leaf(leaf, encryptor);
 						queue.send(res).unwrap();
 					}
 				});
@@ -273,7 +272,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 	#[cfg(not(feature = "multithreaded"))]
 	leaves
 		.iter_mut()
-		.map(|l| Prepared::from_leaf(l, encryptor.as_ref()))
+		.map(|l| process_leaf(l, encryptor.as_ref()))
 		.try_for_each(write)?;
 
 	// write out Registry

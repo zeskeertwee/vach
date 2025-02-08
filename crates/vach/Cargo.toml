@@ -2,7 +2,7 @@
 name = "vach"
 
 # NOTE: Make sure spec.txt and vach::VERSION constants are all synced up
-version = "0.6.2"
+version = "0.7.0"
 
 edition = "2021"
 authors = [
@@ -23,7 +23,7 @@ thiserror = "2.0.11"
 
 # Authentication dependencies
 ed25519-dalek = { version = "2.1.1", optional = true }
-rand = { version = "0.8.5", optional = true }
+simplerand = { version = "1.5.1", optional = true }
 
 # Encryption dependencies
 aes-gcm = { version = "0.10.3", features = ["aes"], optional = true }
@@ -45,7 +45,7 @@ all = ["default", "compression", "crypto", "multithreaded"]
 archive = []
 builder = []
 
-crypto = ["ed25519-dalek", "aes-gcm", "rand"]
+crypto = ["ed25519-dalek", "aes-gcm", "simplerand"]
 multithreaded = []
 compression = ["snap", "lz4_flex", "brotli"]
 

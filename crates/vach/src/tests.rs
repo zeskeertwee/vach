@@ -21,7 +21,7 @@ const CUSTOM_FLAG_2: u32 = 0b0000_0000_0000_0000_0000_0100_0000_0000;
 const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
-pub fn leaves_from_dir<'a>(
+fn leaves_from_dir<'a>(
 	path: impl AsRef<std::path::Path>, template: Option<&Leaf<'a>>,
 ) -> InternalResult<Vec<Leaf<'a>>> {
 	use std::fs;

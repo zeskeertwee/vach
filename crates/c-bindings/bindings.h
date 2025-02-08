@@ -116,3 +116,6 @@ void free_builder_config(v_builder_config *config);
 
 // processed and writes leaves to a preallocated buffer, buffer must at least be big enough to fit data
 uintptr_t write_leaves_to_buffer(uint8_t *target, uintptr_t len, v_builder_leaf *leaves, uintptr_t l_len, const v_builder_config *config, v_builder_callback callback, int32_t *error_p);
+
+// processed and writes leaves to a preallocated buffer, buffer must at least be big enough to fit data
+uintptr_t write_leaves_to_file(const char *path, v_builder_leaf *leaves, uintptr_t l_len, const v_builder_config *config, v_builder_callback callback, int32_t *error_p);

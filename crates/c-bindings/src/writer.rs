@@ -144,3 +144,46 @@ pub extern "C" fn write_leaves_to_buffer(
 		Err(e) => errors::v_error_to_id::<()>(error_p, e) as _,
 	}
 }
+
+/// processed and writes leaves to a preallocated buffer, buffer must at least be big enough to fit data
+#[no_mangle]
+pub extern "C" fn write_leaves_to_file(
+	path: *const ffi::c_char, leaves: *mut v_builder_leaf, l_len: usize, config: *const v_builder_config,
+	callback: v_builder_callback, error_p: *mut i32,
+) -> usize {
+	let path = unsafe { ffi::CStr::from_ptr(path) }.to_str();
+	let Ok(path) = path else {
+		return errors::report::<()>(error_p, errors::E_INVALID_UTF8) as _;
+	};
+
+	let config = unsafe { (config as *const BuilderConfig).as_ref() };
+	let Some(config) = config else {
+		return errors::report::<()>(error_p, errors::E_PARAMETER_IS_NULL) as _;
+	};
+
+	// read leaves
+	let leaves = unsafe { slice::from_raw_parts_mut(leaves as *mut Leaf<'static>, l_len) };
+
+	// check if callback is NULL
+	let mut cb = move |entry: &RegistryEntry, data: &[u8]| {
+		let id = entry.id.as_ref();
+
+		callback(
+			id.as_ptr() as _,
+			id.len(),
+			data.as_ptr() as _,
+			data.len(),
+			entry.location,
+			entry.offset,
+		)
+	};
+
+	let wrapper = ((callback as usize) == 0).then_some(&mut cb as _);
+
+	// write
+	let target = fs::File::create(path).unwrap();
+	match dump(target, leaves, config, wrapper) {
+		Ok(bytes_written) => bytes_written as _,
+		Err(e) => errors::v_error_to_id::<()>(error_p, e) as _,
+	}
+}
