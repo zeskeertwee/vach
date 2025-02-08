@@ -108,6 +108,9 @@ v_builder_leaf *new_leaf_from_buffer(const char *id, const uint8_t *data, uintpt
 // Creates a new `v_builder_leaf` from a file
 v_builder_leaf *new_leaf_from_file(const char *id, const char *path, uint32_t flags, int32_t *error_p);
 
+// Deallocates a `v_builder_leaf`
+void free_leaf(v_builder_leaf *leaf);
+
 // Create new builder configuration
 v_builder_config *new_builder_config(const uint8_t (*magic)[V_MAGIC_LENGTH], const uint8_t (*sk_bytes)[V_SECRET_KEY_LENGTH], uint32_t flags);
 

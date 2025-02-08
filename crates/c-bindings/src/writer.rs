@@ -68,6 +68,16 @@ pub extern "C" fn new_leaf_from_file(
 	}
 }
 
+/// Deallocates a `v_builder_leaf`
+#[no_mangle]
+pub extern "C" fn free_leaf(leaf: *mut v_builder_leaf) {
+	if let Some(leaf) = unsafe { (leaf as *mut Leaf).as_mut() } {
+		unsafe {
+			drop(Box::from_raw(leaf));
+		}
+	}
+}
+
 /// Archive Builder Configuration
 pub type v_builder_config = ffi::c_void;
 
