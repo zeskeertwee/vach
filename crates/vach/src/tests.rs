@@ -11,9 +11,9 @@ use crate::prelude::*;
 const KEYPAIR: &[u8; crate::SECRET_KEY_LENGTH + crate::PUBLIC_KEY_LENGTH] = include_bytes!("../test_data/pair.pub");
 
 // The paths to the Archives, to be written|loaded
-const SIGNED_TARGET: &str = "test_data/signed/target.vach";
-const SIMPLE_TARGET: &str = "test_data/simple/target.vach";
-const ENCRYPTED_TARGET: &str = "test_data/encrypted/target.vach";
+const SIGNED_TARGET: &str = "test_data/signed.vach";
+const SIMPLE_TARGET: &str = "test_data/simple.vach";
+const ENCRYPTED_TARGET: &str = "test_data/encrypted.vach";
 
 // Custom bitflag tests
 const CUSTOM_FLAG_1: u32 = 0b0000_0000_0000_0000_0000_1000_0000_0000;
@@ -105,28 +105,30 @@ fn flags_set_intersects() {
 
 #[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
-fn builder_no_signature() -> InternalResult {
+fn builder_no_signature() {
+    use std::fs::OpenOptions;
+
 	let build_config = BuilderConfig::default();
 
 	let mut poem_flags = Flags::default();
-	poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)?;
+	poem_flags
+		.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)
+		.unwrap();
 
 	let mut leaves = [
-		Leaf::new(File::open("test_data/song.txt")?, "song"),
-		Leaf::new(File::open("test_data/lorem.txt")?, "lorem"),
-		Leaf::new(File::open("test_data/bee.script")?, "script"),
-		Leaf::new(File::open("test_data/quicksort.wasm")?, "wasm"),
-		Leaf::new(File::open("test_data/poem.txt")?, "poem")
+		Leaf::new(File::open("test_data/song.txt").unwrap(), "song"),
+		Leaf::new(File::open("test_data/lorem.txt").unwrap(), "lorem"),
+		Leaf::new(File::open("test_data/bee.script").unwrap(), "script"),
+		Leaf::new(File::open("test_data/quicksort.wasm").unwrap(), "wasm"),
+		Leaf::new(File::open("test_data/poem.txt").unwrap(), "poem")
 			.compress(CompressMode::Always)
 			.version(10)
 			.flags(poem_flags),
 		Leaf::new(b"Hello, Cassandra!" as &[u8], "greeting").compress(CompressMode::Never),
 	];
 
-	let mut target = File::create(SIMPLE_TARGET)?;
-	dump(&mut target, &mut leaves, &build_config, None)?;
-
-	Ok(())
+	let mut target = OpenOptions::new().write(true).create(true).read(true).open(SIMPLE_TARGET).unwrap();
+	dump(&mut target, &mut leaves, &build_config, None).unwrap();
 }
 
 #[test]

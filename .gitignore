@@ -10,7 +10,7 @@ workspace.code-workspace
 .cargo/config.toml
 
 # Test Archives
-/crates/vach/test_data/**/target.vach
+/crates/vach/test_data/*
 
 # Cargo
 .cargo
