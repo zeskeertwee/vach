@@ -119,7 +119,7 @@ impl Default for ArchiveConfig {
 pub(crate) struct Header {
 	pub magic: [u8; crate::MAGIC_LENGTH], // VfACH
 	pub flags: Flags,
-	pub arch_version: u16,
+	pub version: u16,
 	pub capacity: u16,
 }
 
@@ -129,7 +129,7 @@ impl Default for Header {
 		Header {
 			magic: crate::DEFAULT_MAGIC,
 			flags: Flags::default(),
-			arch_version: crate::VERSION,
+			version: crate::VERSION,
 			capacity: 0,
 		}
 	}
@@ -150,8 +150,8 @@ impl Header {
 		};
 
 		// Validate version
-		if crate::VERSION != header.arch_version {
-			return Err(InternalError::IncompatibleArchiveVersionError(header.arch_version));
+		if crate::VERSION != header.version {
+			return Err(InternalError::IncompatibleArchiveVersionError(header.version));
 		};
 
 		Ok(())
@@ -168,9 +168,18 @@ impl Header {
 			// Read flags, u32 from [u8;4]
 			flags: Flags::from_bits(u32::from_le_bytes(buffer[crate::MAGIC_LENGTH..9].try_into().unwrap())),
 			// Read version, u16 from [u8;2]
-			arch_version: u16::from_le_bytes(buffer[9..11].try_into().unwrap()),
+			version: u16::from_le_bytes(buffer[9..11].try_into().unwrap()),
 			// Read the capacity of the archive, u16 from [u8;2]
 			capacity: u16::from_le_bytes(buffer[11..13].try_into().unwrap()),
 		})
+	}
+
+	pub(crate) fn to_bytes(&self) -> [u8; Header::BASE_SIZE] {
+		let mut buffer: [u8; Header::BASE_SIZE] = [0u8; Header::BASE_SIZE];
+		buffer[0..crate::MAGIC_LENGTH].copy_from_slice(&self.magic);
+		buffer[crate::MAGIC_LENGTH..9].copy_from_slice(&self.flags.bits().to_le_bytes());
+		buffer[9..11].copy_from_slice(&self.version.to_le_bytes());
+		buffer[11..13].copy_from_slice(&self.capacity.to_le_bytes());
+		buffer
 	}
 }

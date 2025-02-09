@@ -63,14 +63,11 @@ typedef struct v_resource {
   bool verified;
 } v_resource;
 
-// Archive Builder Configuration
-typedef void v_builder_leaf;
-
-// Archive Builder Configuration
-typedef void v_builder_config;
+// Archive Builder Context
+typedef void v_builder_ctx;
 
 // Archive Builder Configuration, use `libffcall` to construct closures in C
-typedef void (*v_builder_callback)(const uint32_t *id, uintptr_t id_len, const uint32_t *data, uintptr_t len, uint64_t location, uint64_t offset);
+typedef void (*v_builder_callback)(const char *id, uintptr_t id_len, const char *data, uintptr_t len, uint64_t location);
 
 // The version of the library
 uint16_t version(void);
@@ -102,23 +99,20 @@ struct v_resource *archive_fetch_resource_lock(const v_archive *archive, const i
 
 void free_resource(struct v_resource *resource);
 
-// Creates a new `v_builder_leaf` from a buffer
-v_builder_leaf *new_leaf_from_buffer(const char *id, const uint8_t *data, uintptr_t len, uint32_t flags, int32_t *error_p);
+// Create new Builder Context
+v_builder_ctx *new_builder_ctx(const uint8_t (*magic)[V_MAGIC_LENGTH], const uint8_t (*sk_bytes)[V_SECRET_KEY_LENGTH], uint32_t flags);
+
+// free memory bound by `new_builder_ctx`
+void free_builder_ctx(v_builder_ctx *ctx);
+
+// Appends a new `v_builder_leaf` from a buffer
+void add_leaf_from_buffer(v_builder_ctx *ctx, const char *id, const uint8_t *data, uintptr_t len, uint32_t flags, int32_t *error_p);
 
 // Creates a new `v_builder_leaf` from a file
-v_builder_leaf *new_leaf_from_file(const char *id, const char *path, uint32_t flags, int32_t *error_p);
+void add_leaf_from_file(v_builder_ctx *ctx, const char *id, const char *path, uint32_t flags, int32_t *error_p);
 
-// Deallocates a `v_builder_leaf`
-void free_leaf(v_builder_leaf *leaf);
+// process context and dump to a preallocated buffer, buffer must at least be big enough to fit data
+uint64_t dump_archive_to_buffer(v_builder_ctx *ctx, uint8_t *buffer, uintptr_t buf_size, v_builder_callback callback, int32_t *error_p);
 
-// Create new builder configuration
-v_builder_config *new_builder_config(const uint8_t (*magic)[V_MAGIC_LENGTH], const uint8_t (*sk_bytes)[V_SECRET_KEY_LENGTH], uint32_t flags);
-
-// free memory bound by `new_builder_config`
-void free_builder_config(v_builder_config *config);
-
-// processed and writes leaves to a preallocated buffer, buffer must at least be big enough to fit data
-uintptr_t write_leaves_to_buffer(uint8_t *target, uintptr_t len, v_builder_leaf *leaves, uintptr_t l_len, const v_builder_config *config, v_builder_callback callback, int32_t *error_p);
-
-// processed and writes leaves to a preallocated buffer, buffer must at least be big enough to fit data
-uintptr_t write_leaves_to_file(const char *path, v_builder_leaf *leaves, uintptr_t l_len, const v_builder_config *config, v_builder_callback callback, int32_t *error_p);
+// processed context and write to a file on disk
+uint64_t dump_leaves_to_file(v_builder_ctx *ctx, const char *path, v_builder_callback callback, int32_t *error_p);

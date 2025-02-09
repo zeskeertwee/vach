@@ -1,6 +1,11 @@
-#[cfg(feature = "compression")]
-use crate::global::compressor::CompressionAlgorithm;
 use crate::global::{reg_entry::RegistryEntry, flags::Flags};
+use crate::global::error::InternalResult;
+
+#[cfg(feature = "compression")]
+use crate::global::compressor::{CompressionAlgorithm, Compressor};
+
+#[cfg(feature = "crypto")]
+use crate::crypto::Encryptor;
 
 use std::{fmt, io::Read, sync::Arc};
 
@@ -227,4 +232,74 @@ impl From<&mut Leaf<'_>> for RegistryEntry {
 			..RegistryEntry::empty()
 		}
 	}
+}
+
+// Processed data ready to be inserted into a `Write + Clone` target during Building
+pub(crate) struct ProcessedLeaf {
+	pub(crate) data: Vec<u8>,
+	pub(crate) entry: RegistryEntry,
+	#[cfg(feature = "crypto")]
+	pub(crate) sign: bool,
+}
+
+// Process Leaf into Prepared Data, externalised for multithreading purposes
+pub(crate) fn process_leaf(leaf: &mut Leaf<'_>, _encryptor: Option<&Encryptor>) -> InternalResult<ProcessedLeaf> {
+	let mut entry: RegistryEntry = leaf.into();
+	let mut raw = Vec::new();
+
+	// Compression comes first
+	#[cfg(feature = "compression")]
+	match leaf.compress {
+		CompressMode::Never => {
+			leaf.handle.read_to_end(&mut raw)?;
+		},
+		CompressMode::Always => {
+			Compressor::new(&mut leaf.handle).compress(leaf.compression_algo, &mut raw)?;
+
+			entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
+			entry.flags.force_set(leaf.compression_algo.into(), true);
+		},
+		CompressMode::Detect => {
+			let mut buffer = Vec::new();
+			leaf.handle.read_to_end(&mut buffer)?;
+
+			let mut compressed_data = Vec::new();
+			Compressor::new(buffer.as_slice()).compress(leaf.compression_algo, &mut compressed_data)?;
+
+			if compressed_data.len() <= buffer.len() {
+				entry.flags.force_set(Flags::COMPRESSED_FLAG, true);
+				entry.flags.force_set(leaf.compression_algo.into(), true);
+
+				raw = compressed_data;
+			} else {
+				buffer.as_slice().read_to_end(&mut raw)?;
+			};
+		},
+	}
+
+	// If the compression feature is turned off, simply reads into buffer
+	#[cfg(not(feature = "compression"))]
+	{
+		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
+			return Err(InternalError::MissingFeatureError("compression"));
+		};
+
+		leaf.handle.read_to_end(&mut raw)?;
+	}
+
+	// Encryption comes second
+	#[cfg(feature = "crypto")]
+	if leaf.encrypt {
+		if let Some(ex) = _encryptor {
+			raw = ex.encrypt(&raw)?;
+			entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
+		}
+	}
+
+	Ok(ProcessedLeaf {
+		data: raw,
+		entry,
+		#[cfg(feature = "crypto")]
+		sign: leaf.sign,
+	})
 }

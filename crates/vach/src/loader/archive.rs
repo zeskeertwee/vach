@@ -55,7 +55,7 @@ impl<T> std::fmt::Display for Archive<T> {
 		write!(
 			f,
 			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {bytes}B, Header-Flags: <{:#x} : {:#016b}>",
-			self.header.arch_version,
+			self.header.version,
 			self.header.magic,
 			self.entries.len(),
 			self.header.flags.bits,
@@ -283,7 +283,7 @@ where
 				verified: is_secure,
 			})
 		} else {
-			 Err(InternalError::MissingResourceError(id.as_ref().to_string()))
+			Err(InternalError::MissingResourceError(id.as_ref().to_string()))
 		}
 	}
 }
