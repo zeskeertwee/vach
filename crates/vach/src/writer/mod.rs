@@ -134,6 +134,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 
 	// buffer registry data
 	let mut registry = Vec::with_capacity(leaf_offset as usize - Header::BASE_SIZE);
+	target.seek(SeekFrom::Start(leaf_offset))?;
 
 	#[allow(unused_mut)]
 	// Callback for processing IO
@@ -142,7 +143,6 @@ pub fn dump<'a, W: Write + Seek + Send>(
 		let bytes = result.data.len() as u64;
 
 		// write LEAF
-		target.seek(SeekFrom::Start(leaf_offset))?;
 		target.write_all(&result.data)?;
 
 		// update registry entry

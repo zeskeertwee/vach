@@ -7,6 +7,9 @@ use crate::global::compressor::{CompressionAlgorithm, Compressor};
 #[cfg(feature = "crypto")]
 use crate::crypto::Encryptor;
 
+#[cfg(not(feature = "crypto"))]
+type Encryptor = ();
+
 use std::{fmt, io::Read, sync::Arc};
 
 /// Configures how `Leaf`s should be compressed.
@@ -280,6 +283,8 @@ pub(crate) fn process_leaf(leaf: &mut Leaf<'_>, _encryptor: Option<&Encryptor>) 
 	// If the compression feature is turned off, simply reads into buffer
 	#[cfg(not(feature = "compression"))]
 	{
+		use crate::global::error::InternalError;
+
 		if entry.flags.contains(Flags::COMPRESSED_FLAG) {
 			return Err(InternalError::MissingFeatureError("compression"));
 		};
