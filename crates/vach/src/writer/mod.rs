@@ -232,7 +232,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 		.map(|l| leaf::process_leaf(l, encryptor.as_ref()))
 		.try_for_each(write)?;
 
-	// write REGISTRY
+	// write UPDATED REGISTRY
 	target.seek(SeekFrom::Start(Header::BASE_SIZE as _))?;
 	target.write_all(&registry)?;
 
