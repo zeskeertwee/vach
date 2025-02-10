@@ -200,7 +200,7 @@ fn decryptor_test() -> InternalResult {
 
 	let vk = gen_keypair().verifying_key();
 
-	let crypt = Encryptor::new(&vk, crate::MAGIC_SEQUENCE.clone());
+	let crypt = Encryptor::new(&vk);
 	let data = vec![12, 12, 12, 12];
 
 	let ciphertext = crypt.encrypt(&data)?;
@@ -264,10 +264,9 @@ fn fetch_from_encrypted() -> InternalResult {
 #[test]
 #[cfg(all(feature = "builder", feature = "archive", feature = "crypto"))]
 fn consolidated_example() -> InternalResult {
-	use crate::crypto_utils::{gen_keypair, read_keypair};
+	use crate::crypto_utils::gen_keypair;
 	use std::{io::Cursor, time::Instant};
 
-	const MAGIC: &[u8; crate::MAGIC_LENGTH] = b"CSDTD";
 	let mut target = Cursor::new(Vec::<u8>::new());
 
 	// Data to be written
@@ -277,9 +276,9 @@ fn consolidated_example() -> InternalResult {
 
 	// Builder definition
 	let keypair_bytes = gen_keypair().to_keypair_bytes();
-	let config = BuilderConfig::default()
-		.magic(*MAGIC)
-		.keypair(read_keypair(&keypair_bytes as &[u8])?);
+
+	let mut config = BuilderConfig::default();
+	config.load_keypair(keypair_bytes.as_slice()).unwrap();
 
 	// Add data
 	let template = Leaf::default().encrypt(true).version(59).sign(true);
@@ -297,7 +296,7 @@ fn consolidated_example() -> InternalResult {
 	println!("Building took: {:?}", then.elapsed());
 
 	// Load data
-	let mut config = ArchiveConfig::default().magic(*MAGIC);
+	let mut config = ArchiveConfig::default();
 	config.load_public_key(&keypair_bytes[32..])?;
 
 	let then = Instant::now();

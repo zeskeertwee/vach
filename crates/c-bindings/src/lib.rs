@@ -14,8 +14,6 @@ pub extern "C" fn version() -> u16 {
 	vach::VERSION
 }
 
-/// The length of the magic string in the file header
-pub const V_MAGIC_LENGTH: usize = 5;
 /// The length of a public key
 pub const V_PUBLIC_KEY_LENGTH: usize = 32;
 /// The length of a secret

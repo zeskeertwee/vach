@@ -23,13 +23,13 @@ impl fmt::Debug for Encryptor {
 }
 
 impl Encryptor {
-	pub(crate) fn new(vk: &VerifyingKey, magic: [u8; crate::MAGIC_LENGTH]) -> Encryptor {
+	pub(crate) fn new(vk: &VerifyingKey) -> Encryptor {
 		// Build encryption key
 		let bytes = &vk.to_bytes();
 
 		// Build Nonce
 		let mut v = [178, 5, 239, 228, 165, 44, 169, 0, 0, 0, 0, 0];
-		v[7..12].copy_from_slice(&magic);
+		v[7..12].copy_from_slice(&crate::MAGIC_SEQUENCE);
 
 		Encryptor {
 			cipher: Aes256Gcm::new_from_slice(bytes).unwrap(),

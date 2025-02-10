@@ -3,9 +3,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// The length of the magic string in the file header
-#define V_MAGIC_LENGTH 5
-
 // The length of a public key
 #define V_PUBLIC_KEY_LENGTH 32
 

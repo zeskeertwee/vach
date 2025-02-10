@@ -5,8 +5,7 @@ use crate::global::flags::Flags;
 #[cfg(feature = "crypto")]
 use crate::crypto;
 
-/// Allows for the customization of valid `vach` archives during their construction.
-/// Such as custom `MAGIC`, custom `Header` flags and signing by providing a keypair.
+/// Settings for [`dump`](crate::writer::dump)
 #[derive(Debug, Clone)]
 pub struct BuilderConfig {
 	/// Number of threads to spawn during `Builder::dump`, defaults to 4

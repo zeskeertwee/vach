@@ -119,7 +119,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 		let use_encryption = leaves.iter().any(|leaf| leaf.encrypt);
 		if use_encryption {
 			if let Some(keypair) = config.signing_key.as_ref() {
-				Some(Encryptor::new(&keypair.verifying_key(), crate::MAGIC_SEQUENCE))
+				Some(Encryptor::new(&keypair.verifying_key()))
 			} else {
 				return Err(InternalError::NoKeypairError);
 			}

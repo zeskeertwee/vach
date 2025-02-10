@@ -16,11 +16,7 @@ pub struct ArchiveConfig {
 }
 
 impl ArchiveConfig {
-	/// Construct a new [`ArchiveConfig`] struct.
-	/// ```
-	/// use vach::prelude::ArchiveConfig;
-	/// let config = ArchiveConfig::new(*b"_TEST",  None);
-	/// ```
+	/// Create a new [`ArchiveConfig`] struct.
 	#[inline(always)]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
@@ -28,7 +24,7 @@ impl ArchiveConfig {
 		ArchiveConfig { public_key: key }
 	}
 
-	/// Construct a new [`ArchiveConfig`] struct.
+	/// Create a new [`ArchiveConfig`] struct.
 	/// ```
 	/// use vach::prelude::ArchiveConfig;
 	/// let config = ArchiveConfig::new(*b"_TEST");

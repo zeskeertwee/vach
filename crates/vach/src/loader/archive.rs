@@ -20,12 +20,8 @@ use crate::crypto;
 #[cfg(feature = "compression")]
 use crate::global::compressor::*;
 
-/// A wrapper for loading data from archive sources.
-/// It also provides query functions for fetching [`Resource`]s and [`RegistryEntry`]s.
-/// `fetch` and `fetch_mut`, with `fetch` involving a locking operation therefore only requires immutable access.
-/// Specify custom `MAGIC` or provide a `PublicKey` for decrypting and authenticating resources using [`ArchiveConfig`].
-/// > **A word of advice:**
-/// > Do not wrap Archive in a [Mutex] or [RefCell](std::cell::RefCell), use `Archive::fetch`, [`Archive`] employs a [`Mutex`] internally in an optimized manner that reduces time spent locked.
+/// Parses an Archive from a read handle.
+/// > Wraps handle in a [`Mutex`] internally for shared access, use [`fetch_mut`](Archive::fetch_mut) for lock-free access.
 #[derive(Debug)]
 pub struct Archive<T> {
 	/// Wrapping `handle` in a Mutex means that we only ever lock when reading from the underlying buffer, thus ensuring maximum performance across threads
@@ -54,9 +50,8 @@ impl<T> std::fmt::Display for Archive<T> {
 
 		write!(
 			f,
-			"[Archive Header] Version: {}, Magic: {:?}, Members: {}, Compressed Size: {bytes}B, Header-Flags: <{:#x} : {:#016b}>",
+			"[Archive Header] Version: {}, Members: {}, Compressed Size: {bytes}B, Header-Flags: <{:#x} : {:#016b}>",
 			self.header.version,
-			self.header.magic,
 			self.entries.len(),
 			self.header.flags.bits,
 			self.header.flags.bits,
@@ -199,10 +194,7 @@ where
 			#[cfg(feature = "crypto")]
 			key: config.public_key,
 			#[cfg(feature = "crypto")]
-			decryptor: config
-				.public_key
-				.as_ref()
-				.map(|pk| crypto::Encryptor::new(pk, crate::MAGIC_SEQUENCE)),
+			decryptor: config.public_key.as_ref().map(|pk| crypto::Encryptor::new(pk)),
 		};
 		Ok(archive)
 	}
