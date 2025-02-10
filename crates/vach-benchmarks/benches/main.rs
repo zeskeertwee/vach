@@ -78,7 +78,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 	/* ARCHIVE BENCHMARKS */
 	let mut throughput_group = c.benchmark_group("Loader");
-	let mut target = io::Cursor::new(Vec::<u8>::new());
+	let mut target = io::Cursor::new(vec![]);
 
 	{
 		// Builds an archive source from which to benchmark

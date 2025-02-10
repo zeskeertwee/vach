@@ -39,39 +39,8 @@
 
 ### 🀄 Show me some code _dang it!_
 
-##### > Build a basic archive
-
 ```rust
-use std::{io::Cursor, fs::File};
-use vach::prelude::*;
-
-let mut leaves = [
-  Leaf::new(File::open("test_data/background.wav")?, "ambient"),
-  Leaf::new(vec![12, 23, 34, 45, 56, 67, 78, 89, 10], "ftstep"),
-  Leaf::new(b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8], "hello")
-];
-
-let mut target = File::create("sounds.vach")?;
-let bytes_written = dump(&mut target, &mut leaves, &config, None).unwrap();
-```
-
-##### > Load resources from a basic archive
-
-```rust
-use std::fs::File;
-use vach::prelude::*;
-
-// source can be anything that implements io::Read and io::Seek
-let source = File::open("sounds.vach")?;
-let archive = Archive::new(source)?;
-
-let resource = archive.fetch("ambient")?;
-```
-
-##### > A quick consolidated example
-
-```rust
-let mut target = Cursor::new(Vec::<u8>::new());
+let mut target = Cursor::new(vec![]);
 
 // Data to be written
 let data_1 = b"Around The World, Fatter better stronker" as &[u8];

@@ -30,20 +30,17 @@ fn leaves_from_dir<'a>(
 	let directory = fs::read_dir(path)?;
 
 	for file in directory {
-		let uri = file?.path();
+		let path = file?.path();
 
-		let v = uri
-			.iter()
-			.map(|u| String::from(u.to_str().unwrap()))
-			.collect::<Vec<String>>();
+		let v = path.iter().map(|u| u.to_string_lossy()).collect::<Vec<_>>();
 
-		if uri.is_file() {
-			let file = fs::File::open(uri)?;
+		if path.is_file() && path.extension().map(|s| s.to_str().unwrap()) != Some("vach") {
+			let file = fs::File::open(&path)?;
+			let id = v.last().unwrap();
 
-			let leaf = Leaf::new(file, format!("{}/{}", v.get(v.len() - 2).unwrap(), v.last().unwrap()));
 			let leaf = match template {
-				Some(t) => leaf.template(t),
-				None => leaf,
+				Some(t) => Leaf::new(file, id).template(t),
+				None => Leaf::new(file, id),
 			};
 
 			leaves.push(leaf);
@@ -175,13 +172,13 @@ fn fetch_with_signature() -> InternalResult {
 
 	// Load keypair
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
-	let vk = read_verifying_key(handle)?;
+	let vk = read_verifying_key(keypair)?;
 
 	// open archive
 	let target = File::open(SIGNED_TARGET)?;
 	let mut archive = Archive::with_key(target, &vk)?;
 
-	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
+	let resource = archive.fetch_mut("quicksort.wasm")?;
 	assert_eq!(resource.data.len(), 106537);
 
 	// The adjacent resource was flagged to not be signed
@@ -223,6 +220,7 @@ fn builder_with_encryption() -> InternalResult {
 
 	let template = Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true);
 	let mut leaves = leaves_from_dir("test_data", Some(&template))?;
+
 	leaves.push(
 		Leaf::new(b"Snitches get stitches, iOS sucks" as &[u8], "stitches.snitches")
 			.sign(false)
@@ -255,7 +253,7 @@ fn fetch_from_encrypted() -> InternalResult {
 	let data = std::str::from_utf8(&not_signed.data).unwrap();
 	assert_eq!(data, "Snitches get stitches, iOS sucks");
 
-	let signed = archive.fetch_mut("test_data/quicksort.wasm")?;
+	let signed = archive.fetch_mut("quicksort.wasm")?;
 
 	assert_eq!(signed.data.len(), 106537);
 	assert!(signed.verified);
@@ -267,11 +265,11 @@ fn fetch_from_encrypted() -> InternalResult {
 
 #[test]
 #[cfg(all(feature = "builder", feature = "archive", feature = "crypto"))]
-fn consolidated_example() -> InternalResult {
-	use crate::crypto_utils::gen_keypair;
+fn consolidated_test() -> InternalResult {
+	use crate::crypto_utils::{gen_keypair, read_keypair};
 	use std::{io::Cursor, time::Instant};
 
-	let mut target = Cursor::new(Vec::<u8>::new());
+	let mut target = Cursor::new(vec![]);
 
 	// Data to be written
 	let data_1 = b"Around The World, Fatter wetter stronker" as &[u8];
@@ -279,7 +277,8 @@ fn consolidated_example() -> InternalResult {
 	let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
 	// Builder definition
-	let keypair_bytes = gen_keypair().to_keypair_bytes();
+	let keypair = gen_keypair();
+	let keypair_bytes = keypair.to_keypair_bytes();
 
 	let mut config = BuilderConfig::default();
 	config.load_keypair(keypair_bytes.as_slice()).unwrap();
@@ -300,8 +299,8 @@ fn consolidated_example() -> InternalResult {
 	println!("Building took: {:?}", then.elapsed());
 
 	// parse verifying key
-	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
-	let vk = read_verifying_key(handle)?;
+	let sk = read_keypair(keypair_bytes.as_slice())?;
+	let vk = sk.verifying_key();
 
 	// open archive
 	let then = Instant::now();
@@ -386,20 +385,14 @@ fn test_batch_fetching() -> InternalResult {
 	let mut target = Cursor::new(vec![]);
 
 	// Define and queue data
-	let mut ids = vec![];
-	let mut leaves = (0..120)
-		.map(|i| {
-			let id = format!("ID {}", i);
-			ids.push(id);
-
-			Leaf::new(&INPUT[..], ids[i].as_str())
-		})
-		.collect::<Vec<_>>();
+	let mut ids = (0..120).map(|i| format!("ID {}", i)).collect::<Vec<_>>();
+	let mut leaves = ids.iter().map(|i| Leaf::new(&INPUT[..], i)).collect::<Vec<_>>();
 
 	ids.push("ERRORS".to_string());
 
 	// Process data
-	dump(&mut target, leaves.as_mut_slice(), &BuilderConfig::default(), None)?;
+	let config = BuilderConfig::default().threads(2);
+	dump(&mut target, leaves.as_mut_slice(), &config, None)?;
 
 	let archive = Archive::new(target)?;
 	let mut resources = ids

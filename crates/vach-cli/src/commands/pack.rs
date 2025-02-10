@@ -154,8 +154,8 @@ impl CommandTrait for Evaluator {
 		let truncate = args.is_present(key_names::TRUNCATE);
 
 		// Extract the version information to be set
-		let version = match args.value_of(key_names::VERSION) {
-			Some(version) => version.parse::<u8>()?,
+		let version: u8 = match args.value_of(key_names::VERSION) {
+			Some(version) => version.parse()?,
 			None => 0,
 		};
 

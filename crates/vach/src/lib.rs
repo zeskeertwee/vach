@@ -25,7 +25,7 @@ use vach::prelude::*;
 
 // collect leaves in a vector, or static buffer
 let mut leaves = [
-	// Leaf::new(File::open("test_data/background.wav").unwrap(), "ambient"),
+	// Leaf::new(File::open("background.wav").unwrap(), "ambient"),
 	Leaf::new([12, 23, 34, 45, 56, 67, 78, 90, 69].as_slice(), "ftstep").compress(CompressMode::Always),
 	Leaf::new(b"Hello, Cassandra!".as_slice(), "hello")
 ];

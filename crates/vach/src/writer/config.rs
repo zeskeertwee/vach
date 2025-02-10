@@ -23,8 +23,11 @@ pub struct BuilderConfig {
 impl BuilderConfig {
 	/// Setter for the [`num_threads`](BuilderConfig::num_threads) field
 	#[cfg(feature = "multithreaded")]
-	pub fn num_threads(mut self, num_threads: NonZeroUsize) -> Self {
-		self.num_threads = num_threads;
+	pub fn threads(mut self, num_threads: usize) -> Self {
+		if let Some(n) = NonZeroUsize::new(num_threads) {
+			self.num_threads = n;
+		}
+
 		self
 	}
 
