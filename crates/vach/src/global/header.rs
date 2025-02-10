@@ -1,4 +1,4 @@
-use std::{fmt, io::Read, str};
+use std::{fmt, io::Read};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -8,9 +8,6 @@ use super::{error::*, flags::Flags};
 /// Used exclusively in archive source and integrity validation.
 #[derive(Debug, Clone, Copy)]
 pub struct ArchiveConfig {
-	/// If the archive has a custom magic sequence, pass the custom _MAGIC_ sequence here.
-	/// The custom _MAGIC_ sequence can then be used to validate archive sources.
-	pub magic: [u8; crate::MAGIC_LENGTH],
 	/// An ed25519 public key. **If no key is provided, (is `None`), then signature validation is ignored**. Even if the
 	/// archive source has signatures.
 	#[cfg(feature = "crypto")]
@@ -27,8 +24,8 @@ impl ArchiveConfig {
 	#[inline(always)]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
-	pub const fn new(magic: [u8; crate::MAGIC_LENGTH], key: Option<crypto::VerifyingKey>) -> ArchiveConfig {
-		ArchiveConfig { magic, public_key: key }
+	pub const fn new(key: Option<crypto::VerifyingKey>) -> ArchiveConfig {
+		ArchiveConfig { public_key: key }
 	}
 
 	/// Construct a new [`ArchiveConfig`] struct.
@@ -37,8 +34,8 @@ impl ArchiveConfig {
 	/// let config = ArchiveConfig::new(*b"_TEST");
 	/// ```
 	#[cfg(not(feature = "crypto"))]
-	pub const fn new(magic: [u8; crate::MAGIC_LENGTH]) -> ArchiveConfig {
-		ArchiveConfig { magic }
+	pub const fn new() -> ArchiveConfig {
+		ArchiveConfig {}
 	}
 
 	/// Shorthand to load and parse an ed25519 public key from a [`Read`] handle, into this [`ArchiveConfig`],
@@ -66,12 +63,6 @@ impl ArchiveConfig {
 		self.public_key = Some(verifying_key);
 		self
 	}
-
-	/// Setter for the magic into a [ArchiveConfig]
-	pub fn magic(mut self, magic: [u8; crate::MAGIC_LENGTH]) -> ArchiveConfig {
-		self.magic = magic;
-		self
-	}
 }
 
 impl fmt::Display for ArchiveConfig {
@@ -82,19 +73,7 @@ impl fmt::Display for ArchiveConfig {
 			#[cfg(not(feature = "crypto"))] { "(crypto feature disabled)" }
 		};
 
-		write!(
-			f,
-			"[ArchiveConfig] magic: {}, has_public_key: {}",
-			match str::from_utf8(&self.magic) {
-				Ok(magic) => {
-					magic.to_string()
-				},
-				Err(_) => {
-					format!("{:?}", &self.magic)
-				},
-			},
-			has_pk
-		)
+		write!(f, "[ArchiveConfig]  verifying_key: {}", has_pk)
 	}
 }
 
@@ -102,7 +81,7 @@ impl fmt::Display for ArchiveConfig {
 impl Default for ArchiveConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		ArchiveConfig::new(crate::DEFAULT_MAGIC, None)
+		ArchiveConfig::new(None)
 	}
 }
 
@@ -110,13 +89,13 @@ impl Default for ArchiveConfig {
 impl Default for ArchiveConfig {
 	#[inline(always)]
 	fn default() -> Self {
-		ArchiveConfig::new(crate::DEFAULT_MAGIC)
+		ArchiveConfig::new(crate::MAGIC_SEQUENCE)
 	}
 }
 
 #[derive(Debug)]
 pub(crate) struct Header {
-	pub magic: [u8; crate::MAGIC_LENGTH], // VfACH
+	pub(crate) magic: [u8; crate::MAGIC_LENGTH],
 	pub flags: Flags,
 	pub version: u16,
 	pub capacity: u16,
@@ -126,7 +105,7 @@ impl Default for Header {
 	#[inline(always)]
 	fn default() -> Header {
 		Header {
-			magic: crate::DEFAULT_MAGIC,
+			magic: crate::MAGIC_SEQUENCE,
 			flags: Flags::default(),
 			version: crate::VERSION,
 			capacity: 0,
@@ -142,15 +121,15 @@ impl Header {
 	pub const CAPACITY_SIZE: usize = 2;
 
 	/// Validates a `Header` with a template [ArchiveConfig]
-	pub(crate) fn validate(config: &ArchiveConfig, header: &Header) -> InternalResult {
+	pub(crate) fn validate(&self) -> InternalResult {
 		// Validate magic
-		if header.magic != config.magic {
-			return Err(InternalError::MalformedArchiveSource(header.magic));
+		if self.magic != crate::MAGIC_SEQUENCE {
+			return Err(InternalError::MalformedArchiveSource(self.magic));
 		};
 
 		// Validate version
-		if crate::VERSION != header.version {
-			return Err(InternalError::IncompatibleArchiveVersionError(header.version));
+		if crate::VERSION != self.version {
+			return Err(InternalError::IncompatibleArchiveVersionError(self.version));
 		};
 
 		Ok(())

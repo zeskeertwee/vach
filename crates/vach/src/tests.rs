@@ -200,7 +200,7 @@ fn decryptor_test() -> InternalResult {
 
 	let vk = gen_keypair().verifying_key();
 
-	let crypt = Encryptor::new(&vk, crate::DEFAULT_MAGIC.clone());
+	let crypt = Encryptor::new(&vk, crate::MAGIC_SEQUENCE.clone());
 	let data = vec![12, 12, 12, 12];
 
 	let ciphertext = crypt.encrypt(&data)?;

@@ -104,7 +104,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 
 	// write HEADER
 	let header = crate::global::header::Header {
-		magic: config.magic,
+		magic: crate::MAGIC_SEQUENCE,
 		flags: config.flags,
 		version: crate::VERSION,
 		capacity: leaves.len() as u16,
@@ -119,7 +119,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 		let use_encryption = leaves.iter().any(|leaf| leaf.encrypt);
 		if use_encryption {
 			if let Some(keypair) = config.signing_key.as_ref() {
-				Some(Encryptor::new(&keypair.verifying_key(), config.magic))
+				Some(Encryptor::new(&keypair.verifying_key(), crate::MAGIC_SEQUENCE))
 			} else {
 				return Err(InternalError::NoKeypairError);
 			}

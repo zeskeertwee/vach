@@ -8,16 +8,11 @@ type _builder_ctx_inner = (BuilderConfig, Vec<Leaf<'static>>);
 
 /// Create new Builder Context
 #[no_mangle]
-pub extern "C" fn new_builder_ctx(
-	magic: *const [u8; super::V_MAGIC_LENGTH], sk_bytes: *const [u8; super::V_SECRET_KEY_LENGTH], flags: u32,
-) -> *mut v_builder_ctx {
-	let magic = unsafe { magic.as_ref().map(|m| *m) }.unwrap_or(vach::DEFAULT_MAGIC);
-
+pub extern "C" fn new_builder_ctx(sk_bytes: *const [u8; super::V_SECRET_KEY_LENGTH], flags: u32) -> *mut v_builder_ctx {
 	let signing_key = unsafe { sk_bytes.as_ref() }.map(SigningKey::from_bytes);
 	let flags = Flags::from_bits(flags);
 
 	let config = BuilderConfig {
-		magic,
 		flags,
 		signing_key,
 		..Default::default()

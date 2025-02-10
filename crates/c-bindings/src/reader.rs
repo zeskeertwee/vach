@@ -8,14 +8,9 @@ pub type v_archive_config = ffi::c_void;
 /// Create new loader configuration
 #[no_mangle]
 pub extern "C" fn new_archive_config(
-	magic: *const [u8; super::V_MAGIC_LENGTH], pk_bytes: *const [u8; super::V_PUBLIC_KEY_LENGTH], error_p: *mut i32,
+	pk_bytes: *const [u8; super::V_PUBLIC_KEY_LENGTH], error_p: *mut i32,
 ) -> *mut v_archive_config {
-	let magic = match unsafe { magic.as_ref().map(|m| *m) } {
-		Some(m) => m,
-		None => vach::DEFAULT_MAGIC,
-	};
-
-	let mut config = ArchiveConfig::new(magic, None);
+	let mut config = ArchiveConfig::new(None);
 	if let Some(bytes) = unsafe { pk_bytes.as_ref() } {
 		if let Err(e) = config.load_public_key(bytes.as_slice()) {
 			return errors::v_error_to_id(error_p, e);

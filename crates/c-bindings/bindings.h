@@ -73,7 +73,7 @@ typedef void (*v_builder_callback)(const char *id, uintptr_t id_len, const char 
 uint16_t version(void);
 
 // Create new loader configuration
-v_archive_config *new_archive_config(const uint8_t (*magic)[V_MAGIC_LENGTH], const uint8_t (*pk_bytes)[V_PUBLIC_KEY_LENGTH], int32_t *error_p);
+v_archive_config *new_archive_config(const uint8_t (*pk_bytes)[V_PUBLIC_KEY_LENGTH], int32_t *error_p);
 
 // Free archive loader configuration
 void free_archive_config(v_archive_config *config);
@@ -100,7 +100,7 @@ struct v_resource *archive_fetch_resource_lock(const v_archive *archive, const i
 void free_resource(struct v_resource *resource);
 
 // Create new Builder Context
-v_builder_ctx *new_builder_ctx(const uint8_t (*magic)[V_MAGIC_LENGTH], const uint8_t (*sk_bytes)[V_SECRET_KEY_LENGTH], uint32_t flags);
+v_builder_ctx *new_builder_ctx(const uint8_t (*sk_bytes)[V_SECRET_KEY_LENGTH], uint32_t flags);
 
 // free memory bound by `new_builder_ctx`
 void free_builder_ctx(v_builder_ctx *ctx);

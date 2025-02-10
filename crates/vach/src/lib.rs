@@ -21,7 +21,7 @@ It was built to be secure, contained and protected. A big benefit of `vach` is t
 
 ### 🔫 Cargo Features
 - `archive` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `archive` feature but a tool for packing assets would only need the `builder` feature.
-- `multithreaded`: Runs `Builder::dump(---)` on multiple threads. Number of threads can be set manually using `BuilderConfig::num_threads`
+- `multithreaded`: `dump(---)` processes leaves in parallel, number of threads can be set manually using [`num_threads`](crate::builder::BuilderConfig::num_threads).
 - `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
 - `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
 - `default`: Enables the `archive` and `builder` features.
@@ -36,7 +36,7 @@ use vach::prelude::*;
 // collect leaves in a vector, or static buffer
 let mut leaves = [
 	// Leaf::new(File::open("test_data/background.wav").unwrap(), "ambient"),
-	Leaf::new([12, 23, 34, 45, 56, 67, 78, 90, 69].as_slice(), "ftstep"),
+	Leaf::new([12, 23, 34, 45, 56, 67, 78, 90, 69].as_slice(), "ftstep").compress(CompressMode::Always),
 	Leaf::new(b"Hello, Cassandra!".as_slice(), "hello")
 ];
 
@@ -85,10 +85,10 @@ pub const MAX_ID_LENGTH: usize = u16::MAX as usize;
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;
 
-/// The default MAGIC used by `vach`
-pub const DEFAULT_MAGIC: [u8; crate::MAGIC_LENGTH] = *b"VfACH";
+/// MAGIC used by `vach`: "VfACH"
+pub const MAGIC_SEQUENCE: [u8; crate::MAGIC_LENGTH] = *b"VfACH";
 
-/// Consolidated import for crate logic; This module stores all `structs` associated with this crate. Constants can be accesses [directly](#constants) with `crate::<CONSTANT>`
+/// Consolidated crate imports.
 pub mod prelude {
 	pub use crate::global::{error::*, flags::Flags, header::ArchiveConfig, reg_entry::RegistryEntry};
 
@@ -119,7 +119,7 @@ pub mod builder {
 	pub use crate::global::compressor::CompressionAlgorithm;
 }
 
-/// Loader-based logic and data-structures
+/// Archive Reading logic and data-structures, [`Archive`](crate::archive::Archive), [`Resource`](crate::archive::Resource)
 #[cfg(feature = "archive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
 pub mod archive {

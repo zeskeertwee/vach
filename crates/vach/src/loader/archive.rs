@@ -180,7 +180,7 @@ where
 		handle.seek(SeekFrom::Start(0))?;
 
 		let header = Header::from_handle(&mut handle)?;
-		Header::validate(config, &header)?;
+		header.validate()?;
 
 		// Generate and store Registry Entries
 		let mut entries = HashMap::new();
@@ -202,7 +202,7 @@ where
 			decryptor: config
 				.public_key
 				.as_ref()
-				.map(|pk| crypto::Encryptor::new(pk, config.magic)),
+				.map(|pk| crypto::Encryptor::new(pk, crate::MAGIC_SEQUENCE)),
 		};
 		Ok(archive)
 	}
