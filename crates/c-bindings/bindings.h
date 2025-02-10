@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 // The length of a public key
-#define V_PUBLIC_KEY_LENGTH 32
+#define V_VERIFYING_KEY_LENGTH 32
 
 // The length of a secret
 #define V_SECRET_KEY_LENGTH 32
@@ -39,8 +39,8 @@
 // Generic cryptographic error, signature verification failed or otherwise
 #define E_LEAF_ID_TOO_LONG -10
 
-// Archive Loader Configuration
-typedef void v_archive_config;
+// Verifying and Decryption Key
+typedef void v_verifying_key;
 
 // An Archive instance, bound to either a file or a buffer
 typedef void v_archive;
@@ -70,16 +70,16 @@ typedef void (*v_builder_callback)(const char *id, uintptr_t id_len, const char 
 uint16_t version(void);
 
 // Create new loader configuration
-v_archive_config *new_archive_config(const uint8_t (*pk_bytes)[V_PUBLIC_KEY_LENGTH], int32_t *error_p);
+v_verifying_key *new_verifying_key(const uint8_t (*vk_bytes)[V_VERIFYING_KEY_LENGTH], int32_t *error_p);
 
 // Free archive loader configuration
-void free_archive_config(v_archive_config *config);
+void free_verifying_key(v_verifying_key *config);
 
 // Create a new archive from a file
-v_archive *new_archive_from_file(const char *path, const v_archive_config *config, int32_t *error_p);
+v_archive *new_archive_from_file(const char *path, const v_verifying_key *config, int32_t *error_p);
 
 // Create a new archive from a buffer
-v_archive *new_archive_from_buffer(const v_archive_config *config, const uint8_t *data, uintptr_t len, int32_t *error_p);
+v_archive *new_archive_from_buffer(const v_verifying_key *config, const uint8_t *data, uintptr_t len, int32_t *error_p);
 
 void free_archive(v_archive *archive);
 

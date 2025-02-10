@@ -82,7 +82,7 @@ fn flag_restricted_access() {
 
 #[test]
 fn flags_set_intersects() {
-	let mut flag = Flags::empty();
+	let mut flag = Flags::new();
 
 	flag.force_set(Flags::COMPRESSED_FLAG, true);
 	assert_eq!(flag.bits(), Flags::COMPRESSED_FLAG);
@@ -135,6 +135,7 @@ fn builder_no_signature() {
 #[cfg(all(feature = "compression", feature = "archive"))]
 fn fetch_no_signature() -> InternalResult {
 	let target = File::open(SIMPLE_TARGET)?;
+
 	let mut archive = Archive::new(target)?;
 	let resource = archive.fetch_mut("wasm")?;
 
@@ -170,14 +171,16 @@ fn builder_with_signature() -> InternalResult {
 #[test]
 #[cfg(all(feature = "archive", feature = "crypto", feature = "compression"))]
 fn fetch_with_signature() -> InternalResult {
-	let target = File::open(SIGNED_TARGET)?;
+	use crate::crypto_utils::read_verifying_key;
 
 	// Load keypair
-	let mut config = ArchiveConfig::default();
 	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
-	config.load_public_key(keypair)?;
+	let vk = read_verifying_key(handle)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	// open archive
+	let target = File::open(SIGNED_TARGET)?;
+	let mut archive = Archive::with_key(target, &vk)?;
+
 	let resource = archive.fetch_mut("test_data/quicksort.wasm")?;
 	assert_eq!(resource.data.len(), 106537);
 
@@ -237,14 +240,15 @@ fn builder_with_encryption() -> InternalResult {
 #[test]
 #[cfg(all(feature = "archive", feature = "crypto", feature = "compression"))]
 fn fetch_from_encrypted() -> InternalResult {
+	use crate::crypto_utils::read_verifying_key;
+
 	let target = File::open(ENCRYPTED_TARGET)?;
 
 	// Load keypair
-	let mut config = ArchiveConfig::default();
 	let public_key = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
-	config.load_public_key(public_key)?;
+	let vk = read_verifying_key(public_key)?;
 
-	let mut archive = Archive::with_config(target, &config)?;
+	let mut archive = Archive::with_key(target, &vk)?;
 
 	// read data
 	let not_signed = archive.fetch_mut("stitches.snitches")?;
@@ -295,12 +299,13 @@ fn consolidated_example() -> InternalResult {
 	// Just because
 	println!("Building took: {:?}", then.elapsed());
 
-	// Load data
-	let mut config = ArchiveConfig::default();
-	config.load_public_key(&keypair_bytes[32..])?;
+	// parse verifying key
+	let keypair = &KEYPAIR[crate::SECRET_KEY_LENGTH..];
+	let vk = read_verifying_key(handle)?;
 
+	// open archive
 	let then = Instant::now();
-	let mut archive = Archive::with_config(target, &config)?;
+	let mut archive = Archive::with_key(target, &vk)?;
 
 	println!("Archive initialization took: {:?}", then.elapsed());
 
@@ -369,7 +374,7 @@ fn test_compressors() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "multithreaded", feature = "builder", feature = "archive"))]
+#[cfg(all(feature = "multithreaded", feature = "archive"))]
 fn test_batch_fetching() -> InternalResult {
 	use std::{io::Cursor, collections::HashMap};
 	use rayon::prelude::*;

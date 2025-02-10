@@ -21,18 +21,21 @@ pub struct BuilderConfig {
 
 // Helper functions
 impl BuilderConfig {
-	/// Setter for the `keypair` field
+	/// Setter for the [`num_threads`](BuilderConfig::num_threads) field
+	#[cfg(feature = "multithreaded")]
+	pub fn num_threads(mut self, num_threads: NonZeroUsize) -> Self {
+		self.num_threads = num_threads;
+		self
+	}
+
+	/// Setter for the [`keypair`](BuilderConfig::keypair) field
 	#[cfg(feature = "crypto")]
 	pub fn keypair(mut self, keypair: crypto::SigningKey) -> Self {
 		self.signing_key = Some(keypair);
 		self
 	}
 
-	///```
-	/// use vach::prelude::{Flags, BuilderConfig};
-	///
-	/// let config = BuilderConfig::default().flags(Flags::empty());
-	///```
+	/// Setter for the [`flags`](BuilderConfig::flags) field
 	pub fn flags(mut self, flags: Flags) -> Self {
 		self.flags = flags;
 		self

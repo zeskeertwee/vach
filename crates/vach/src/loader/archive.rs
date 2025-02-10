@@ -7,12 +7,7 @@ use std::{
 };
 
 use super::resource::Resource;
-use crate::global::{
-	error::*,
-	flags::Flags,
-	header::{Header, ArchiveConfig},
-	reg_entry::RegistryEntry,
-};
+use crate::global::{error::*, flags::Flags, header::Header, reg_entry::RegistryEntry};
 
 #[cfg(feature = "crypto")]
 use crate::crypto;
@@ -158,19 +153,8 @@ impl<T> Archive<T>
 where
 	T: Seek + Read,
 {
-	/// Load an [`Archive`] with the default settings from a source.
-	/// The same as doing:
-	/// ```skip
-	/// Archive::with_config(HANDLE, &ArchiveConfig::default())?;
-	/// ```
-	#[inline(always)]
-	pub fn new(handle: T) -> InternalResult<Archive<T>> {
-		Archive::with_config(handle, &ArchiveConfig::default())
-	}
-
-	/// Given a read handle, this will read and parse the data into an [`Archive`] struct.
-	/// Pass a reference to [ArchiveConfig] and it will be used to validate the source and for further configuration.
-	pub fn with_config(mut handle: T, config: &ArchiveConfig) -> InternalResult<Archive<T>> {
+	/// Parses an [`Archive`] from the given source
+	pub fn new(mut handle: T) -> InternalResult<Archive<T>> {
 		// Start reading from the start of the input
 		handle.seek(SeekFrom::Start(0))?;
 
@@ -192,10 +176,41 @@ where
 			entries,
 
 			#[cfg(feature = "crypto")]
-			key: config.public_key,
+			key: None,
 			#[cfg(feature = "crypto")]
-			decryptor: config.public_key.as_ref().map(|pk| crypto::Encryptor::new(pk)),
+			decryptor: None,
 		};
+
+		Ok(archive)
+	}
+
+	/// Parse an [`Archive`], with an optional [`VerifyingKey`](crypto::VerifyingKey).
+	#[cfg(feature = "crypto")]
+	pub fn with_key(mut handle: T, vk: &ed25519_dalek::VerifyingKey) -> InternalResult<Archive<T>> {
+		// Start reading from the start of the input
+		handle.seek(SeekFrom::Start(0))?;
+
+		let header = Header::from_handle(&mut handle)?;
+		header.validate()?;
+
+		// Generate and store Registry Entries
+		let mut entries = HashMap::new();
+
+		// Construct entries map
+		for _ in 0..header.capacity {
+			let entry = RegistryEntry::from_handle(&mut handle)?;
+			entries.insert(entry.id.clone(), entry);
+		}
+
+		let archive = Archive {
+			header,
+			handle: Mutex::new(handle),
+			entries,
+
+			key: Some(vk.clone()),
+			decryptor: Some(crypto::Encryptor::new(vk)),
+		};
+
 		Ok(archive)
 	}
 

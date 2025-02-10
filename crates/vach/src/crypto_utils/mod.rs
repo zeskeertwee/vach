@@ -25,7 +25,7 @@ pub fn read_keypair<R: Read>(mut handle: R) -> InternalResult<crypto::SigningKey
 }
 
 /// Read and parse a public key from a read stream
-pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<crypto::VerifyingKey> {
+pub fn read_verifying_key<T: Read>(mut handle: T) -> InternalResult<crypto::VerifyingKey> {
 	let mut keypair_bytes = [0; crate::PUBLIC_KEY_LENGTH];
 	handle.read_exact(&mut keypair_bytes)?;
 	crypto::VerifyingKey::from_bytes(&keypair_bytes).map_err(|err| InternalError::ParseError(err.to_string()))

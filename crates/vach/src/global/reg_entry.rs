@@ -31,7 +31,7 @@ impl RegistryEntry {
 	pub(crate) fn empty() -> RegistryEntry {
 		RegistryEntry {
 			id: Arc::from("None"),
-			flags: Flags::empty(),
+			flags: Flags::new(),
 			content_version: 0,
 			location: 0,
 			offset: 0,

@@ -2,7 +2,7 @@ use std::io;
 
 use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
 use vach::prelude::*;
-use vach::crypto_utils::gen_keypair;
+use vach::crypto_utils::{gen_keypair, read_verifying_key};
 
 // Remove io overhead by Sinking data into the void
 struct Sink(u64);
@@ -41,8 +41,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	let mut b_config = BuilderConfig::default();
 	b_config.load_keypair(keypair_bytes).unwrap();
 
-	let mut a_config = ArchiveConfig::default();
-	a_config.load_public_key(&keypair_bytes[32..]).unwrap();
+	let vk = read_verifying_key(&keypair_bytes[32..]).unwrap();
 
 	/* BUILDER BENCHMARKS */
 	let mut builder_group = c.benchmark_group("Builder");
@@ -97,7 +96,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	// Load data
 	throughput_group.throughput(Throughput::Elements(3));
 
-	let mut archive = Archive::with_config(&mut target, &a_config).unwrap();
+	let mut archive = Archive::with_key(&mut target, &vk).unwrap();
 
 	throughput_group.bench_function("Archive::fetch(---)", |b| {
 		// Load data
@@ -122,7 +121,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	c.bench_function("Archive::LOAD_NEW", |b| {
 		// How fast it takes to load a new archive
 		b.iter(|| {
-			black_box(Archive::with_config(&mut target, &a_config).unwrap());
+			black_box(Archive::with_key(&mut target, &vk).unwrap());
 		})
 	});
 }

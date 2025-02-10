@@ -46,7 +46,7 @@ archive = []
 builder = []
 
 crypto = ["ed25519-dalek", "aes-gcm", "simplerand"]
-multithreaded = []
+multithreaded = ["builder"]
 compression = ["snap", "lz4_flex", "brotli"]
 
 [package.metadata.docs.rs]

@@ -2,18 +2,15 @@ use std::fmt;
 use super::error::*;
 
 /// Abstracted flag access and manipulation `struct`.
-/// A knock-off minimal [bitflags](https://crates.io/crates/bitflags) of sorts.
+/// Basically just a tiny, [`bitflags`](https://github.com/bitflags/bitflags)
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct Flags {
 	pub(crate) bits: u32,
 }
 
-// based on code in https://github.com/bitflags/bitflags/blob/main/src/lib.rs
-// basically just a tiny, scoped version of bitflags
 impl Flags {
-	/// The flags used within the crate, to whom all access is denied.
-	/// Any interaction with `Flags::set()` will yield an error.
+	/// Bits reserved for internal use.
 	pub const RESERVED_MASK: u32 = 0b1111_1111_1111_1111_0000_0000_0000_0000;
 	/// The size in bytes of any flags entry
 	pub const BYTES: usize = 4;
@@ -44,39 +41,14 @@ impl Flags {
 		self.bits
 	}
 
-	/// Yield a new empty `Flags` instance.
-	/// ```
-	/// use vach::prelude::Flags;
-	/// let flag = Flags::from_bits(0b0000_0000_0000_0000);
-	/// assert_eq!(Flags::empty(), flag);
-	/// ```
+	/// Create a new empty instance
 	#[inline(always)]
-	pub fn empty() -> Self {
+	pub fn new() -> Self {
 		Flags { bits: 0 }
 	}
 
-	/// Returns a error if mask contains a reserved bit.
-	/// Set a flag into the underlying structure.
+	/// Set a bit into the underlying [`u32`], will fail if set into the reserved mask.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
-	///
-	/// As the [`Flags`] struct uses `u32` under the hood, one can (in practice) set as many as `32` different bits, but some
-	/// are reserved for internal use (ie the first 16 bits). However one can use the remaining 16 bits just fine, as seen in the example.
-	/// Just using the `0b0000_0000_0000_0000` literal works because most platforms are little endian.
-	/// On big-endian platforms, like ARM (raspberry PI and Apple Silicon), use the full `u32` literal (`0b0000_0000_0000_0000_0000_0000_0000_0000`), since the shorthand literal actually places bytes in the restricted range of bits.
-	/// ```
-	/// use vach::prelude::Flags;
-	///
-	/// let mut flag = Flags::from_bits(0b0000_0000_0000_0000);
-	/// flag.set(0b0000_1000_0000_0000, true).unwrap();
-	/// flag.set(0b1000_0000_0000_0000, true).unwrap();
-	///
-	/// assert_eq!(flag.bits(), 0b1000_1000_0000_0000);
-	/// assert!(flag.contains(0b1000_0000_0000_0000));
-	///
-	/// // --------------------------v---------
-	/// flag.set(0b0000_1000_0000_0001, false).unwrap(); // 0 flags remain zero
-	/// assert_eq!(flag.bits(), 0b1000_0000_0000_0000);
-	/// ```
 	pub fn set(&mut self, bit: u32, toggle: bool) -> InternalResult<u32> {
 		if (Flags::RESERVED_MASK & bit) != 0 {
 			return Err(InternalError::RestrictedFlagAccessError);
@@ -86,6 +58,7 @@ impl Flags {
 
 		Ok(self.bits)
 	}
+
 	pub(crate) fn force_set(&mut self, mask: u32, toggle: bool) {
 		if toggle {
 			self.bits |= mask;
@@ -96,14 +69,6 @@ impl Flags {
 
 	#[inline(always)]
 	/// Checks whether the given flag is set.
-	/// ```rust
-	/// use vach::prelude::Flags;
-	///
-	/// let mut flag = Flags::from_bits(0b0000_0000_0000_0000);
-	///
-	/// flag.set(0b1000_0000_0000_0000, true).unwrap();
-	/// assert!(flag.contains(0b1000_0000_0000_0000));
-	/// ```
 	pub fn contains(&self, bit: u32) -> bool {
 		(self.bits & bit) != 0
 	}

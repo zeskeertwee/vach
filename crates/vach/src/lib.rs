@@ -5,27 +5,17 @@
 
 /*!
 ![GitHub last commit](https://img.shields.io/github/last-commit/zeskeertwee/vach?logo=rust&logoColor=orange&style=flat-square)
-#### A simple archiving format, designed for storing assets in compact secure containers
 
-`vach` is an archiving and resource transmission format.
-It was built to be secure, contained and protected. A big benefit of `vach` is the fine grained control it grants it's users, as it allows for per-entry independent configuration.
-`vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [data signing](https://github.com/dalek-cryptography/ed25519-dalek), leaf [bitflags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html), [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/) and some degree of archive customization.
-
-> Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/vach/blob/main/spec/main.txt)**.
-
-### 👄 Terminologies
-
-- **Archive:** Any source of data, for example a file or TCP stream, that is a valid `vach` data source.
-- **Leaf:** Any actual data endpoint within an archive, what `tar` calls archive members, for example `footstep1.wav` in `sounds.vach`.
-- **Entry:** Some data in the registry section of a `vach` source on an corresponding [leaf](crate::builder::Leaf). For example, `{ id: footstep.wav, location: 45, offset: 2345, flags: 0b0000_0000_0000_0000u16 }`.
+A simple archive format, in Pure Rust.
 
 ### 🔫 Cargo Features
-- `archive` and `builder` (default): Turning them off turns off their respective modules. For example a game only needs the `archive` feature but a tool for packing assets would only need the `builder` feature.
-- `multithreaded`: `dump(---)` processes leaves in parallel, number of threads can be set manually using [`num_threads`](crate::builder::BuilderConfig::num_threads).
-- `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and allows for compression in `vach` archives.
-- `crypto`: Enables encryption and authentication functionality by pulling the `ed25519_dalek` and `aes_gcm` crates
+- `archive`: Enables the Archive loader.
+- `builder`: Enables the Archive builder.
+- `multithreaded`: [`dump`](builder::dump) processes leaves in parallel, number of threads can be set manually using [`num_threads`](crate::builder::BuilderConfig::num_threads).
+- `compression`: Pulls `snap`, `lz4_flex` and `brotli` as dependencies and enables compression.
+- `crypto`: Enables encryption and authentication by pulling the `ed25519_dalek` and `aes_gcm` crates
 - `default`: Enables the `archive` and `builder` features.
-- `all`: Enables all the features listed above
+- `all`: Enables all the above features.
 
 ### 🀄 Show me some code _dang it!_
 
@@ -82,15 +72,13 @@ pub const SIGNATURE_LENGTH: usize = 64;
 /// Maximum size for any ID, ie u16::MAX
 pub const MAX_ID_LENGTH: usize = u16::MAX as usize;
 
-/// The standard size of any MAGIC entry in bytes
-pub const MAGIC_LENGTH: usize = 5;
-
-/// MAGIC used by `vach`: "VfACH"
-pub const MAGIC_SEQUENCE: [u8; crate::MAGIC_LENGTH] = *b"VfACH";
+/// Magic Sequence used by `vach`: "VfACH"
+pub const MAGIC: [u8; crate::MAGIC_LENGTH] = *b"VfACH";
+pub(crate) const MAGIC_LENGTH: usize = 5;
 
 /// Consolidated crate imports.
 pub mod prelude {
-	pub use crate::global::{error::*, flags::Flags, header::ArchiveConfig, reg_entry::RegistryEntry};
+	pub use crate::global::{error::*, flags::Flags, reg_entry::RegistryEntry};
 
 	#[cfg(feature = "crypto")]
 	pub use crate::crypto::*;
@@ -124,7 +112,7 @@ pub mod builder {
 #[cfg_attr(docsrs, doc(cfg(feature = "archive")))]
 pub mod archive {
 	pub use crate::loader::{archive::Archive, resource::Resource};
-	pub use crate::global::{reg_entry::RegistryEntry, header::ArchiveConfig, error::*, flags::Flags};
+	pub use crate::global::{reg_entry::RegistryEntry, error::*, flags::Flags};
 	#[cfg(feature = "compression")]
 	pub use crate::global::compressor::CompressionAlgorithm;
 }

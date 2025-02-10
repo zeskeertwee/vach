@@ -10,7 +10,7 @@ pub use ed25519_dalek::{SigningKey, VerifyingKey, Signature};
 
 use crate::prelude::{InternalResult, InternalError};
 
-/// Encryption - Decryption, A convenient wrapper around aes encryption and decryption
+/// Encryption - Decryption, A convenient wrapper around [`aes`](aes_gcm) encryption and decryption
 pub(crate) struct Encryptor {
 	cipher: Aes256Gcm,
 	nonce: Nonce<U12>,
@@ -29,7 +29,7 @@ impl Encryptor {
 
 		// Build Nonce
 		let mut v = [178, 5, 239, 228, 165, 44, 169, 0, 0, 0, 0, 0];
-		v[7..12].copy_from_slice(&crate::MAGIC_SEQUENCE);
+		v[7..12].copy_from_slice(&crate::MAGIC);
 
 		Encryptor {
 			cipher: Aes256Gcm::new_from_slice(bytes).unwrap(),

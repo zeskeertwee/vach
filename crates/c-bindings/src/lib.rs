@@ -15,6 +15,6 @@ pub extern "C" fn version() -> u16 {
 }
 
 /// The length of a public key
-pub const V_PUBLIC_KEY_LENGTH: usize = 32;
+pub const V_VERIFYING_KEY_LENGTH: usize = 32;
 /// The length of a secret
 pub const V_SECRET_KEY_LENGTH: usize = 32;

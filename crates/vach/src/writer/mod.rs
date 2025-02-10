@@ -104,7 +104,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 
 	// write HEADER
 	let header = crate::global::header::Header {
-		magic: crate::MAGIC_SEQUENCE,
+		magic: crate::MAGIC,
 		flags: config.flags,
 		version: crate::VERSION,
 		capacity: leaves.len() as u16,

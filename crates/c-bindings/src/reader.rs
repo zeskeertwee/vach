@@ -1,29 +1,29 @@
 use std::{fs, io, slice, ffi};
-use vach::prelude::*;
+use vach::{crypto_utils::read_verifying_key, prelude::*};
 use super::errors;
 
-/// Archive Loader Configuration
-pub type v_archive_config = ffi::c_void;
+/// Verifying and Decryption Key
+pub type v_verifying_key = ffi::c_void;
 
 /// Create new loader configuration
 #[no_mangle]
-pub extern "C" fn new_archive_config(
-	pk_bytes: *const [u8; super::V_PUBLIC_KEY_LENGTH], error_p: *mut i32,
-) -> *mut v_archive_config {
-	let mut config = ArchiveConfig::new(None);
-	if let Some(bytes) = unsafe { pk_bytes.as_ref() } {
-		if let Err(e) = config.load_public_key(bytes.as_slice()) {
-			return errors::v_error_to_id(error_p, e);
-		};
-	};
-
-	Box::into_raw(Box::new(config)) as _
+pub extern "C" fn new_verifying_key(
+	vk_bytes: *const [u8; super::V_VERIFYING_KEY_LENGTH], error_p: *mut i32,
+) -> *mut v_verifying_key {
+	if let Some(bytes) = unsafe { vk_bytes.as_ref() } {
+		match read_verifying_key(bytes.as_slice()) {
+			Ok(vk) => Box::into_raw(Box::new(vk)) as _,
+			Err(e) => errors::v_error_to_id(error_p, e),
+		}
+	} else {
+		errors::report(error_p, errors::E_PARAMETER_IS_NULL)
+	}
 }
 
 /// Free archive loader configuration
 #[no_mangle]
-pub extern "C" fn free_archive_config(config: *mut v_archive_config) {
-	if let Some(c) = unsafe { (config as *mut ArchiveConfig).as_mut() } {
+pub extern "C" fn free_verifying_key(config: *mut v_verifying_key) {
+	if let Some(c) = unsafe { (config as *mut VerifyingKey).as_mut() } {
 		drop(unsafe { Box::from_raw(c) });
 	}
 }
@@ -59,7 +59,7 @@ pub type v_archive = ffi::c_void;
 /// Create a new archive from a file
 #[no_mangle]
 pub extern "C" fn new_archive_from_file(
-	path: *const ffi::c_char, config: *const v_archive_config, error_p: *mut i32,
+	path: *const ffi::c_char, config: *const v_verifying_key, error_p: *mut i32,
 ) -> *mut v_archive {
 	let path = match unsafe { std::ffi::CStr::from_ptr(path).to_str() } {
 		Ok(p) => p,
@@ -71,12 +71,13 @@ pub extern "C" fn new_archive_from_file(
 		Err(e) => return errors::v_error_to_id(error_p, InternalError::IOError(e)),
 	};
 
-	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
-		Some(c) => c,
-		None => &ArchiveConfig::default(),
+	let vk = unsafe { (config as *const VerifyingKey).as_ref() };
+	let archive = match vk {
+		Some(vk) => Archive::with_key(ArchiveInner::File(file), vk),
+		None => Archive::new(ArchiveInner::File(file)),
 	};
 
-	let archive = match Archive::with_config(ArchiveInner::File(file), config) {
+	let archive = match archive {
 		Ok(archive) => archive,
 		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
@@ -87,7 +88,7 @@ pub extern "C" fn new_archive_from_file(
 /// Create a new archive from a buffer
 #[no_mangle]
 pub extern "C" fn new_archive_from_buffer(
-	config: *const v_archive_config, data: *const u8, len: usize, error_p: *mut i32,
+	config: *const v_verifying_key, data: *const u8, len: usize, error_p: *mut i32,
 ) -> *mut v_archive {
 	if data.is_null() {
 		return errors::report(error_p, errors::E_PARAMETER_IS_NULL);
@@ -96,12 +97,14 @@ pub extern "C" fn new_archive_from_buffer(
 	let source = unsafe { slice::from_raw_parts(data, len) };
 	let buffer = io::Cursor::new(source);
 
-	let config = match unsafe { (config as *const ArchiveConfig).as_ref() } {
-		Some(c) => c,
-		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
+	let vk = unsafe { (config as *const VerifyingKey).as_ref() };
+
+	let archive = match vk {
+		Some(vk) => Archive::with_key(ArchiveInner::Buffer(buffer), vk),
+		None => Archive::new(ArchiveInner::Buffer(buffer)),
 	};
 
-	let archive = match Archive::with_config(ArchiveInner::Buffer(buffer), config) {
+	let archive = match archive {
 		Ok(archive) => archive,
 		Err(err) => return errors::v_error_to_id(error_p, err),
 	};
