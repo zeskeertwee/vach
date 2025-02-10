@@ -125,7 +125,7 @@ fn builder_no_signature() {
 		Leaf::new(b"Hello, Cassandra!" as &[u8], "greeting").compress(CompressMode::Never),
 	];
 
-	let mut target = File::open(SIMPLE_TARGET).unwrap();
+	let mut target = File::create(SIMPLE_TARGET).unwrap();
 	let written = dump(&mut target, &mut leaves, &build_config, None).unwrap();
 
 	assert_eq!(target.metadata().unwrap().len(), written);
@@ -157,8 +157,8 @@ fn builder_with_signature() -> InternalResult {
 
 	let mut leaves = leaves_from_dir("test_data", None)?;
 
-	leaves.push(Leaf::default().id("not_signed"));
-	leaves.push(Leaf::new(b"Don't forget to recite your beatitudes!" as &[u8], "signed").sign(true));
+	leaves.push(Leaf::new(b"".as_slice(), "not_signed"));
+	leaves.push(Leaf::new(b"Don't forget to recite your beatitudes!".as_slice(), "signed").sign(true));
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	let written = dump(&mut target, leaves.as_mut_slice(), &build_config, None)?;

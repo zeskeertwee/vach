@@ -12,6 +12,7 @@ pub struct BuilderConfig {
 	/// Number of threads to spawn during `Builder::dump`, defaults to 4
 	#[cfg(feature = "multithreaded")]
 	pub num_threads: NonZeroUsize,
+	// TODO: deprecate customizing the magic sequence
 	/// Used to write a unique magic sequence into the archive.
 	pub magic: [u8; crate::MAGIC_LENGTH],
 	/// Flags to be written into the `Header` section of the archive.

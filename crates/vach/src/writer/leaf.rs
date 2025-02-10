@@ -12,8 +12,7 @@ type Encryptor = ();
 
 use std::{fmt, io::Read, sync::Arc};
 
-/// Configures how `Leaf`s should be compressed.
-/// Default is `CompressMode::Never`.
+/// Configures how a [`Leaf`] should be compressed.
 #[derive(Debug, Clone, Copy, Default)]
 #[cfg(feature = "compression")]
 #[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
@@ -27,9 +26,7 @@ pub enum CompressMode {
 	Detect,
 }
 
-/// A wrapper around an [`io::Read`](std::io::Read) handle.
-/// Allows for multiple types of data implementing [`io::Read`](std::io::Read) to be used under one struct.
-/// Also used to configure how data will be processed and embedded into an write target.
+/// A named ([`ID`](Leaf::id)) wrapper around an [`io::Read`](Read) handle, tagged with extra metadata.
 pub struct Leaf<'a> {
 	/// Boxed read handle
 	pub handle: Box<dyn Read + Send + Sync + 'a>,
@@ -54,9 +51,7 @@ pub struct Leaf<'a> {
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub encrypt: bool,
-	/// Whether to include a signature with this [`Leaf`], defaults to false.
-	/// If set to true then a hash generated and validated when loaded.
-	/// > *NOTE:* **Turning `sign` on severely hurts the performance of `Archive::fetch(---)`**. This is because signature authentication is an intentionally taxing process, which prevents brute-forcing.
+	/// Whether to include a signature with this [`Leaf`]
 	#[cfg(feature = "crypto")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub sign: bool,
@@ -64,13 +59,7 @@ pub struct Leaf<'a> {
 
 impl<'a> Leaf<'a> {
 	#[inline(always)]
-	/// Wrap a [`Leaf`] around the given handle.
-	/// Using the `Default` configuration.
-	///```
-	/// use vach::prelude::Leaf;
-	///
-	/// let leaf = Leaf::new([].as_slice(), "example#1");
-	///```
+	/// Creates a new [`Leaf`] wrapping around the given [`Read`] handle, with an ID
 	pub fn new<R: Read + Send + Sync + 'a, S: AsRef<str>>(handle: R, id: S) -> Leaf<'a> {
 		Leaf {
 			handle: Box::new(handle),
@@ -84,16 +73,7 @@ impl<'a> Leaf<'a> {
 		self.handle
 	}
 
-	/// Copy all fields from another [`Leaf`], except for `handle` and `id`
-	/// Meant to be used like a setter:
-	/// ```rust
-	/// use std::io::Cursor;
-	/// use vach::prelude::Leaf;
-	/// let template = Leaf::default().version(12);
-	///
-	/// let leaf = Leaf::new([].as_slice(), "example#1").template(&template);
-	/// assert_eq!(&leaf.content_version, &template.content_version);
-	/// ```
+	/// Copy all fields from another [`Leaf`], except for `handle` and `id`.
 	pub fn template(self, other: &Leaf<'a>) -> Self {
 		Leaf {
 			handle: self.handle,
@@ -102,13 +82,7 @@ impl<'a> Leaf<'a> {
 		}
 	}
 
-	// Setters
-	/// Setter used to set the [`CompressMode`] of a [`Leaf`]
-	/// ```rust
-	/// use vach::prelude::{Leaf, CompressMode};
-	///
-	/// let leaf = Leaf::default().compress(CompressMode::Always);
-	/// ```
+	/// Setter for the [`compress`](Leaf::compress) field
 	#[cfg(feature = "compression")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
 	pub fn compress(mut self, compress: CompressMode) -> Self {
@@ -116,62 +90,33 @@ impl<'a> Leaf<'a> {
 		self
 	}
 
-	/// Setter used to set the `content_version` of a [`Leaf`]
-	/// ```rust
-	/// use vach::prelude::{Leaf};
-	///
-	/// let leaf = Leaf::default().version(2);
-	/// ```
+	/// Setter for the [`content_version`](Leaf::content_version) field
 	pub fn version(mut self, content_version: u8) -> Self {
 		self.content_version = content_version;
 		self
 	}
 
-	/// Setter used to set the `id` field of a [`Leaf`]
-	/// ```rust
-	/// use vach::prelude::{Leaf};
-	///
-	/// let leaf = Leaf::default().id("whatzitouya");
-	/// ```
-	pub fn id<S: AsRef<str>>(mut self, id: S) -> Self {
-		self.id = Arc::from(id.as_ref());
-		self
-	}
-
-	/// Setter used to set the [`flags`](crate::builder::Flags) field of a [`Leaf`]
-	/// ```rust
-	/// use vach::prelude::{Leaf, Flags};
-	///
-	/// let leaf = Leaf::default().flags(Flags::default());
-	/// ```
+	/// Setter for the [`flags`](crate::builder::Flags) field
 	pub fn flags(mut self, flags: Flags) -> Self {
 		self.flags = flags;
 		self
 	}
 
-	/// Setter for the `encrypt` field
-	///```
-	/// use vach::prelude::Leaf;
-	/// let config = Leaf::default().encrypt(true);
-	///```
+	/// Setter for the [`encrypt`](Leaf::encrypt) field
 	#[cfg(feature = "crypto")]
 	pub fn encrypt(mut self, encrypt: bool) -> Self {
 		self.encrypt = encrypt;
 		self
 	}
 
-	/// Setter for the `sign` field
-	///```
-	/// use vach::prelude::Leaf;
-	/// let config = Leaf::default().sign(true);
-	///```
+	/// Setter for the [`sign`](Leaf::sign) field
 	#[cfg(feature = "crypto")]
 	pub fn sign(mut self, sign: bool) -> Self {
 		self.sign = sign;
 		self
 	}
 
-	/// Setter for the `compression_algo` field
+	/// Setter for the [`compression_algo`](Leaf::compression_algo) field
 	#[cfg(feature = "compression")]
 	pub fn compression_algo(mut self, compression_algo: CompressionAlgorithm) -> Self {
 		self.compression_algo = compression_algo;
@@ -246,6 +191,7 @@ pub(crate) struct ProcessedLeaf {
 }
 
 // Process Leaf into Prepared Data, externalised for multithreading purposes
+#[inline(never)]
 pub(crate) fn process_leaf(leaf: &mut Leaf<'_>, _encryptor: Option<&Encryptor>) -> InternalResult<ProcessedLeaf> {
 	let mut entry: RegistryEntry = leaf.into();
 	let mut raw = Vec::new();

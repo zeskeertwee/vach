@@ -61,13 +61,13 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 			// Add data
 			builder
-				.add_leaf(Leaf::new(data_1).id("d1").compress(CompressMode::Always))
+				.add_leaf(Leaf::new(data_1, "d1").compress(CompressMode::Always))
 				.unwrap();
 			builder
-				.add_leaf(Leaf::new(data_2).id("d2").compress(CompressMode::Never))
+				.add_leaf(Leaf::new(data_2, "d2").compress(CompressMode::Never))
 				.unwrap();
 			builder
-				.add_leaf(Leaf::new(data_3).id("d3").compress(CompressMode::Detect))
+				.add_leaf(Leaf::new(data_3, "d3").compress(CompressMode::Detect))
 				.unwrap();
 
 			// Dump data

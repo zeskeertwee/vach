@@ -45,8 +45,7 @@ impl<W: Seek + Send> Seek for WriteCounter<W> {
 	}
 }
 
-/// This iterates over all [`Leaf`]s in the processing queue, parses them and writes the bytes out into a the target.
-/// Configure the custom *`MAGIC`*, `Header` flags and a [`Keypair`](crate::crypto::Keypair) using the [`BuilderConfig`] struct.
+/// iterates over all [`Leaf`], processes them and writes the output into the target.
 pub fn dump<'a, W: Write + Seek + Send>(
 	target: W, leaves: &mut [Leaf<'a>], config: &BuilderConfig,
 	mut callback: Option<&mut dyn FnMut(&RegistryEntry, &[u8])>,

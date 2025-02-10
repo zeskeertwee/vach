@@ -29,88 +29,29 @@ It was built to be secure, contained and protected. A big benefit of `vach` is t
 
 ### 🀄 Show me some code _dang it!_
 
-##### > Building a basic unsigned `.vach` file
-
-```ignore
+```
 use std::{io::Cursor, fs::File};
-use vach::prelude::{Builder, BuilderConfig};
+use vach::prelude::*;
 
-let config = BuilderConfig::default();
-let mut builder = Builder::default();
-
-// Use `Builder::add( reader, ID )` to add data to the write queue
-// Adds any data that implements `io::Read`
-builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-builder.add(&[12, 23, 34, 45, 56, 67, 78, 90, 69], "ftstep").unwrap();
-builder.add(b"Hello, Cassandra!", "hello").unwrap();
+// collect leaves in a vector, or static buffer
+let mut leaves = [
+	// Leaf::new(File::open("test_data/background.wav").unwrap(), "ambient"),
+	Leaf::new([12, 23, 34, 45, 56, 67, 78, 90, 69].as_slice(), "ftstep"),
+	Leaf::new(b"Hello, Cassandra!".as_slice(), "hello")
+];
 
 // let mut target = File::create("sounds.vach")?;
 let mut target = Cursor::new(Vec::new());
 
-// The number of bytes written to the file
-let size = builder.dump(&mut target, &config).unwrap();
+let config = BuilderConfig::default();
+let bytes_written = dump(&mut target, &mut leaves, &config, None).unwrap();
+
+// roundtrip
+let mut archive = Archive::new(target).unwrap();
+let resource = archive.fetch_mut("ftstep").unwrap();
+
+assert_eq!(resource.data.as_ref(), [12, 23, 34, 45, 56, 67, 78, 90, 69].as_slice());
 ```
-
-##### > Loading resources from an unsigned `.vach` file
-
-```ignore
-use std::fs::File;
-use vach::prelude::{Archive, Resource, Flags};
-
-let target = File::open("sounds.vach")?;
-let mut archive = Archive::new(target)?;
-let resource: Resource = archive.fetch_mut("ambient")?;
-
-// By default all resources are flagged as NOT verified
-assert!(!resource.verified);
-
-let resource = archive.fetch_mut("ftstep")?;
-```
-
-##### > Build a signed `.vach` file
-
-```ignore
-use std::{io::Cursor, fs::File};
-use vach::prelude::{Builder, BuilderConfig, Keypair};
-use vach::crypto_utils::gen_keypair;
-
-let keypair: Keypair = gen_keypair();
-let config: BuilderConfig = BuilderConfig::default().keypair(keypair);
-let mut builder = Builder::default();
-
-// Use `Builder::add( reader, ID )` to add data to the write queue
-builder.add(File::open("test_data/background.wav")?, "ambient").unwrap();
-builder.add(vec![12, 23, 34, 45, 56, 67, 78], "ftstep").unwrap();
-builder.add(b"Hello, Cassandra!" as &[u8], "hello").unwrap();
-
-let mut target = File::create("sounds.vach")?;
-builder.dump(&mut target, &config).unwrap();
-
-let mut target = Cursor::new(Vec::new());
-builder.dump(&mut target, &config).unwrap();
-```
-##### > Load resources from a signed `.vach` source
-
-```ignore
-// Load public_key
-let mut public_key = File::open(PUBLIC_KEY)?;
-let mut public_key_bytes: [u8; crate::PUBLIC_KEY_LENGTH];
-public_key.read_exact(&mut public_key_bytes)?;
-
-// Build the Loader config
-let mut config = ArchiveConfig::default().key(PublicKey::from_bytes(&public_key_bytes)?);
-
-let target = File::open("sounds.vach")?;
-let archive = Archive::with_config(target, &config)?;
-
-// Resources are marked as secure (=true) if the signatures match the data
-let mut resource = archive.fetch_mut("ambient")?;
-assert!(resource.verified);
-```
-
-##### > Serialize and de-serialize a `Keypair`, `SecretKey` and `PublicKey`
-
-As `SigningKey`, `SecretKey` and `VerifyingKey` are reflected from [ed25519_dalek](https://docs.rs/ed25519-dalek/latest/ed25519_dalek/), you could refer to their docs to read further about them. These are needed for any cryptography related procedures,
 */
 
 /// All tests are included in this module.
@@ -138,8 +79,8 @@ pub const PUBLIC_KEY_LENGTH: usize = 32;
 /// Size of a signature
 pub const SIGNATURE_LENGTH: usize = 64;
 
-/// Maximum size for any ID
-pub const MAX_ID_LENGTH: usize = 65535; // u16::MAX
+/// Maximum size for any ID, ie u16::MAX
+pub const MAX_ID_LENGTH: usize = u16::MAX as usize;
 
 /// The standard size of any MAGIC entry in bytes
 pub const MAGIC_LENGTH: usize = 5;
@@ -167,7 +108,7 @@ pub mod prelude {
 /// Import keypairs and signatures from here, mirrors from `ed25519_dalek`
 pub mod crypto;
 
-/// [`Builder`](crate::builder::Builder) related data structures and logic
+/// Archive Creation logic and data structures, [`dump`](crate::builder::dump), [`Leaf`](crate::builder::Leaf) and [`BuilderConfig`](crate::builder::BuilderConfig)
 #[cfg(feature = "builder")]
 #[cfg_attr(docsrs, doc(cfg(feature = "builder")))]
 pub mod builder {

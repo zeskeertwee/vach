@@ -7,45 +7,44 @@ pub type InternalResult<T = ()> = Result<T, InternalError>;
 /// All errors manifestable within `vach` collected into a neat enum
 #[derive(Debug, Error)]
 pub enum InternalError {
-	/// Generic all encompassing error
+	/// Generic Error
 	#[error("[VachError::GenericError] {0}")]
 	OtherError(Box<dyn error::Error + Send + Sync>),
-	/// Produced when a cargo feature isn't available for a certain action: eg trying to decompress without the compression feature
+	/// a necessary cargo feature wasn't enabled for a certain action: eg trying to decompress without the `compression` feature
 	#[error("[VachError::MissingFeatureError] Unable to continue with operation, the cargo feature ({0}) is missing")]
 	MissingFeatureError(&'static str),
-	/// An error that is returned when either a [Keypair](crate::crypto::Keypair), Signature, [PublicKey](crate::crypto::PublicKey) or [SecretKey](crate::crypto::SecretKey) fails to deserialize.
+	/// a [`Signature`](crate::crypto::Signature), [`VerifyingKey`](crate::crypto::VerifyingKey) or [`SigningKey`](crate::crypto::SigningKey) failed to deserialize.
 	#[error("[VachError::ParseError] {0}")]
 	ParseError(String),
-	/// A thin wrapper over [io::Error](std::io::Error), captures all IO errors
+	/// thin wrapper over [io::Error](std::io::Error), captures all IO errors
 	#[error("[VachError::IOError] {0}")]
 	IOError(#[from] io::Error),
-	/// Thrown when the archive finds an invalid MAGIC sequence in the given source, hinting at corruption or possible incompatibility with the given source
-	/// You can customize the MAGIC in the [`Builder`](crate::builder::BuilderConfig) and use in the the [`ArchiveConfig`](crate::archive::ArchiveConfig)
+	/// invalid MAGIC sequence in the given source, hinting at corruption or possible incompatibility with the given source
 	#[error("[VachError::ValidationError] Invalid magic found in Header, possible incompatibility with given source. Magic found {0:?}")]
 	MalformedArchiveSource([u8; crate::MAGIC_LENGTH]),
-	/// Thrown by `Archive::fetch(---)` when a given resource is not found
+	/// the resource was not found
 	#[error("[VachError::MissingResourceError] Resource not found: {0}")]
 	MissingResourceError(String),
-	/// Two leaves found with the same ID
+	/// two leaves found with the same ID, each leaf should have a unique ID
 	#[error("[VachError::LeafAppendError] A leaf with the ID: {0} already exists. Consider changing the ID to prevent collisions")]
 	DuplicateLeafID(String),
-	/// Thrown when no `Keypair` is provided and an encrypted [Leaf](crate::builder::Leaf) is encountered
+	/// no `Keypair` is provided and an encrypted [Leaf](crate::builder::Leaf) is encountered
 	#[error("[VachError::NoKeypairError] Unable to continue with cryptographic operation, as no keypair was supplied")]
 	NoKeypairError,
-	/// Thrown when decryption or encryption fails
+	/// decryption or encryption failed
 	#[cfg(feature = "crypto")]
 	#[error("[VachError::CryptoError] {0}")]
 	CryptoError(aes_gcm::Error),
-	/// Thrown when an attempt is made to set a bit within the first four bits(restricted) of a [`Flags`](crate::prelude::Flags) instance
+	/// attempted to set a bit in the reserved bit range, [`Flags::RESERVED_MASK`](crate::global::flags::Flags::RESERVED_MASK)
 	#[error("[VachError::RestrictedFlagAccessError] Tried to set reserved bit(s)!")]
 	RestrictedFlagAccessError,
-	/// When a [`Leaf`](crate::builder::Leaf) has an ID that is longer than `crate::MAX_ID_LENGTH`, contains the overflowing `ID`
+	/// a [`Leaf`](crate::builder::Leaf) has an ID that is longer than [`crate::MAX_ID_LENGTH`], contains the overflowing `ID`
 	#[error("[VachError::IDSizeOverflowError] The maximum size of any ID is: {}. The leaf with ID: {} has an overflowing ID of length: {}", crate::MAX_ID_LENGTH, .0, .0.len())]
 	IDSizeOverflowError(String),
-	/// An error that is thrown when the current archive attempts to load an incompatible version, contains the incompatible version
+	/// current loader attempted to load an incompatible version, contains the incompatible source's version
 	#[error("The provided archive source has version: {}. While the current implementation has a spec-version: {}. The provided source is incompatible!", .0, crate::VERSION)]
 	IncompatibleArchiveVersionError(u16),
-	/// Errors thrown  during compression or decompression
+	/// errors thrown  during compression or decompression
 	#[error("[VachError::CompressorDecompressorError]: {0}")]
 	#[cfg(feature = "compression")]
 	DeCompressionError(#[from] lz4_flex::frame::Error),
