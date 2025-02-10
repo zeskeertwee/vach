@@ -55,7 +55,6 @@ impl ArchiveConfig {
 	#[cfg_attr(docsrs, doc(cfg(feature = "crypto")))]
 	pub fn load_public_key<T: Read>(&mut self, handle: T) -> InternalResult {
 		use crate::crypto_utils::read_public_key;
-
 		self.public_key = Some(read_public_key(handle)?);
 		Ok(())
 	}

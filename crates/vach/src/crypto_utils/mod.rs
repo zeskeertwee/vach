@@ -30,6 +30,7 @@ pub fn read_public_key<T: Read>(mut handle: T) -> InternalResult<crypto::Verifyi
 	handle.read_exact(&mut keypair_bytes)?;
 	crypto::VerifyingKey::from_bytes(&keypair_bytes).map_err(|err| InternalError::ParseError(err.to_string()))
 }
+
 /// Read and parse a secret key from a read stream
 pub fn read_secret_key<T: Read>(mut handle: T) -> InternalResult<crypto::SigningKey> {
 	let mut secret_bytes = [0; crate::SECRET_KEY_LENGTH];

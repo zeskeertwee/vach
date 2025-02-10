@@ -106,8 +106,6 @@ fn flags_set_intersects() {
 #[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
 fn builder_no_signature() {
-    use std::fs::OpenOptions;
-
 	let build_config = BuilderConfig::default();
 
 	let mut poem_flags = Flags::default();
@@ -127,8 +125,10 @@ fn builder_no_signature() {
 		Leaf::new(b"Hello, Cassandra!" as &[u8], "greeting").compress(CompressMode::Never),
 	];
 
-	let mut target = OpenOptions::new().write(true).create(true).read(true).open(SIMPLE_TARGET).unwrap();
-	dump(&mut target, &mut leaves, &build_config, None).unwrap();
+	let mut target = File::open(SIMPLE_TARGET).unwrap();
+	let written = dump(&mut target, &mut leaves, &build_config, None).unwrap();
+
+	assert_eq!(target.metadata().unwrap().len(), written);
 }
 
 #[test]
@@ -161,11 +161,9 @@ fn builder_with_signature() -> InternalResult {
 	leaves.push(Leaf::new(b"Don't forget to recite your beatitudes!" as &[u8], "signed").sign(true));
 
 	let mut target = File::create(SIGNED_TARGET)?;
-	println!(
-		"Number of bytes written: {}, into signed archive.",
-		dump(&mut target, leaves.as_mut_slice(), &build_config, None)?
-	);
+	let written = dump(&mut target, leaves.as_mut_slice(), &build_config, None)?;
 
+	assert_eq!(target.metadata().unwrap().len(), written);
 	Ok(())
 }
 
@@ -230,11 +228,9 @@ fn builder_with_encryption() -> InternalResult {
 	);
 
 	let mut target = File::create(ENCRYPTED_TARGET)?;
-	println!(
-		"Number of bytes written: {}, into encrypted and fully compressed archive.",
-		dump(&mut target, leaves.as_mut_slice(), &build_config, None)?
-	);
+	let written = dump(&mut target, leaves.as_mut_slice(), &build_config, None)?;
 
+	assert_eq!(target.metadata().unwrap().len(), written);
 	Ok(())
 }
 

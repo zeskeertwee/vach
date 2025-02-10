@@ -157,7 +157,7 @@ pub extern "C" fn dump_archive_to_buffer(
 
 	// write
 	match dump(target, leaves, config, wrapper) {
-		Ok(bytes_written) => bytes_written,
+		Ok(written) => written,
 		Err(e) => errors::v_error_to_id::<()>(error_p, e) as _,
 	}
 }
