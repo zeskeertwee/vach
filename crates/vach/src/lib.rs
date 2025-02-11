@@ -76,6 +76,8 @@ pub const MAX_ID_LENGTH: usize = u16::MAX as usize;
 pub const MAGIC: [u8; crate::MAGIC_LENGTH] = *b"VfACH";
 pub(crate) const MAGIC_LENGTH: usize = 5;
 
+// TODO: Move to vectored io
+
 /// Consolidated crate imports.
 pub mod prelude {
 	pub use crate::global::{error::*, flags::Flags, reg_entry::RegistryEntry};

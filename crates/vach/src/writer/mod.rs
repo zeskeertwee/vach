@@ -50,7 +50,7 @@ pub fn dump<'a, W: Write + Seek + Send>(
 	target: W, leaves: &mut [Leaf<'a>], config: &BuilderConfig,
 	mut callback: Option<&mut dyn FnMut(&RegistryEntry, &[u8])>,
 ) -> InternalResult<u64> {
-	// TODO: Move to vectored io
+	// init
 	let mut config = config.clone();
 	let mut target = WriteCounter {
 		bytes: 0,
@@ -58,19 +58,10 @@ pub fn dump<'a, W: Write + Seek + Send>(
 	};
 
 	// find duplicates
-	let set = leaves
-		.iter()
-		.map(|l| l.id.as_ref())
-		.collect::<std::collections::HashSet<_>>();
-
-	if set.len() < leaves.len() {
-		for (idx, leaf) in leaves.iter().enumerate() {
-			let slice = &leaves[idx + 1..];
-
-			// find duplicate
-			if slice.iter().any(|l| l.id == leaf.id) {
-				return Err(InternalError::DuplicateLeafID(leaf.id.to_string()));
-			}
+	let mut set = std::collections::HashSet::with_capacity(leaves.len());
+	for id in leaves.iter().map(|l| l.id.as_ref()) {
+		if !set.insert(id) {
+			return Err(InternalError::DuplicateLeafID(id.to_string()));
 		}
 	}
 
