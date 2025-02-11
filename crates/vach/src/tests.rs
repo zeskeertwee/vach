@@ -310,6 +310,7 @@ fn consolidated_test() -> InternalResult {
 
 	// Quick assertions
 	let then = Instant::now();
+
 	assert_eq!(archive.fetch_mut("d1")?.data.as_ref(), data_1);
 	assert_eq!(archive.fetch_mut("d2")?.data.as_ref(), data_2);
 	assert_eq!(archive.fetch_mut("d3")?.data.as_ref(), data_3);

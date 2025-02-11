@@ -86,7 +86,6 @@ impl<T> Archive<T> {
 			}
 		}
 
-		// Add read layers
 		// 1: Decryption layer
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
 			#[cfg(feature = "crypto")]

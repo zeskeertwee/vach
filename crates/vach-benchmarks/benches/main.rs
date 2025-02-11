@@ -53,23 +53,17 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 	// Configure benchmark
 	builder_group.throughput(Throughput::Bytes((data_1.len() + data_2.len() + data_3.len()) as u64));
 
-	builder_group.bench_function("Builder::dump(---)", |b| {
+	builder_group.bench_function("dump(---)", |b| {
 		b.iter(|| {
-			let mut builder = Builder::new();
+			// setup data
+			let mut leaves = [
+				Leaf::new(data_1, "d1").compress(CompressMode::Always),
+				Leaf::new(data_2, "d2").compress(CompressMode::Never),
+				Leaf::new(data_3, "d3").compress(CompressMode::Detect),
+			];
 
-			// Add data
-			builder
-				.add_leaf(Leaf::new(data_1, "d1").compress(CompressMode::Always))
-				.unwrap();
-			builder
-				.add_leaf(Leaf::new(data_2, "d2").compress(CompressMode::Never))
-				.unwrap();
-			builder
-				.add_leaf(Leaf::new(data_3, "d3").compress(CompressMode::Detect))
-				.unwrap();
-
-			// Dump data
-			builder.dump(Sink::new(), &b_config).unwrap();
+			// dump
+			dump(Sink::new(), &mut leaves, &b_config, None).unwrap()
 		});
 	});
 
@@ -82,15 +76,17 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 	{
 		// Builds an archive source from which to benchmark
-		let mut builder = Builder::new().template(Leaf::default().encrypt(false).sign(false));
+		let template = Leaf::default().encrypt(false).sign(false);
 
 		// Add data
-		builder.add(data_1, "d1").unwrap();
-		builder.add(data_2, "d2").unwrap();
-		builder.add(data_3, "d3").unwrap();
+		let mut leaves = [
+			Leaf::new(data_1, "d1").template(&template),
+			Leaf::new(data_2, "d2").template(&template),
+			Leaf::new(data_3, "d3").template(&template),
+		];
 
 		// Dump data
-		black_box(builder.dump(&mut target, &b_config).unwrap());
+		dump(&mut target, &mut leaves, &b_config, None).unwrap();
 	}
 
 	// Load data

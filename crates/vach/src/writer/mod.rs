@@ -13,10 +13,13 @@ pub use leaf::Leaf;
 pub use {leaf::CompressMode, crate::global::compressor::Compressor};
 
 use crate::global::error::*;
-use crate::global::{header::Header, reg_entry::RegistryEntry, flags::Flags};
+use crate::global::{header::Header, reg_entry::RegistryEntry};
 
 #[cfg(feature = "crypto")]
-use {crate::crypto::Encryptor, ed25519_dalek::Signer};
+use {
+	crate::{crypto::Encryptor, global::flags::Flags},
+	ed25519_dalek::Signer,
+};
 
 #[cfg(not(feature = "crypto"))]
 type Encryptor = ();
