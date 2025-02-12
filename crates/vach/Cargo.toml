@@ -16,7 +16,7 @@ categories = ["games", "compression"]
 keywords = ["archive", "filesystem", "compression", "game", "assets"]
 documentation = "https://docs.rs/vach"
 readme = "../../README.md"
-include = ["Cargo.toml", "Cargo.lock", "src/*"]
+include = ["Cargo.toml", "Cargo.lock", "src/*", "../../media/logo.png"]
 
 [dependencies]
 thiserror = "2.0.11"

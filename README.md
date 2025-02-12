@@ -1,10 +1,7 @@
-<p align="center">
-  <img src="media/logo.png" alt=".vach logo" width="180" height="180">
-</p>
 <h1 align=center>
   <strong>vach</strong>
 </h1>
-<p align=center> A simple archiving format, designed for storing assets in compact secure containers </p>
+<p align=center> A simple archiving format, written in Pure Rust. </p>
 
 <p align=center>
   <a href="https://crates.io/crates/vach"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach?style=flat-square"></a>
@@ -14,18 +11,12 @@
   <a href="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml"><img alt="GitHub Build and Test actions" src="https://github.com/zeskeertwee/vach/actions/workflows/tests.yml/badge.svg"></a>
   <a href="https://github.com/zeskeertwee/vach/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-raw/zeskeertwee/vach?style=flat-square"></a>
 </p>
+
 <p align=center>
  <a href="https://docs.rs/vach">Docs</a> | <a href="https://github.com/zeskeertwee/vach">Repo</a>
 </p>
 
 `vach`, pronounced like "duck" but with a "v", is an archiving and resource transmission format. It was built to be secure, contained and protected. `vach` also has in-built support for multiple compression schemes (LZ4, Snappy and Brolti), [cryptographic hashing](https://github.com/dalek-cryptography/ed25519-dalek), custom [flags](https://docs.rs/vach/latest/vach/archive/struct.Flags.html) per entry and [encryption](https://docs.rs/aes-gcm/latest/aes_gcm/). Check out the `vach` spec at **[spec.txt](https://github.com/zeskeertwee/vach/blob/main/spec/main.txt)**. Any and *all* help will is much appreciated.
-
----
-
-### 🤷 Who is what, when where?
-
-- **vach:** An archiving format, like `tar`, `zip` and `rar`.  Also the base crate for handling `.vach` files in your application.
-- **vach-cli:** <a href="https://crates.io/crates/vach-cli"><img alt="Crate Version on Crates.io" src="https://img.shields.io/crates/v/vach-cli?style=flat-square"></a> A CLI tool for dealing with `.vach` files.
 
 ---
 
@@ -75,7 +66,7 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 ### 🛠 Yet to be implemented
 
-- [x] An official **CLI**, [check it out](https://crates.io/crates/vach-cli).
+- [x] An CLI: [![CLI Crate](https://img.shields.io/crates/v/vach-cli?style=flat-square)](https://crates.io/crates/vach-cli)
 - [x] Data encryption.
 - [x] Benchmarks.
 - [x] Features to turn off (or to turn on) either the `builder` or the `loader` modules.

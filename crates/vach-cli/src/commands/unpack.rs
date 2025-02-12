@@ -1,12 +1,13 @@
-use std::fs::{self, File};
-use std::str::FromStr;
-use std::io::{BufReader, Read, Seek, Write};
-use std::path::PathBuf;
-use std::thread;
-use std::time::Instant;
+use std::{
+	fs::{self, File},
+	io::{BufReader, Read, Seek, Write},
+	path::PathBuf,
+	str::FromStr,
+	thread,
+	time::Instant,
+};
 
-use vach::prelude::{ArchiveConfig, Archive, InternalError};
-use vach::crypto_utils;
+use vach::{crypto_utils, prelude::*};
 use indicatif::{ProgressBar, ProgressStyle};
 
 use super::CommandTrait;
@@ -33,13 +34,8 @@ impl CommandTrait for Evaluator {
 			anyhow::bail!("Please provide a directory|folder path as the value of -o | --output")
 		};
 
-		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
-			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach::DEFAULT_MAGIC,
-		};
-
 		// Attempting to extract a public key from a -p or -k input
-		let public_key = match args.value_of(key_names::KEYPAIR) {
+		let verifying_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = match File::open(path) {
 					Ok(it) => it,
@@ -51,25 +47,25 @@ impl CommandTrait for Evaluator {
 			None => match args.value_of(key_names::PUBLIC_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(crypto_utils::read_public_key(file)?)
+					Some(crypto_utils::read_verifying_key(file)?)
 				},
 				None => None,
 			},
 		};
-
-		// Whether to truncate the original archive after extraction
-		let truncate = args.is_present(key_names::TRUNCATE);
 
 		let input_file = match File::open(input_path) {
 			Ok(it) => BufReader::new(it),
 			Err(err) => anyhow::bail!("IOError: {} @ {}", err, input_path),
 		};
 
-		// Generate ArchiveConfig using given magic and public key
-		let header_config = ArchiveConfig::new(magic, public_key);
+		// load archive, with optional key
+		let archive = match verifying_key.as_ref() {
+			Some(vk) => Archive::with_key(input_file, vk),
+			None => Archive::new(input_file),
+		};
 
 		// Parse then extract archive
-		let archive = match Archive::with_config(input_file, &header_config) {
+		let archive = match archive {
 			Ok(archive) => archive,
 			Err(err) => match err {
 				InternalError::NoKeypairError => anyhow::bail!(
@@ -88,13 +84,6 @@ impl CommandTrait for Evaluator {
 			.unwrap_or(num_cpus::get());
 
 		extract_archive(&archive, num_threads, output_path)?;
-
-		// Delete original archive
-		if truncate {
-			println!("Truncating original archive @ {}", &input_path);
-			std::fs::remove_file(input_path)?;
-		};
-
 		Ok(())
 	}
 }

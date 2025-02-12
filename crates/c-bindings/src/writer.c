@@ -20,7 +20,7 @@ int main(int argc, char **argv) {
 
   // allocate space for leaves, one leaf per file
   int paths_count = argc - 2;
-  v_builder_ctx *ctx = new_builder_ctx(NULL, NULL, 0);
+  v_builder_ctx *ctx = new_builder_ctx(NULL, 0);
 
   // initialize leaves
   char *id_buf = calloc(256, sizeof(char));

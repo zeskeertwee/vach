@@ -46,15 +46,7 @@ vach list -i textures.vach
 
 ## **Commands:**
 
-- Running `vach help` will list all the commands. They each have their own inputs.
-
-- Also check out `spec/main.txt` for the official spec.
-
-- You can also run `vach [command] --help` to see help on each individual command.
-
-- Because of how the CLI works, the positions of the keys does not matter, so:
-
-   `vach list -i target.vach -m CMYKV` and `vach list -m CMYKV -i target.vach` are equivalent.
+- Run `vach help` or `vach [command] --help` to display helpful information about each command.
 
 ---
 

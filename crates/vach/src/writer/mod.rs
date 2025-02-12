@@ -1,4 +1,4 @@
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom, Write, Read};
 
 #[cfg(feature = "multithreaded")]
 use std::{thread, sync::mpsc};
@@ -49,10 +49,14 @@ impl<W: Seek + Send> Seek for WriteCounter<W> {
 }
 
 /// iterates over all [`Leaf`], processes them and writes the output into the target.
-pub fn dump<'a, W: Write + Seek + Send>(
-	target: W, leaves: &mut [Leaf<'a>], config: &BuilderConfig,
+pub fn dump<'a, W, R>(
+	target: W, leaves: &mut [Leaf<R>], config: &BuilderConfig,
 	mut callback: Option<&mut dyn FnMut(&RegistryEntry, &[u8])>,
-) -> InternalResult<u64> {
+) -> InternalResult<u64>
+where
+	W: Write + Seek + Send,
+	R: Read + Sync + Send,
+{
 	// init
 	let mut config = config.clone();
 	let mut target = WriteCounter {

@@ -12,11 +12,9 @@ pub mod key_names {
 	pub(crate) const DIR_INPUT_REC: &str = "DIR_INPUT_REC";
 
 	pub(crate) const EXCLUDE: &str = "EXCLUDE";
-	pub(crate) const TRUNCATE: &str = "TRUNCATE";
 
 	pub(crate) const FLAGS: &str = "FLAGS";
 	pub(crate) const VERSION: &str = "VERSION";
-	pub(crate) const MAGIC: &str = "MAGIC";
 	pub(crate) const COMPRESS_MODE: &str = "COMPRESS_MODE";
 	pub(crate) const COMPRESS_ALGO: &str = "COMPRESS_ALGO";
 	pub(crate) const HASH: &str = "HASH";
@@ -124,43 +122,6 @@ pub fn build_keys<'a>() -> HashMap<&'static str, Arg<'a>> {
 			.required(false)
 			.takes_value(true)
 			.multiple_values(true),
-	);
-
-	// Deletes the original files after they have been processed successfully
-	map.insert(
-		key_names::TRUNCATE,
-		Arg::new(key_names::TRUNCATE)
-			.short('t')
-			.long("truncate")
-			.value_name(key_names::TRUNCATE)
-			.help("Exclude the given paths from the input queue")
-			.required(false)
-			.takes_value(false),
-	);
-
-	// treats the entries in a .vach file like regular files, but with metadata from the archive
-	map.insert(
-		key_names::MAGIC,
-		Arg::new(key_names::MAGIC)
-			.long("magic")
-			.short('m')
-			.value_name(key_names::MAGIC)
-			.help("The magic used to generate the archive")
-			.required(false)
-			.takes_value(true)
-			.number_of_values(1)
-			.validator(|magic| {
-				if magic.len() != vach::MAGIC_LENGTH {
-					return Err(format!(
-						"Please provide a magic of the right length: {}. Magic: {} has length: {}",
-						vach::MAGIC_LENGTH,
-						&magic,
-						magic.len()
-					));
-				};
-
-				Ok(())
-			}),
 	);
 
 	// The compress mode of the adjacent leafs
