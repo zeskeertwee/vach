@@ -21,8 +21,8 @@ const CUSTOM_FLAG_2: u32 = 0b0000_0000_0000_0000_0000_0100_0000_0000;
 const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
-fn leaves_from_dir<'a, T>(
-	path: impl AsRef<std::path::Path>, template: Option<&Leaf<T>>,
+fn leaves_from_dir<'a>(
+	path: impl AsRef<std::path::Path>, template: Option<&Leaf<&'static [u8]>>,
 ) -> InternalResult<Vec<Leaf<File>>> {
 	use std::fs;
 
@@ -222,11 +222,7 @@ fn builder_with_encryption() -> InternalResult {
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(KEYPAIR.as_slice())?;
 
-	let template = Leaf::<&'static [u8]>::default()
-		.encrypt(true)
-		.compress(CompressMode::Never)
-		.sign(true);
-
+	let template = Leaf::default().encrypt(true).compress(CompressMode::Never).sign(true);
 	let mut leaves = leaves_from_dir("test_data", Some(&template))?;
 
 	leaves.push(
