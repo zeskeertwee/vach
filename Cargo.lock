@@ -205,7 +205,7 @@ name = "c-bindings"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
- "vach 0.7.0",
+ "vach 0.7.1",
 ]
 
 [[package]]
@@ -1333,20 +1333,6 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 [[package]]
 name = "vach"
 version = "0.7.0"
-dependencies = [
- "aes-gcm",
- "brotli",
- "ed25519-dalek",
- "lz4_flex",
- "rayon",
- "simplerand",
- "snap",
- "thiserror",
-]
-
-[[package]]
-name = "vach"
-version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e672983e2a3a9fb388891084508e2cae29f6306b9e36c3315183035331947dec"
 dependencies = [
@@ -1360,16 +1346,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "vach"
+version = "0.7.1"
+dependencies = [
+ "aes-gcm",
+ "brotli",
+ "ed25519-dalek",
+ "lz4_flex",
+ "rayon",
+ "simplerand",
+ "snap",
+ "thiserror",
+]
+
+[[package]]
 name = "vach-benchmarks"
 version = "0.1.0"
 dependencies = [
  "criterion",
- "vach 0.7.0",
+ "vach 0.7.1",
 ]
 
 [[package]]
 name = "vach-cli"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -1377,7 +1377,7 @@ dependencies = [
  "num_cpus",
  "tabled",
  "tempfile",
- "vach 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "vach 0.7.0",
  "walkdir",
 ]
 

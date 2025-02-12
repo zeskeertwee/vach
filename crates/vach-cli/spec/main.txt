@@ -21,7 +21,6 @@ vach repack == vach r
  -t 	| --truncates		-> deletes the original files after they have been processed successfully
 
  -f 	| --flags			-> The flags that go into the .vach file header section
- -m 	| --magic			-> The magic used to generate the archive
  -c 	| --compress-mode	-> The compress mode of the adjacent leafs
  -g	| --compress-algo -> The compression algorithm to use in compression, can be; "lz4", "brotli" or "snappy"
  -v 	| --version			-> the version of the leafs being read or to be written
@@ -35,11 +34,8 @@ vach repack == vach r
 
  -q	| --quiet			-> Tells the CLI to not log any messages to the console
 
-# Pack the given files, outputs to textures.vach, use magic TXTRS, compress-mode detect, and truncates(deletes) the original files after being archived
-vach pack -o textures.vach -i face.webm brick.png logo.png -m TXTRS -c detect -t
-
-# Verify that the archive textures.vach has magic and the archive has the same version as the loader
-vach verify -i textures.vach -m TXTRS
+# Pack the given files, outputs to textures.vach, compress-mode detect, and truncates(deletes) the original files after being archived
+vach pack -o textures.vach -i face.webm brick.png logo.png -c detect -t
 
 # List the entries in textures.vach
 vach list -i textures.vach
@@ -57,7 +53,7 @@ vach pack -o sounds.vach -r ./sounds
 vach pack -o keys.vach -d ./keys -x github.key
 
 # Repack from the given source to the given target, and also add some extra files
-vach pack -z sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15 -m SUNDS
+vach pack -z sounds.vach -o sounds-compressed.vach -i pew.wav -c detect -v 15
 
 # Pack using encryption, and sign the data to check for integrity
 vach pack -o scripts.vach -i raycast.wasm matchmaking.wasm modloader.wasm -e -h

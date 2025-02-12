@@ -23,9 +23,9 @@ $CMD pack --output signed.vach --directory-r ./ --compress-mode detect --compres
 $CMD split -i keypair.kp
 $CMD list -i signed.vach
 
-# # Generate a compressed archive with custom magic
-$CMD pack -o custom.vach -m CSTOM -i GamerProfile.xml -x $EXCLUDE
-$CMD list -i custom.vach -m CSTOM
+# # Generate a compressed archive
+$CMD pack -o custom.vach -i GamerProfile.xml -x $EXCLUDE
+$CMD list -i custom.vach
 
 # # Generate an encrypted, signed and compressed archive
 $CMD pack -o encrypted.vach -d lolcalt -ea -c always -s keypair.sk
