@@ -4,7 +4,7 @@ on:
   release:
     branches: [main]
     tags:
-      - p[0-9]+.*
+      - v[0-9]+.*
 
 env:
   CARGO_INCREMENTAL: 0
