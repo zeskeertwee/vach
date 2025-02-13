@@ -8,7 +8,7 @@ on:
   release:
     branches: [main]
     tags:
-      - r[0-9]+.*
+      - v[0-9]+.*
 
 env:
   CARGO_INCREMENTAL: 0
