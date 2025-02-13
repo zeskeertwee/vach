@@ -76,7 +76,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
 	{
 		// Builds an archive source from which to benchmark
-		let template = Leaf::default().encrypt(false).sign(false);
+		let template = Leaf::<&'static [u8]>::default().encrypt(false).sign(false);
 
 		// Add data
 		let mut leaves = [

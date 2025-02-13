@@ -2,7 +2,7 @@
 name = "vach"
 
 # NOTE: Make sure spec.txt and vach::VERSION constants are all synced up
-version = "0.7.0"
+version = "0.7.1"
 
 edition = "2021"
 authors = [
@@ -16,7 +16,7 @@ categories = ["games", "compression"]
 keywords = ["archive", "filesystem", "compression", "game", "assets"]
 documentation = "https://docs.rs/vach"
 readme = "../../README.md"
-include = ["Cargo.toml", "Cargo.lock", "src/*"]
+include = ["Cargo.toml", "Cargo.lock", "src/*", "../../media/logo.png"]
 
 [dependencies]
 thiserror = "2.0.11"

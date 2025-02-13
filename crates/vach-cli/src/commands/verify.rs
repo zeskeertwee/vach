@@ -1,6 +1,5 @@
 use std::fs::File;
-
-use vach::archive::{Archive, ArchiveConfig};
+use vach::archive::*;
 
 use super::CommandTrait;
 use crate::keys::key_names;
@@ -17,15 +16,16 @@ impl CommandTrait for Evaluator {
 			None => anyhow::bail!("Please provide an input path using the -i or --input key"),
 		};
 
-		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
-			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach::DEFAULT_MAGIC,
-		};
-
 		let input_file = File::open(input_path)?;
-
-		if let Err(err) = Archive::with_config(input_file, &ArchiveConfig::new(magic, None)) {
-			anyhow::bail!("Unable to verify the archive source, error: {}", err.to_string())
+		if let Err(err) = Archive::new(input_file) {
+			match err {
+				InternalError::MalformedArchiveSource(m) => anyhow::bail!("Invalid Magic Sequence: {:?}", m),
+				InternalError::IncompatibleArchiveVersionError(v) => {
+					anyhow::bail!("Incompatible Archive Version: {}, expected: {}", v, vach::VERSION)
+				},
+				InternalError::MissingFeatureError(f) => anyhow::bail!("CLI wasn't compiled with the feature: {}", f),
+				e => anyhow::bail!("Unable to verify the archive source, error: {}", e.to_string()),
+			}
 		};
 
 		Ok(())

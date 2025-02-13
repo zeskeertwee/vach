@@ -10,7 +10,7 @@ use crate::crypto::Encryptor;
 #[cfg(not(feature = "crypto"))]
 type Encryptor = ();
 
-use std::{fmt, io::Read, sync::Arc};
+use std::{io::Read, sync::Arc};
 
 /// Configures how a [`Leaf`] should be compressed.
 #[derive(Debug, Clone, Copy, Default)]
@@ -27,9 +27,10 @@ pub enum CompressMode {
 }
 
 /// A named ([`ID`](Leaf::id)) wrapper around an [`io::Read`](Read) handle, tagged with extra metadata.
-pub struct Leaf<'a> {
-	/// Boxed read handle
-	pub handle: Box<dyn Read + Send + Sync + 'a>,
+#[derive(Debug, Default, Clone)]
+pub struct Leaf<R = &'static [u8]> {
+	/// source data
+	pub handle: R,
 
 	/// The `ID` under which the embedded data will be referenced
 	pub id: Arc<str>,
@@ -57,28 +58,47 @@ pub struct Leaf<'a> {
 	pub sign: bool,
 }
 
-impl<'a> Leaf<'a> {
-	#[inline(always)]
+impl<R: Read + Send + Sync> Leaf<R> {
 	/// Creates a new [`Leaf`] wrapping around the given [`Read`] handle, with an ID
-	pub fn new<R: Read + Send + Sync + 'a, S: AsRef<str>>(handle: R, id: S) -> Leaf<'a> {
+	pub fn new<S: AsRef<str>>(handle: R, id: S) -> Leaf<R> {
+		let default = Leaf::<&'static [u8]>::default();
+
 		Leaf {
-			handle: Box::new(handle),
+			handle,
 			id: Arc::from(id.as_ref()),
-			..Default::default()
+
+			// copy from default implementation
+			content_version: default.content_version,
+			flags: default.flags,
+
+			#[cfg(feature = "compression")]
+			compress: default.compress,
+			#[cfg(feature = "compression")]
+			compression_algo: default.compression_algo,
+			#[cfg(feature = "crypto")]
+			encrypt: default.encrypt,
+			#[cfg(feature = "crypto")]
+			sign: default.sign,
 		}
 	}
 
-	/// Consume the [Leaf] and return the underlying Boxed handle
-	pub fn into_inner(self) -> Box<dyn Read + Send + 'a> {
-		self.handle
-	}
-
 	/// Copy all fields from another [`Leaf`], except for `handle` and `id`.
-	pub fn template(self, other: &Leaf<'a>) -> Self {
+	pub fn template<R2>(self, other: &Leaf<R2>) -> Self {
 		Leaf {
 			handle: self.handle,
 			id: self.id,
-			..*other
+
+			content_version: other.content_version,
+			flags: other.flags,
+
+			#[cfg(feature = "compression")]
+			compress: other.compress,
+			#[cfg(feature = "compression")]
+			compression_algo: other.compression_algo,
+			#[cfg(feature = "crypto")]
+			encrypt: other.encrypt,
+			#[cfg(feature = "crypto")]
+			sign: other.sign,
 		}
 	}
 
@@ -124,55 +144,8 @@ impl<'a> Leaf<'a> {
 	}
 }
 
-impl<'a> Default for Leaf<'a> {
-	/// The default leaf holds no bytes at all, this is expected to be used as a stencil|template.
-	#[inline(always)]
-	fn default() -> Leaf<'a> {
-		Leaf {
-			handle: Box::<&[u8]>::new(&[]),
-
-			id: Arc::from(""),
-			flags: Default::default(),
-			content_version: Default::default(),
-
-			#[cfg(feature = "crypto")]
-			encrypt: Default::default(),
-			#[cfg(feature = "crypto")]
-			sign: Default::default(),
-
-			#[cfg(feature = "compression")]
-			compress: Default::default(),
-			#[cfg(feature = "compression")]
-			compression_algo: Default::default(),
-		}
-	}
-}
-
-impl fmt::Debug for Leaf<'_> {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		let mut d = f.debug_struct("Leaf");
-		d.field("id", &self.id)
-			.field("content_version", &self.content_version)
-			.field("flags", &self.flags);
-
-		#[cfg(feature = "crypto")]
-		{
-			d.field("encrypt", &self.encrypt);
-			d.field("sign", &self.sign);
-		}
-
-		#[cfg(feature = "compression")]
-		{
-			d.field("compress", &self.compress);
-			d.field("compression_algo", &self.compression_algo);
-		}
-
-		d.finish()
-	}
-}
-
-impl From<&mut Leaf<'_>> for RegistryEntry {
-	fn from(leaf: &mut Leaf<'_>) -> Self {
+impl<R> From<&mut Leaf<R>> for RegistryEntry {
+	fn from(leaf: &mut Leaf<R>) -> Self {
 		RegistryEntry {
 			id: leaf.id.clone(),
 			flags: leaf.flags,
@@ -192,7 +165,9 @@ pub(crate) struct ProcessedLeaf {
 
 // Process Leaf into Prepared Data, externalised for multithreading purposes
 #[inline(never)]
-pub(crate) fn process_leaf(leaf: &mut Leaf<'_>, _encryptor: Option<&Encryptor>) -> InternalResult<ProcessedLeaf> {
+pub(crate) fn process_leaf<R: Read + Send + Sync>(
+	leaf: &mut Leaf<R>, _encryptor: Option<&Encryptor>,
+) -> InternalResult<ProcessedLeaf> {
 	let mut entry: RegistryEntry = leaf.into();
 	let mut raw = Vec::new();
 

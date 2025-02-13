@@ -32,7 +32,6 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.author(AUTHORS)
 				.version(commands::verify::VERSION)
 				.about("Verifies the validity of an archive")
-				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::INPUT).unwrap()),
 		)
 		.subcommand(
@@ -41,7 +40,6 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.version(commands::list::VERSION)
 				.about("Lists all the entries in a archive and their metadata")
 				.arg(key_map.get(key_names::INPUT).unwrap())
-				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::SORT).unwrap()),
 		)
 		.subcommand(
@@ -54,11 +52,9 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.arg(key_map.get(key_names::INPUT).unwrap())
 				// encryption
 				.arg(key_map.get(key_names::KEYPAIR).unwrap())
-				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::PUBLIC_KEY).unwrap())
 				// modifiers
 				.arg(key_map.get(key_names::JOBS).unwrap())
-				.arg(key_map.get(key_names::TRUNCATE).unwrap()),
 		)
 		.subcommand(
 			Command::new("pipe")
@@ -66,7 +62,6 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.version(commands::pipe::VERSION)
 				.about("Pipes a Resource from an archive to stdout")
 				.arg(key_map.get(key_names::INPUT).unwrap())
-				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::PUBLIC_KEY).unwrap())
 				.arg(key_map.get(key_names::RESOURCE).unwrap())
 				.arg(key_map.get(key_names::KEYPAIR).unwrap()),
@@ -91,10 +86,8 @@ pub fn build_app<'a>(key_map: HashMap<&'static str, Arg<'a>>) -> Command<'a> {
 				.arg(key_map.get(key_names::FLAGS).unwrap())
 				.arg(key_map.get(key_names::COMPRESS_MODE).unwrap())
 				.arg(key_map.get(key_names::COMPRESS_ALGO).unwrap())
-				.arg(key_map.get(key_names::MAGIC).unwrap())
 				.arg(key_map.get(key_names::ENCRYPT).unwrap())
 				.arg(key_map.get(key_names::HASH).unwrap())
 				.arg(key_map.get(key_names::VERSION).unwrap())
-				.arg(key_map.get(key_names::TRUNCATE).unwrap()),
 		)
 }

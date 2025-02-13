@@ -22,8 +22,8 @@ const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 fn leaves_from_dir<'a>(
-	path: impl AsRef<std::path::Path>, template: Option<&Leaf<'a>>,
-) -> InternalResult<Vec<Leaf<'a>>> {
+	path: impl AsRef<std::path::Path>, template: Option<&Leaf<&'static [u8]>>,
+) -> InternalResult<Vec<Leaf<File>>> {
 	use std::fs;
 
 	let mut leaves = vec![];
@@ -111,7 +111,7 @@ fn builder_no_signature() {
 		.unwrap();
 
 	let mut leaves = [
-		Leaf::new(File::open("test_data/song.txt").unwrap(), "song"),
+		Leaf::new(File::open("test_data/song.txt").unwrap(), "song").compress(CompressMode::Never),
 		Leaf::new(File::open("test_data/lorem.txt").unwrap(), "lorem"),
 		Leaf::new(File::open("test_data/bee.script").unwrap(), "script"),
 		Leaf::new(File::open("test_data/quicksort.wasm").unwrap(), "wasm"),
@@ -119,7 +119,6 @@ fn builder_no_signature() {
 			.compress(CompressMode::Always)
 			.version(10)
 			.flags(poem_flags),
-		Leaf::new(b"Hello, Cassandra!" as &[u8], "greeting").compress(CompressMode::Never),
 	];
 
 	let mut target = File::create(SIMPLE_TARGET).unwrap();
@@ -131,6 +130,8 @@ fn builder_no_signature() {
 #[test]
 #[cfg(all(feature = "compression", feature = "archive"))]
 fn fetch_no_signature() -> InternalResult {
+	use std::fs;
+
 	let target = File::open(SIMPLE_TARGET)?;
 
 	let mut archive = Archive::new(target)?;
@@ -140,9 +141,11 @@ fn fetch_no_signature() -> InternalResult {
 	assert!(!resource.verified);
 	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 
-	let hello = archive.fetch_mut("greeting")?;
-	assert_eq!("Hello, Cassandra!", str::from_utf8(&hello.data).unwrap());
-	assert!(!hello.flags.contains(Flags::COMPRESSED_FLAG));
+	let resource = archive.fetch_mut("song")?;
+	let expected = fs::read("test_data/song.txt").unwrap();
+
+	assert_eq!(expected.as_slice(), resource.data.as_ref());
+	assert!(!resource.flags.contains(Flags::COMPRESSED_FLAG));
 
 	Ok(())
 }
@@ -153,10 +156,11 @@ fn builder_with_signature() -> InternalResult {
 	let mut build_config = BuilderConfig::default();
 	build_config.load_keypair(KEYPAIR.as_slice())?;
 
-	let mut leaves = leaves_from_dir("test_data", None)?;
-
-	leaves.push(Leaf::new(b"".as_slice(), "not_signed"));
-	leaves.push(Leaf::new(b"Don't forget to recite your beatitudes!".as_slice(), "signed").sign(true));
+	let mut leaves = [
+		Leaf::new(b"Hello, Cassandra!".as_slice(), "not_signed"),
+		Leaf::new(b"Don't forget to recite your beatitudes!".as_slice(), "signed").sign(true),
+		Leaf::new([123u8, 234, 156, 56, 67, 5, 76, 51, 67, 2, 4, 24].as_slice(), "bytez").sign(true),
+	];
 
 	let mut target = File::create(SIGNED_TARGET)?;
 	let written = dump(&mut target, leaves.as_mut_slice(), &build_config, None)?;
@@ -178,8 +182,8 @@ fn fetch_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 	let mut archive = Archive::with_key(target, &vk)?;
 
-	let resource = archive.fetch_mut("quicksort.wasm")?;
-	assert_eq!(resource.data.len(), 106537);
+	let resource = archive.fetch_mut("bytez")?;
+	assert_eq!(resource.data.len(), 12);
 
 	// The adjacent resource was flagged to not be signed
 	let not_signed_resource = archive.fetch_mut("not_signed")?;
@@ -222,7 +226,7 @@ fn builder_with_encryption() -> InternalResult {
 	let mut leaves = leaves_from_dir("test_data", Some(&template))?;
 
 	leaves.push(
-		Leaf::new(b"Snitches get stitches, iOS sucks" as &[u8], "stitches.snitches")
+		Leaf::new(File::open("test_data/poem.txt").unwrap(), "stitches.snitches")
 			.sign(false)
 			.compression_algo(CompressionAlgorithm::Brotli(11))
 			.compress(CompressMode::Always),
@@ -250,8 +254,8 @@ fn fetch_from_encrypted() -> InternalResult {
 
 	// read data
 	let not_signed = archive.fetch_mut("stitches.snitches")?;
-	let data = std::str::from_utf8(&not_signed.data).unwrap();
-	assert_eq!(data, "Snitches get stitches, iOS sucks");
+	let data = std::fs::read("test_data/poem.txt").unwrap();
+	assert_eq!(data.as_slice(), not_signed.data.as_ref());
 
 	let signed = archive.fetch_mut("quicksort.wasm")?;
 
@@ -284,7 +288,7 @@ fn consolidated_test() -> InternalResult {
 	config.load_keypair(keypair_bytes.as_slice()).unwrap();
 
 	// Add data
-	let template = Leaf::default().encrypt(true).version(59).sign(true);
+	let template = Leaf::<&'static [u8]>::default().encrypt(true).version(59).sign(true);
 	let mut leaves = [
 		Leaf::new(data_1, "d1").template(&template),
 		Leaf::new(data_2, "d2").template(&template),

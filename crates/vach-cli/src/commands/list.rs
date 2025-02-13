@@ -4,7 +4,7 @@ use tabled::{
 	Table, Tabled,
 	settings::{*, object::Columns},
 };
-use vach::prelude::{ArchiveConfig, Archive, Flags};
+use vach::prelude::*;
 use indicatif::HumanBytes;
 
 use super::CommandTrait;
@@ -24,13 +24,8 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
-		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
-			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach::DEFAULT_MAGIC,
-		};
-
 		let file = File::open(archive_path)?;
-		let archive = Archive::with_config(file, &ArchiveConfig::new(magic, None))?;
+		let archive = Archive::new(file)?;
 
 		// log basic metadata
 		println!("{}", archive);

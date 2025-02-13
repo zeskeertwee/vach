@@ -4,7 +4,7 @@ use super::errors;
 
 /// Archive Builder Context
 pub type v_builder_ctx = ffi::c_void;
-type _builder_ctx_inner = (BuilderConfig, Vec<Leaf<'static>>);
+type _builder_ctx_inner = (BuilderConfig, Vec<Leaf<super::DataSource>>);
 
 /// Create new Builder Context
 #[no_mangle]
@@ -31,7 +31,7 @@ pub extern "C" fn free_builder_ctx(ctx: *mut v_builder_ctx) {
 	}
 }
 
-fn new_leaf<'a, T: io::Read + Sync + Send + 'a>(id: *const ffi::c_char, data: T, flags: u32) -> Option<Leaf<'a>> {
+fn new_leaf(id: *const ffi::c_char, data: super::DataSource, flags: u32) -> Option<Leaf<super::DataSource>> {
 	// get ID
 	let id = unsafe { std::ffi::CStr::from_ptr(id).to_str() }.ok()?;
 
@@ -67,7 +67,8 @@ pub extern "C" fn add_leaf_from_buffer(
 	if data.is_null() {
 		errors::report::<()>(error_p, errors::E_PARAMETER_IS_NULL);
 	} else {
-		let Some(leaf) = new_leaf(id, unsafe { slice::from_raw_parts(data, len) }, flags) else {
+		let data = super::DataSource::Buffer(io::Cursor::new(unsafe { slice::from_raw_parts(data, len) }));
+		let Some(leaf) = new_leaf(id, data, flags) else {
 			errors::report::<()>(error_p, errors::E_INVALID_UTF8);
 			return;
 		};
@@ -94,7 +95,7 @@ pub extern "C" fn add_leaf_from_file(
 		let leaf = match unsafe { std::ffi::CStr::from_ptr(path).to_str() } {
 			Ok(path) => {
 				let file = fs::File::open(path).unwrap();
-				new_leaf(id, file, flags)
+				new_leaf(id, super::DataSource::File(file), flags)
 			},
 			Err(_) => {
 				errors::report::<()>(error_p, errors::E_INVALID_UTF8);
@@ -173,7 +174,7 @@ pub extern "C" fn dump_leaves_to_file(
 	};
 
 	// check if callback is NULL
-	let mut cb = move |entry: &RegistryEntry, data: &[u8]| {
+	let mut cb = |entry: &RegistryEntry, data: &[u8]| {
 		let id = entry.id.as_ref();
 
 		callback(

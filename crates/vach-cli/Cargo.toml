@@ -1,6 +1,6 @@
 [package]
 name = "vach-cli"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 authors = [
 	"Jasper Fortuin <zeskeertwee@gmail.com>",
@@ -19,11 +19,11 @@ name = "vach"
 path = "src/main.rs"
 
 [dependencies]
-vach = { version = "0.6.2", features = ["all"] }
-num_cpus = "1.16.0"
+vach = { version = "0.7", features = ["all"] }
+num_cpus = "1"
 clap = "3.1.15"
-indicatif = "0.17.8"
-anyhow = "1.0.86"
-tabled = "0.15.0"
-walkdir = "2.5.0"
-tempfile = "3.10.1"
+indicatif = "0.17"
+anyhow = "1"
+tabled = "0.18"
+walkdir = "2"
+tempfile = "3"

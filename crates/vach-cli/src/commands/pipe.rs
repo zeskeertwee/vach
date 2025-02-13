@@ -23,13 +23,8 @@ impl CommandTrait for Evaluator {
 			None => anyhow::bail!("Please provide a resource to extract using the -r or --resource key"),
 		};
 
-		let magic: [u8; vach::MAGIC_LENGTH] = match args.value_of(key_names::MAGIC) {
-			Some(magic) => magic.as_bytes().try_into()?,
-			None => *vach::DEFAULT_MAGIC,
-		};
-
 		// Attempting to extract a public key from a -p or -k input
-		let public_key = match args.value_of(key_names::KEYPAIR) {
+		let verifying_key = match args.value_of(key_names::KEYPAIR) {
 			Some(path) => {
 				let file = match File::open(path) {
 					Ok(it) => it,
@@ -41,7 +36,7 @@ impl CommandTrait for Evaluator {
 			None => match args.value_of(key_names::PUBLIC_KEY) {
 				Some(path) => {
 					let file = File::open(path)?;
-					Some(crypto_utils::read_public_key(file)?)
+					Some(crypto_utils::read_verifying_key(file)?)
 				},
 				None => None,
 			},
@@ -52,11 +47,14 @@ impl CommandTrait for Evaluator {
 			Err(err) => anyhow::bail!("IOError: {} @ {}", err, input_path),
 		};
 
-		// Generate ArchiveConfig using given magic and public key
-		let header_config = ArchiveConfig::new(magic, public_key);
+		// load archive
+		let archive = match verifying_key.as_ref() {
+			Some(vk) => Archive::with_key(input_file, vk),
+			None => Archive::new(input_file),
+		};
 
 		// Parse then extract archive
-		let mut archive = match Archive::with_config(input_file, &header_config) {
+		let mut archive = match archive {
 			Ok(archive) => archive,
 			Err(err) => match err {
 				InternalError::NoKeypairError => anyhow::bail!(

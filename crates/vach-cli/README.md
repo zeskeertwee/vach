@@ -46,15 +46,7 @@ vach list -i textures.vach
 
 ## **Commands:**
 
-- Running `vach help` will list all the commands. They each have their own inputs.
-
-- Also check out `spec/main.txt` for the official spec.
-
-- You can also run `vach [command] --help` to see help on each individual command.
-
-- Because of how the CLI works, the positions of the keys does not matter, so:
-
-   `vach list -i target.vach -m CMYKV` and `vach list -m CMYKV -i target.vach` are equivalent.
+- Run `vach help` or `vach [command] --help` to display helpful information about each command.
 
 ---
 
@@ -114,10 +106,6 @@ vach pack -e -o hello.vach -i hello.txt goodbye.txt
 # Here the flags are set to 0b1000_1100_1001_0000
 vach pack -f 35984 -o hello.vach -i hello.txt goodbye.txt
 
-# Magic: "-m" or "--magic"
-# Make your archive unique by setting a custom MAGIC
-vach pack -m CMYKX -o hello.vach -i hello.txt goodbye.txt
-
 # Truncate: "-t" or "--truncate"
 # This modifier deletes the original files once they are packaged
 # hello.txt & goodbye.txt are now deleted
@@ -135,10 +123,6 @@ vach unpack -i target.vach
 # Output directory: "-o" or "--output"
 # Specify where to unpack the archive
 vach unpack -i source.vach -o ./output/
-
-# Specify what magic your archive uses
-# Magic: "-m" or "--magic"
-vach unpack -m `CMYKX -i source.vach
 
 # Truncate: "-t" or "--truncate"
 # Deletes the original archive after unpacking
@@ -172,14 +156,10 @@ vach pipe -i presets.vach -r low.json | jq '."TextureResolution"'
 # Provide some input: "-i" or "--input"
 vach list -i textures.vach
 
-# MAGIC: "-m" or "--magic"
-# If the archive uses a custom magic
-vach list -i textures.vach -m TXTRS
-
 # SORT: "--sort"
 # How to sort the entries inside the table
 # Can either be: size-ascending, size-descending, alphabetical, alphabetical-reversed
-vach list -i textures.vach -m TXTRS --sort size-descending
+vach list -i textures.vach --sort size-descending
 ```
 
 ### 5: verify
@@ -189,9 +169,6 @@ vach list -i textures.vach -m TXTRS --sort size-descending
 ```sh
 # Simplest command
 vach verify -i textures.vach
-
-# MAGIC: "-m" or "--magic"
-vach verify -i textures.vach -m TXTRS
 ```
 
 ### 6: keypair
