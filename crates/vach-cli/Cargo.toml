@@ -1,6 +1,6 @@
 [package]
 name = "vach-cli"
-version = "0.7.0"
+version = "0.7.1"
 edition = "2021"
 authors = [
 	"Jasper Fortuin <zeskeertwee@gmail.com>",
@@ -27,3 +27,4 @@ anyhow = "1"
 tabled = "0.18"
 walkdir = "2"
 tempfile = "3"
+memmap2 = "0.9.5"

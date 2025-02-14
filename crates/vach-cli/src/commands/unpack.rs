@@ -1,6 +1,6 @@
 use std::{
 	fs::{self, File},
-	io::{BufReader, Read, Seek, Write},
+	io::{Cursor, Read, Seek, Write},
 	path::PathBuf,
 	str::FromStr,
 	thread,
@@ -53,15 +53,17 @@ impl CommandTrait for Evaluator {
 			},
 		};
 
-		let input_file = match File::open(input_path) {
-			Ok(it) => BufReader::new(it),
-			Err(err) => anyhow::bail!("IOError: {} @ {}", err, input_path),
-		};
+		// load file into memory map, and init cursor
+		let file = File::open(input_path)?;
+		let mmap = unsafe { memmap2::Mmap::map(&file).expect("Unable to map file to memory") };
+		#[cfg(unix)]
+		mmap.advise(memmap2::Advice::Random);
+		let cursor = Cursor::new(mmap.as_ref());
 
 		// load archive, with optional key
 		let archive = match verifying_key.as_ref() {
-			Some(vk) => Archive::with_key(input_file, vk),
-			None => Archive::new(input_file),
+			Some(vk) => Archive::with_key(cursor, vk),
+			None => Archive::new(cursor),
 		};
 
 		// Parse then extract archive
