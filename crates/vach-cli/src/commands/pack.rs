@@ -1,7 +1,6 @@
 use std::{
 	fs::File,
 	io::{self, Read, Write},
-	sync::Arc,
 };
 use std::path::PathBuf;
 use std::collections::HashSet;
@@ -20,16 +19,12 @@ pub const VERSION: &str = "0.0.5";
 struct FileAutoDropper(PathBuf, Option<File>);
 
 impl FileAutoDropper {
-	fn new<'a>(path: PathBuf) -> Option<Leaf<'a>> {
+	fn new(path: PathBuf) -> Option<Leaf<FileAutoDropper>> {
 		path.exists().then(|| {
-			let id = Arc::from(path.to_string_lossy());
-			let handle = Box::new(FileAutoDropper(path, None));
+			let id = path.to_string_lossy().to_string();
+			let handle = FileAutoDropper(path, None);
 
-			Leaf {
-				id,
-				handle,
-				..Default::default()
-			}
+			Leaf::new(handle, id)
 		})
 	}
 }
@@ -144,7 +139,7 @@ impl CommandTrait for Evaluator {
 			.unwrap_or(num_cpus::get());
 
 		// combine leaf input-template
-		let template = Leaf::default()
+		let template = Leaf::<&'static [u8]>::default()
 			.compress(compress_mode)
 			.compression_algo(compression_algo)
 			.encrypt(encrypt)
