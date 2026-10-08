@@ -63,7 +63,7 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 ### 🛠 Yet to be implemented
 
-- [x] An CLI: [![CLI Crate](https://img.shields.io/crates/v/vach-cli?style=flat-square)](https://crates.io/crates/vach-cli)
+- [x] A CLI: [![CLI Crate](https://img.shields.io/crates/v/vach-cli?style=flat-square)](https://crates.io/crates/vach-cli)
 - [x] Data encryption.
 - [x] Benchmarks.
 - [x] Features to turn off (or to turn on) either the `builder` or the `loader` modules.
