@@ -4,7 +4,10 @@ const PROGRESS_BAR_STYLE: &str = "[{elapsed_precise}] {spinner} {bar:50.cyan/blu
 // Trait that must be implemented by all subcommands
 pub trait CommandTrait: Sync {
 	fn version() -> &'static str;
-	fn evaluate(&self, cli: crate::cli::CommandLine) -> anyhow::Result<()>;
+	fn evaluate(
+		&self,
+		cli: crate::cli::CommandLine,
+	) -> anyhow::Result<()>;
 }
 
 // All sub-commands are defined in the below modules

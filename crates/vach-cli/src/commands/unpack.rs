@@ -7,8 +7,8 @@ use std::{
 	time::Instant,
 };
 
-use vach::{crypto_utils, prelude::*};
 use indicatif::{ProgressBar, ProgressStyle};
+use vach::{crypto_utils, prelude::*};
 
 use super::CommandTrait;
 use crate::cli;
@@ -20,7 +20,10 @@ impl CommandTrait for Subcommand {
 		"0.2"
 	}
 
-	fn evaluate(&self, cli: cli::CommandLine) -> anyhow::Result<()> {
+	fn evaluate(
+		&self,
+		cli: cli::CommandLine,
+	) -> anyhow::Result<()> {
 		let cli::Command::Unpack {
 			input,
 			output,
@@ -76,15 +79,13 @@ impl CommandTrait for Subcommand {
 		let archive = match archive {
 			Ok(archive) => archive,
 			Err(err) => match err {
-				InternalError::NoKeypairError => anyhow::bail!(
-					"Please provide a public key or a keypair for use in decryption or signature verification"
-				),
+				InternalError::NoKeypairError => anyhow::bail!("Please provide a public key or a keypair for use in decryption or signature verification"),
 				InternalError::MalformedArchiveSource(_) => anyhow::bail!("Unable to validate the archive: {}", err),
-				err => anyhow::bail!("Encountered an error: {}", err.to_string()),
+				err => anyhow::bail!("Encountered an error: {}", err),
 			},
 		};
 
-		if archive.entries().len() != 0 {
+		if !archive.entries().is_empty() {
 			extract_archive(&archive, output, jobs, chunks_size)?;
 		}
 
@@ -93,32 +94,27 @@ impl CommandTrait for Subcommand {
 }
 
 fn extract_archive<T: Read + Seek + Send + Sync>(
-	archive: &Archive<T>, target_folder: PathBuf, jobs: usize, chunk_size: Option<usize>,
+	archive: &Archive<T>,
+	target_folder: PathBuf,
+	jobs: usize,
+	chunk_size: Option<usize>,
 ) -> anyhow::Result<()> {
 	// For measuring the time difference
 	let time = Instant::now();
 	fs::create_dir_all(&target_folder)?;
 
-	let total_size = archive
-		.entries()
-		.iter()
-		.map(|(_, entry)| entry.offset)
-		.reduce(|a, b| a + b)
-		.unwrap_or(0);
-
+	let total_size = archive.entries().values().map(|entry| entry.offset).sum::<u64>();
 	let pbar = ProgressBar::new(total_size);
 
 	pbar.set_style(
 		ProgressStyle::default_bar()
 			.template(super::PROGRESS_BAR_STYLE)?
 			.progress_chars("█░-")
-			.tick_chars(
-				"⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀",
-			),
+			.tick_chars("⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀"),
 	);
 
 	// Extract all entries in parallel
-	let entries = archive.entries().iter().map(|(_, entry)| entry).collect::<Vec<_>>();
+	let entries = archive.entries().values().collect::<Vec<_>>();
 	let chunk_size = chunk_size.unwrap_or(if entries.len() < jobs { 8 } else { entries.len() / jobs });
 
 	thread::scope(|s| -> anyhow::Result<()> {
@@ -182,11 +178,7 @@ fn extract_archive<T: Read + Seek + Send + Sync>(
 
 	// Finished extracting
 	pbar.finish();
-	println!(
-		"Extracted {} files in {}s",
-		archive.entries().len(),
-		time.elapsed().as_secs_f64()
-	);
+	println!("Extracted {} files in {}s", archive.entries().len(), time.elapsed().as_secs_f64());
 
 	Ok(())
 }

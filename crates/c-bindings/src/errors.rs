@@ -21,7 +21,10 @@ pub const E_CRYPTO_ERROR: i32 = -9;
 /// Generic cryptographic error, signature verification failed or otherwise
 pub const E_LEAF_ID_TOO_LONG: i32 = -10;
 
-pub(crate) fn v_error_to_id<T>(error_p: *mut i32, error: prelude::InternalError) -> *mut T {
+pub(crate) fn v_error_to_id<T>(
+	error_p: *mut i32,
+	error: prelude::InternalError,
+) -> *mut T {
 	if let Some(e) = unsafe { error_p.as_mut() } {
 		*e = match error {
 			prelude::InternalError::MissingFeatureError(_) => E_MISSING_FEATURE_ERROR,
@@ -40,7 +43,10 @@ pub(crate) fn v_error_to_id<T>(error_p: *mut i32, error: prelude::InternalError)
 	std::ptr::null_mut()
 }
 
-pub(crate) fn report<T>(error_p: *mut i32, code: i32) -> *mut T {
+pub(crate) fn report<T>(
+	error_p: *mut i32,
+	code: i32,
+) -> *mut T {
 	if let Some(error) = unsafe { error_p.as_mut() } {
 		*error = code;
 	}

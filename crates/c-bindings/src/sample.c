@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
     v_resource *resource = archive_fetch_resource(archive, path, &error_p);
 
     // log v_resource data
-    printf("[%d] Path: %s, Len: %llu, Flags: %d\n", i, path, resource->len,
+    printf("[%d] Path: %s, Len: %lu, Flags: %d\n", i, path, resource->len,
            resource->flags);
 
     // free resource

@@ -38,9 +38,6 @@ let data_1 = b"Around The World, Fatter better stronker" as &[u8];
 let data_2 = b"Imagine if this made sense" as &[u8];
 let data_3 = b"Fast-Acting Long-Lasting, *Bathroom Reader*" as &[u8];
 
-// Builder definition
-let config = BuilderConfig::default();
-
 // Add data
 let mut leaves = [
   Leaf::new(data_1, "d1").compress(CompressMode::Always),
@@ -49,7 +46,7 @@ let mut leaves = [
 ];
 
 // write archive
-dump(&mut target, &mut leaves, &config, None)?;
+dump(&mut target, &mut leaves, None, None)?;
 
 // Load data
 let archive = Archive::new(target)?;
@@ -66,7 +63,7 @@ assert_eq!(archive.fetch("d3")?.data.as_slice(), data_3);
 
 ### 🛠 Yet to be implemented
 
-- [x] An CLI: [![CLI Crate](https://img.shields.io/crates/v/vach-cli?style=flat-square)](https://crates.io/crates/vach-cli)
+- [x] A CLI: [![CLI Crate](https://img.shields.io/crates/v/vach-cli?style=flat-square)](https://crates.io/crates/vach-cli)
 - [x] Data encryption.
 - [x] Benchmarks.
 - [x] Features to turn off (or to turn on) either the `builder` or the `loader` modules.

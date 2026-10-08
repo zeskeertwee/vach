@@ -1,5 +1,5 @@
+use crate::{cli, utils};
 use vach::crypto_utils::gen_keypair;
-use crate::{utils, cli};
 
 /// This command is used to generate keypair
 pub struct Subcommand;
@@ -9,7 +9,10 @@ impl super::CommandTrait for Subcommand {
 		"0.2"
 	}
 
-	fn evaluate(&self, args: cli::CommandLine) -> anyhow::Result<()> {
+	fn evaluate(
+		&self,
+		args: cli::CommandLine,
+	) -> anyhow::Result<()> {
 		let cli::Command::GenKeypair { output, split_key } = args.command else {
 			anyhow::bail!("Wrong implementation invoked for subcommand")
 		};

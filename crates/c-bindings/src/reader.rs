@@ -1,6 +1,6 @@
-use std::{fs, io, slice, ffi};
-use vach::{crypto_utils::read_verifying_key, prelude::*};
 use super::{errors, DataSource};
+use std::{ffi, fs, io, slice};
+use vach::{crypto_utils::read_verifying_key, prelude::*};
 
 /// Verifying and Decryption Key
 pub type v_verifying_key = ffi::c_void;
@@ -8,7 +8,8 @@ pub type v_verifying_key = ffi::c_void;
 /// Create new loader configuration
 #[no_mangle]
 pub extern "C" fn new_verifying_key(
-	vk_bytes: *const [u8; super::V_VERIFYING_KEY_LENGTH], error_p: *mut i32,
+	vk_bytes: *const [u8; super::V_VERIFYING_KEY_LENGTH],
+	error_p: *mut i32,
 ) -> *mut v_verifying_key {
 	if let Some(bytes) = unsafe { vk_bytes.as_ref() } {
 		match read_verifying_key(bytes.as_slice()) {
@@ -34,7 +35,9 @@ pub type v_archive = ffi::c_void;
 /// Create a new archive from a file
 #[no_mangle]
 pub extern "C" fn new_archive_from_file(
-	path: *const ffi::c_char, config: *const v_verifying_key, error_p: *mut i32,
+	path: *const ffi::c_char,
+	config: *const v_verifying_key,
+	error_p: *mut i32,
 ) -> *mut v_archive {
 	let path = match unsafe { std::ffi::CStr::from_ptr(path).to_str() } {
 		Ok(p) => p,
@@ -63,7 +66,10 @@ pub extern "C" fn new_archive_from_file(
 /// Create a new archive from a buffer
 #[no_mangle]
 pub extern "C" fn new_archive_from_buffer(
-	config: *const v_verifying_key, data: *const u8, len: usize, error_p: *mut i32,
+	config: *const v_verifying_key,
+	data: *const u8,
+	len: usize,
+	error_p: *mut i32,
 ) -> *mut v_archive {
 	if data.is_null() {
 		return errors::report(error_p, errors::E_PARAMETER_IS_NULL);
@@ -103,18 +109,16 @@ pub struct v_entries {
 
 /// Get a list of archive entry IDs
 #[no_mangle]
-pub extern "C" fn archive_get_entries(archive: *const v_archive, error_p: *mut i32) -> *mut v_entries {
+pub extern "C" fn archive_get_entries(
+	archive: *const v_archive,
+	error_p: *mut i32,
+) -> *mut v_entries {
 	let archive = match unsafe { (archive as *const Archive<DataSource>).as_ref() } {
 		Some(a) => a,
 		None => return errors::report(error_p, errors::E_PARAMETER_IS_NULL),
 	};
 
-	let paths = archive
-		.entries()
-		.keys()
-		.map(|k| ffi::CString::new(k.as_bytes()).unwrap().into_raw())
-		.collect::<Vec<_>>();
-
+	let paths = archive.entries().keys().map(|k| ffi::CString::new(k.as_bytes()).unwrap().into_raw()).collect::<Vec<_>>();
 	let list = paths.into_boxed_slice();
 
 	let entries = v_entries {
@@ -146,14 +150,15 @@ pub struct v_resource {
 	data: *mut u8,
 	len: usize,
 	flags: ffi::c_uint,
-	content_version: u8,
 	verified: bool,
 }
 
 /// Fetch a resource, WITHOUT locking the internal Mutex
 #[no_mangle]
 pub extern "C" fn archive_fetch_resource(
-	archive: *mut v_archive, id: *const ffi::c_char, error_p: *mut i32,
+	archive: *mut v_archive,
+	id: *const ffi::c_char,
+	error_p: *mut i32,
 ) -> *mut v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
@@ -174,7 +179,6 @@ pub extern "C" fn archive_fetch_resource(
 		len: resource.data.len(),
 		data: Box::leak(resource.data).as_mut_ptr(),
 		flags: resource.flags.bits(),
-		content_version: resource.content_version,
 		verified: resource.verified,
 	};
 
@@ -183,8 +187,10 @@ pub extern "C" fn archive_fetch_resource(
 
 /// Fetch a resource, LOCKS the internal Mutex. For use in multithreaded environments
 #[no_mangle]
-pub extern "C" fn archive_fetch_resource_lock(
-	archive: *const v_archive, id: *const i8, error_p: *mut i32,
+pub extern "C" fn archive_fetch_resource_locked(
+	archive: *const v_archive,
+	id: *const i8,
+	error_p: *mut i32,
 ) -> *mut v_resource {
 	let path = match unsafe { std::ffi::CStr::from_ptr(id).to_str() } {
 		Ok(p) => p,
@@ -205,7 +211,6 @@ pub extern "C" fn archive_fetch_resource_lock(
 		len: resource.data.len(),
 		data: Box::leak(resource.data).as_mut_ptr(),
 		flags: resource.flags.bits(),
-		content_version: resource.content_version,
 		verified: resource.verified,
 	};
 

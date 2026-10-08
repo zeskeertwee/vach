@@ -1,5 +1,5 @@
-use clap::Parser;
 use crate::commands::CommandTrait;
+use clap::Parser;
 
 // Fundamental modules
 mod cli;

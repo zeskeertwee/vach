@@ -14,14 +14,11 @@ impl CommandTrait for Subcommand {
 		"0.2"
 	}
 
-	fn evaluate(&self, cli: cli::CommandLine) -> anyhow::Result<()> {
-		let cli::Command::Pipe {
-			input,
-			resource,
-			keypair,
-			public_key,
-		} = cli.command
-		else {
+	fn evaluate(
+		&self,
+		cli: cli::CommandLine,
+	) -> anyhow::Result<()> {
+		let cli::Command::Pipe { input, resource, keypair, public_key } = cli.command else {
 			anyhow::bail!("Wrong implementation invoked for subcommand")
 		};
 
@@ -56,11 +53,9 @@ impl CommandTrait for Subcommand {
 		let mut archive = match archive {
 			Ok(archive) => archive,
 			Err(err) => match err {
-				InternalError::NoKeypairError => anyhow::bail!(
-					"Please provide a public key or a keypair for use in decryption or signature verification"
-				),
+				InternalError::NoKeypairError => anyhow::bail!("Please provide a public key or a keypair for use in decryption or signature verification"),
 				InternalError::MalformedArchiveSource(_) => anyhow::bail!("Unable to validate the archive: {}", err),
-				err => anyhow::bail!("Encountered an error: {}", err.to_string()),
+				err => anyhow::bail!("Encountered an error: {}", err),
 			},
 		};
 

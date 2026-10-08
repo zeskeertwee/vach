@@ -1,8 +1,8 @@
 use std::io;
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main, Throughput};
-use vach::prelude::*;
+use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
 use vach::crypto_utils::{gen_keypair, read_verifying_key};
+use vach::prelude::*;
 
 // Remove io overhead by Sinking data into the void
 struct Sink(u64);
@@ -14,7 +14,10 @@ impl Sink {
 }
 
 impl io::Seek for Sink {
-	fn seek(&mut self, seek: io::SeekFrom) -> io::Result<u64> {
+	fn seek(
+		&mut self,
+		seek: io::SeekFrom,
+	) -> io::Result<u64> {
 		match seek {
 			io::SeekFrom::Start(s) => self.0 = s,
 			io::SeekFrom::Current(s) => self.0 = (self.0 as i64 + s) as u64,
@@ -26,7 +29,10 @@ impl io::Seek for Sink {
 }
 
 impl io::Write for Sink {
-	fn write(&mut self, sequence: &[u8]) -> io::Result<usize> {
+	fn write(
+		&mut self,
+		sequence: &[u8],
+	) -> io::Result<usize> {
 		Ok(sequence.len())
 	}
 
@@ -63,7 +69,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 			];
 
 			// dump
-			dump(Sink::new(), &mut leaves, &b_config, None).unwrap()
+			dump(Sink::new(), &mut leaves, Some(b_config.clone()), None).unwrap()
 		});
 	});
 
@@ -86,7 +92,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 		];
 
 		// Dump data
-		dump(&mut target, &mut leaves, &b_config, None).unwrap();
+		dump(&mut target, &mut leaves, Some(b_config.clone()), None).unwrap();
 	}
 
 	// Load data
@@ -110,15 +116,6 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 			black_box(archive.fetch_mut("d2").unwrap());
 			black_box(archive.fetch_mut("d3").unwrap());
 		});
-	});
-
-	drop(throughput_group);
-
-	c.bench_function("Archive::LOAD_NEW", |b| {
-		// How fast it takes to load a new archive
-		b.iter(|| {
-			black_box(Archive::with_key(&mut target, &vk).unwrap());
-		})
 	});
 }
 

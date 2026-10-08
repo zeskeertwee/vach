@@ -35,13 +35,11 @@ pub struct Archive<T> {
 }
 
 impl<T> std::fmt::Display for Archive<T> {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		let bytes = self
-			.entries
-			.values()
-			.map(|re| re.offset)
-			.reduce(|a, b| a + b)
-			.unwrap_or(0);
+	fn fmt(
+		&self,
+		f: &mut std::fmt::Formatter<'_>,
+	) -> std::fmt::Result {
+		let bytes = self.entries.values().map(|re| re.offset).sum::<u64>();
 
 		write!(
 			f,
@@ -62,7 +60,11 @@ impl<T> Archive<T> {
 
 	// Decompress and|or Decrypt some data
 	#[inline(never)]
-	fn process(&self, entry: &RegistryEntry, mut raw: Vec<u8>) -> InternalResult<(Vec<u8>, bool)> {
+	fn process(
+		&self,
+		entry: &RegistryEntry,
+		mut raw: Vec<u8>,
+	) -> InternalResult<(Vec<u8>, bool)> {
 		/* Literally the hottest function in the block (🕶) */
 
 		// buffer_a originally contains the raw data
@@ -75,13 +77,11 @@ impl<T> Archive<T> {
 		if let Some(pk) = self.key {
 			// If there is an error the data is flagged as invalid
 			if let Some(signature) = entry.signature {
-				let raw_size = raw.len();
-
-				let entry_bytes = entry.to_bytes(true)?;
-				raw.extend_from_slice(&entry_bytes);
+				let id_bytes = entry.id.as_bytes();
+				raw.extend_from_slice(id_bytes);
 
 				verified = pk.verify_strict(&raw, &signature).is_ok();
-				raw.truncate(raw_size);
+				raw.truncate(raw.len() - id_bytes.len());
 			}
 		}
 
@@ -89,8 +89,9 @@ impl<T> Archive<T> {
 		if entry.flags.contains(Flags::ENCRYPTED_FLAG) {
 			#[cfg(feature = "crypto")]
 			match self.decryptor.as_ref() {
-				Some(dc) => {
-					decrypted = Some(dc.decrypt(&raw)?);
+				Some(dc) => match entry.nonce.as_ref() {
+					Some(n) => decrypted = Some(dc.decrypt(&raw, n)?),
+					None => return Err(InternalError::OtherError(format!("Entry {} is flagged as encrypted but doesn't contain a nonce", entry.id).into())),
 				},
 				None => return Err(InternalError::NoKeypairError),
 			}
@@ -123,13 +124,7 @@ impl<T> Archive<T> {
 				} else if entry.flags.contains(Flags::SNAPPY_COMPRESSED) {
 					Compressor::new(source.as_slice()).decompress(CompressionAlgorithm::Snappy, &mut target)?
 				} else {
-					return InternalResult::Err(InternalError::OtherError(
-						format!(
-							"Unable to determine the compression algorithm used for entry: {}",
-							entry
-						)
-						.into(),
-					));
+					return InternalResult::Err(InternalError::OtherError(format!("Unable to determine the compression algorithm used for entry: {}", entry).into()));
 				};
 
 				Ok((target, verified))
@@ -183,7 +178,10 @@ where
 
 	/// Parse an [`Archive`], with an optional [`VerifyingKey`](crypto::VerifyingKey).
 	#[cfg(feature = "crypto")]
-	pub fn with_key(mut handle: T, vk: &ed25519_dalek::VerifyingKey) -> InternalResult<Archive<T>> {
+	pub fn with_key(
+		mut handle: T,
+		vk: &ed25519_dalek::VerifyingKey,
+	) -> InternalResult<Archive<T>> {
 		// Start reading from the start of the input
 		handle.seek(SeekFrom::Start(0))?;
 
@@ -203,8 +201,7 @@ where
 			header,
 			handle: Mutex::new(handle),
 			entries,
-
-			key: Some(vk.clone()),
+			key: Some(*vk),
 			decryptor: Some(crypto::Encryptor::new(vk)),
 		};
 
@@ -213,7 +210,10 @@ where
 
 	/// Fetch a [`RegistryEntry`] from this [`Archive`].
 	/// This can be used for debugging, as the [`RegistryEntry`] holds information on data with the adjacent ID.
-	pub fn fetch_entry(&self, id: impl AsRef<str>) -> Option<RegistryEntry> {
+	pub fn fetch_entry(
+		&self,
+		id: impl AsRef<str>,
+	) -> Option<RegistryEntry> {
 		self.entries.get(id.as_ref()).cloned()
 	}
 
@@ -235,8 +235,11 @@ where
 	T: Read + Seek,
 {
 	/// Read a [`RegistryEntry's`](RegistryEntry) adjacent raw data
-	pub(crate) fn read_raw(handle: &mut T, entry: &RegistryEntry) -> InternalResult<Vec<u8>> {
-		let mut buffer = Vec::with_capacity(entry.offset as usize + 64);
+	pub(crate) fn read_raw(
+		handle: &mut T,
+		entry: &RegistryEntry,
+	) -> InternalResult<Vec<u8>> {
+		let mut buffer = Vec::with_capacity(entry.offset as usize);
 		handle.seek(SeekFrom::Start(entry.location))?;
 
 		let mut take = handle.take(entry.offset);
@@ -246,15 +249,17 @@ where
 	}
 
 	/// Cheaper alternative to [`fetch`](Archive::fetch) that doesn't lock the underlying [Mutex]
-	pub fn fetch_mut(&mut self, id: impl AsRef<str>) -> InternalResult<Resource> {
+	pub fn fetch_mut(
+		&mut self,
+		id: impl AsRef<str>,
+	) -> InternalResult<Resource> {
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = Archive::read_raw(self.handle.get_mut().unwrap(), &entry)?;
 			let (buffer, verified) = self.process(&entry, raw)?;
 
 			Ok(Resource {
-				content_version: entry.content_version,
 				flags: entry.flags,
-				data: buffer.into_boxed_slice(),
+				data: buffer.into(),
 				verified,
 			})
 		} else {
@@ -264,7 +269,10 @@ where
 
 	/// Fetch a [`Resource`] with the given `ID`.
 	/// Locks the underlying [`Mutex`], for a cheaper non-locking operation refer to [`Archive::fetch_mut`]
-	pub fn fetch(&self, id: impl AsRef<str>) -> InternalResult<Resource> {
+	pub fn fetch(
+		&self,
+		id: impl AsRef<str>,
+	) -> InternalResult<Resource> {
 		if let Some(entry) = self.fetch_entry(&id) {
 			let raw = {
 				let mut guard = self.handle.lock().unwrap();
@@ -275,9 +283,8 @@ where
 			let (buffer, is_secure) = self.process(&entry, raw)?;
 
 			Ok(Resource {
-				content_version: entry.content_version,
 				flags: entry.flags,
-				data: buffer.into_boxed_slice(),
+				data: buffer.into(),
 				verified: is_secure,
 			})
 		} else {

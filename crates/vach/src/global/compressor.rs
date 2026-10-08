@@ -3,12 +3,12 @@
 
 use std::io::{self, Read, Write};
 
-use crate::prelude::Flags;
 use super::error::*;
+use crate::prelude::Flags;
 
+use brotli;
 use lz4_flex as lz4;
 use snap;
-use brotli;
 
 #[derive(Debug)]
 /// Exported utility compressor used by `vach`
@@ -23,7 +23,11 @@ impl<T: Read> Compressor<T> {
 		Compressor { data }
 	}
 	/// Pass in a compression algorithm to use, sit back and let the compressor do it's job
-	pub fn compress(&mut self, algo: CompressionAlgorithm, output: &mut dyn Write) -> InternalResult {
+	pub fn compress(
+		&mut self,
+		algo: CompressionAlgorithm,
+		output: &mut dyn Write,
+	) -> InternalResult {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut compressor = lz4::frame::FrameEncoder::new(output);
@@ -44,15 +48,17 @@ impl<T: Read> Compressor<T> {
 
 				Ok(())
 			},
-			CompressionAlgorithm::Brotli(_) => Err(InternalError::OtherError(
-				"Maximum Brotli compression level is 11 and minimum is 1".into(),
-			)),
+			CompressionAlgorithm::Brotli(_) => Err(InternalError::OtherError("Maximum Brotli compression level is 11 and minimum is 1".into())),
 		}
 	}
 
 	/// Pass in a compression algorithm to use, sit back and let the decompressor do it's job. That is if the compressed data *is* compressed with the adjacent algorithm
 	/// Contains the number of bytes decompressed from the source
-	pub fn decompress(&mut self, algo: CompressionAlgorithm, output: &mut Vec<u8>) -> InternalResult<usize> {
+	pub fn decompress(
+		&mut self,
+		algo: CompressionAlgorithm,
+		output: &mut Vec<u8>,
+	) -> InternalResult<usize> {
 		match algo {
 			CompressionAlgorithm::LZ4 => {
 				let mut rdr = lz4::frame::FrameDecoder::new(&mut self.data);
@@ -85,7 +91,10 @@ pub enum CompressionAlgorithm {
 }
 
 impl std::fmt::Display for CompressionAlgorithm {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+	fn fmt(
+		&self,
+		f: &mut std::fmt::Formatter<'_>,
+	) -> std::fmt::Result {
 		match self {
 			CompressionAlgorithm::Snappy => write!(f, "Snappy"),
 			CompressionAlgorithm::LZ4 => write!(f, "LZ4"),

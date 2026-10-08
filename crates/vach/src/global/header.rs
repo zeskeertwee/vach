@@ -1,5 +1,5 @@
-use std::io::Read;
 use super::{error::*, flags::Flags};
+use std::io::Read;
 
 #[derive(Debug)]
 pub(crate) struct Header {

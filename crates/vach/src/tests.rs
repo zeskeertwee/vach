@@ -1,8 +1,8 @@
 // This is meant to mirror as closely as possible, how users should use the crate
 #![cfg(test)]
 
-use std::{fs::File, str};
 use crate::prelude::*;
+use std::{fs::File, str};
 
 // Contains both the public key and secret key in the same file:
 // secret -> [u8; crate::SECRET_KEY_LENGTH], public -> [u8; crate::PUBLIC_KEY_LENGTH]
@@ -21,7 +21,8 @@ const CUSTOM_FLAG_3: u32 = 0b0000_0000_0000_0000_0000_0000_1000_0000;
 const CUSTOM_FLAG_4: u32 = 0b0000_0000_0000_0000_0000_0000_0001_0000;
 
 fn leaves_from_dir<'a>(
-	path: impl AsRef<std::path::Path>, template: Option<&Leaf<&'static [u8]>>,
+	path: impl AsRef<std::path::Path>,
+	template: Option<&Leaf<&'static [u8]>>,
 ) -> InternalResult<Vec<Leaf<File>>> {
 	use std::fs;
 
@@ -100,29 +101,63 @@ fn flags_set_intersects() {
 }
 
 #[test]
+#[cfg(feature = "crypto")]
+fn registry_entry_roundtrip() {
+	let entries = [
+		RegistryEntry {
+			id: "brotato".into(),
+			flags: Flags { bits: Flags::COMPRESSED_FLAG },
+			location: 12,
+			offset: 360,
+			signature: None,
+			nonce: None,
+		},
+		RegistryEntry {
+			id: "potato".into(),
+			flags: Flags {
+				bits: Flags::ENCRYPTED_FLAG | Flags::SIGNED_FLAG,
+			},
+			location: 120,
+			offset: 3600,
+			signature: Some([12u8; crate::SIGNATURE_LENGTH].into()),
+			nonce: Some([34u8; crate::NONCE_LENGTH]),
+		},
+		RegistryEntry {
+			id: "tomato".into(),
+			flags: Flags { bits: Flags::SIGNED_FLAG },
+			location: 1200,
+			offset: 36000,
+			signature: Some([12u8; crate::SIGNATURE_LENGTH].into()),
+			nonce: None,
+		},
+	];
+
+	for entry in entries {
+		let data = entry.to_bytes().unwrap();
+		let mut cursor = std::io::Cursor::new(data);
+
+		let parsed = RegistryEntry::from_handle(&mut cursor).unwrap();
+		assert_eq!(entry, parsed);
+	}
+}
+
+#[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
 fn builder_no_signature() {
-	let config = BuilderConfig::default();
-
 	let mut poem_flags = Flags::default();
-	poem_flags
-		.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true)
-		.unwrap();
+	poem_flags.set(CUSTOM_FLAG_1 | CUSTOM_FLAG_2 | CUSTOM_FLAG_3 | CUSTOM_FLAG_4, true).unwrap();
 
 	let mut leaves = [
 		Leaf::new(File::open("test_data/song.txt").unwrap(), "song").compress(CompressMode::Never),
 		Leaf::new(File::open("test_data/lorem.txt").unwrap(), "lorem"),
 		Leaf::new(File::open("test_data/bee.script").unwrap(), "script"),
 		Leaf::new(File::open("test_data/quicksort.wasm").unwrap(), "wasm"),
-		Leaf::new(File::open("test_data/poem.txt").unwrap(), "poem")
-			.compress(CompressMode::Always)
-			.version(10)
-			.flags(poem_flags),
+		Leaf::new(File::open("test_data/poem.txt").unwrap(), "poem").compress(CompressMode::Always).flags(poem_flags),
 	];
 
 	let mut target = File::create(SIMPLE_TARGET).unwrap();
 	let mut count = 0usize;
-	let written = dump(&mut target, &mut leaves, &config, Some(&mut |_, _| count += 1)).unwrap();
+	let written = dump(&mut target, &mut leaves, None, Some(&mut |_, _| count += 1)).unwrap();
 
 	assert_eq!(count, leaves.len(),);
 	assert_eq!(target.metadata().unwrap().len(), written);
@@ -164,7 +199,7 @@ fn builder_with_signature() -> InternalResult {
 	];
 
 	let mut target = File::create(SIGNED_TARGET)?;
-	let written = dump(&mut target, leaves.as_mut_slice(), &build_config, None)?;
+	let written = dump(&mut target, leaves.as_mut_slice(), Some(build_config), None)?;
 
 	assert_eq!(target.metadata().unwrap().len(), written);
 	Ok(())
@@ -183,10 +218,7 @@ fn fetch_with_signature() -> InternalResult {
 	let target = File::open(SIGNED_TARGET)?;
 	let mut archive = Archive::with_key(target, &vk)?;
 
-	assert!(
-		archive.flags().contains(CUSTOM_FLAG_4),
-		"Flags did not complete roundtrip"
-	);
+	assert!(archive.flags().contains(CUSTOM_FLAG_4), "Flags did not complete roundtrip");
 
 	let resource = archive.fetch_mut("bytez")?;
 	assert_eq!(resource.data.len(), 12);
@@ -213,8 +245,8 @@ fn decryptor_test() -> InternalResult {
 	let crypt = Encryptor::new(&vk);
 	let data = vec![12, 12, 12, 12];
 
-	let ciphertext = crypt.encrypt(&data)?;
-	let plaintext = crypt.decrypt(&ciphertext)?;
+	let (ciphertext, nonce) = crypt.encrypt(&data)?;
+	let plaintext = crypt.decrypt(&ciphertext, &nonce)?;
 
 	assert_ne!(&plaintext, &ciphertext);
 	assert_eq!(&plaintext, &data);
@@ -241,7 +273,7 @@ fn builder_with_encryption() -> InternalResult {
 	);
 
 	let mut target = File::create(ENCRYPTED_TARGET)?;
-	let written = dump(&mut target, leaves.as_mut_slice(), &build_config, None)?;
+	let written = dump(&mut target, leaves.as_mut_slice(), Some(build_config), None)?;
 
 	assert_eq!(target.metadata().unwrap().len(), written);
 	Ok(())
@@ -303,7 +335,7 @@ fn consolidated_test() -> InternalResult {
 	config.signing_key = read_secret_key(&keypair_bytes[..ed25519_dalek::SECRET_KEY_LENGTH]).ok();
 
 	// Add data
-	let template = Leaf::<&'static [u8]>::default().encrypt(true).version(59).sign(true);
+	let template = Leaf::<&'static [u8]>::default().encrypt(true).sign(true);
 	let mut leaves = [
 		Leaf::new(data_1, "d1").template(&template),
 		Leaf::new(data_2, "d2").template(&template),
@@ -312,7 +344,7 @@ fn consolidated_test() -> InternalResult {
 
 	// Dump data
 	let then = Instant::now();
-	let written = dump(&mut target, &mut leaves, &config, None)?;
+	let written = dump(&mut target, &mut leaves, Some(config), None)?;
 
 	// Just because
 	println!("Building took: {:?}", then.elapsed());
@@ -330,9 +362,9 @@ fn consolidated_test() -> InternalResult {
 	// Quick assertions
 	let then = Instant::now();
 
-	assert_eq!(archive.fetch_mut("d1")?.data.as_ref(), data_1);
-	assert_eq!(archive.fetch_mut("d2")?.data.as_ref(), data_2);
-	assert_eq!(archive.fetch_mut("d3")?.data.as_ref(), data_3);
+	assert_eq!(archive.fetch_mut("d1").unwrap().data.as_ref(), data_1);
+	assert_eq!(archive.fetch_mut("d2").unwrap().data.as_ref(), data_2);
+	assert_eq!(archive.fetch_mut("d3").unwrap().data.as_ref(), data_3);
 
 	println!("Fetching took: {:?} on average on {}", then.elapsed() / 3, archive);
 
@@ -345,6 +377,17 @@ fn consolidated_test() -> InternalResult {
 }
 
 #[test]
+fn null_roundtrip() -> InternalResult {
+	let mut target = std::io::Cursor::new(vec![]);
+	dump::<_, &[u8]>(&mut target, &mut [], None, None)?;
+
+	let archive = Archive::new(target)?;
+	assert_eq!(archive.entries().len(), 0, "Archive should have zero entries");
+
+	Ok(())
+}
+
+#[test]
 #[cfg(all(feature = "compression", feature = "builder"))]
 fn test_compressors() -> InternalResult {
 	use std::io::Cursor;
@@ -353,21 +396,18 @@ fn test_compressors() -> InternalResult {
 	let input = [12u8; INPUT_LEN];
 	let mut target = Cursor::new(vec![]);
 
-	let mut leaves = [
-		Leaf::new(input.as_slice(), "LZ4")
-			.compression_algo(CompressionAlgorithm::LZ4)
-			.compress(CompressMode::Always),
-		Leaf::new(input.as_slice(), "BROTLI")
-			.compression_algo(CompressionAlgorithm::Brotli(9))
-			.compress(CompressMode::Always),
-		Leaf::new(input.as_slice(), "SNAPPY")
-			.compression_algo(CompressionAlgorithm::Snappy)
-			.compress(CompressMode::Always),
-	];
+	dump(
+		&mut target,
+		&mut [
+			Leaf::new(input.as_slice(), "LZ4").compression_algo(CompressionAlgorithm::LZ4).compress(CompressMode::Always),
+			Leaf::new(input.as_slice(), "BROTLI").compression_algo(CompressionAlgorithm::Brotli(9)).compress(CompressMode::Always),
+			Leaf::new(input.as_slice(), "SNAPPY").compression_algo(CompressionAlgorithm::Snappy).compress(CompressMode::Always),
+		],
+		None,
+		None,
+	)?;
 
-	let builder_config = BuilderConfig::default();
-	dump(&mut target, &mut leaves, &builder_config, None)?;
-
+	// parse archive
 	let mut archive = Archive::new(&mut target)?;
 
 	let d1 = archive.fetch_mut("LZ4")?;
@@ -397,10 +437,10 @@ fn test_compressors() -> InternalResult {
 }
 
 #[test]
-#[cfg(all(feature = "multithreaded", feature = "archive"))]
+#[cfg(feature = "archive")]
 fn test_batch_fetching() -> InternalResult {
-	use std::{io::Cursor, collections::HashMap};
 	use rayon::prelude::*;
+	use std::{collections::HashMap, io::Cursor};
 
 	// Define input constants
 	const INPUT_LEN: usize = 8;
@@ -415,22 +455,20 @@ fn test_batch_fetching() -> InternalResult {
 	ids.push("ERRORS".to_string());
 
 	// Process data
-	let config = BuilderConfig::default().threads(2);
-	dump(&mut target, leaves.as_mut_slice(), &config, None)?;
+	let config = BuilderConfig::default().threads(4);
+	dump(&mut target, leaves.as_mut_slice(), Some(config), None)?;
 
 	let archive = Archive::new(target)?;
-	let mut resources = ids
-		.as_slice()
-		.par_iter()
-		.map(|id| (id.as_str(), archive.fetch(&id)))
-		.collect::<HashMap<_, _>>();
+	let mut resources = ids.as_slice().par_iter().map(|id| (id.as_str(), archive.fetch(&id))).collect::<HashMap<_, _>>();
 
 	// Tests and checks
 	assert!(resources.get("NON_EXISTENT").is_none());
 	assert!(resources.get("ERRORS").is_some());
 
 	match resources.remove("ERRORS").unwrap() {
-		Ok(_) => return Err(InternalError::OtherError("This should be an error".into())),
+		Ok(_) => {
+			return Err(InternalError::OtherError("This should be an error".into()));
+		},
 		Err(err) => match err {
 			InternalError::MissingResourceError(_) => {
 				resources.remove("ERRORS");

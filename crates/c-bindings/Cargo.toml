@@ -10,7 +10,7 @@ repository = "https://github.com/zeskeertwee/vach"
 
 [lib]
 name = "vach"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 vach = { path = "../vach", features = [

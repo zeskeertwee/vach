@@ -18,7 +18,10 @@ pub(crate) enum DataSource {
 }
 
 impl io::Read for DataSource {
-	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+	fn read(
+		&mut self,
+		buf: &mut [u8],
+	) -> io::Result<usize> {
 		match self {
 			DataSource::File(f) => f.read(buf),
 			DataSource::Buffer(b) => b.read(buf),
@@ -27,7 +30,10 @@ impl io::Read for DataSource {
 }
 
 impl io::Seek for DataSource {
-	fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
+	fn seek(
+		&mut self,
+		pos: io::SeekFrom,
+	) -> io::Result<u64> {
 		match self {
 			DataSource::File(f) => f.seek(pos),
 			DataSource::Buffer(b) => b.seek(pos),

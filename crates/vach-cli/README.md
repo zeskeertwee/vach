@@ -53,7 +53,7 @@ $ vach  --help
 
 A command-line tool to work with vach archive files and streams
 
-Usage: vach.exe <COMMAND>
+Usage: ./vach <COMMAND>
 
 Commands:
   unpack
@@ -85,11 +85,11 @@ $ vach pipe  --help
 
 Unpacks a resource and writes to stdout
 
-Usage: vach.exe pipe [OPTIONS] --input <FILE> --resource <ID>
+Usage: ./vach pipe [OPTIONS] --input <FILE> --resource <ID>
 
 Options:
   -i, --input <FILE>
-          Path to file to unpack
+          Path to archive to unpack
   -r, --resource <ID>
           The `id` of the resource to extract
   -k, --keypair <FILE>

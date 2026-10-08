@@ -1,5 +1,5 @@
-use crate::global::{reg_entry::RegistryEntry, flags::Flags};
 use crate::global::error::InternalResult;
+use crate::global::{flags::Flags, reg_entry::RegistryEntry};
 
 #[cfg(feature = "compression")]
 use crate::global::compressor::{CompressionAlgorithm, Compressor};
@@ -34,8 +34,6 @@ pub struct Leaf<R = &'static [u8]> {
 
 	/// The `ID` under which the embedded data will be referenced
 	pub id: Arc<str>,
-	/// The version of the content, allowing you to track obsolete data.
-	pub content_version: u8,
 	/// The flags that will go into the archive write target.
 	pub flags: Flags,
 
@@ -60,7 +58,10 @@ pub struct Leaf<R = &'static [u8]> {
 
 impl<R: Read + Send + Sync> Leaf<R> {
 	/// Creates a new [`Leaf`] wrapping around the given [`Read`] handle, with an ID
-	pub fn new<S: AsRef<str>>(handle: R, id: S) -> Leaf<R> {
+	pub fn new<S: AsRef<str>>(
+		handle: R,
+		id: S,
+	) -> Leaf<R> {
 		let default = Leaf::<&'static [u8]>::default();
 
 		Leaf {
@@ -68,7 +69,6 @@ impl<R: Read + Send + Sync> Leaf<R> {
 			id: Arc::from(id.as_ref()),
 
 			// copy from default implementation
-			content_version: default.content_version,
 			flags: default.flags,
 
 			#[cfg(feature = "compression")]
@@ -83,12 +83,14 @@ impl<R: Read + Send + Sync> Leaf<R> {
 	}
 
 	/// Copy all fields from another [`Leaf`], except for `handle` and `id`.
-	pub fn template<R2>(self, other: &Leaf<R2>) -> Self {
+	pub fn template<R2>(
+		self,
+		other: &Leaf<R2>,
+	) -> Self {
 		Leaf {
 			handle: self.handle,
 			id: self.id,
 
-			content_version: other.content_version,
 			flags: other.flags,
 
 			#[cfg(feature = "compression")]
@@ -105,42 +107,68 @@ impl<R: Read + Send + Sync> Leaf<R> {
 	/// Setter for the [`compress`](Leaf::compress) field
 	#[cfg(feature = "compression")]
 	#[cfg_attr(docsrs, doc(cfg(feature = "compression")))]
-	pub fn compress(mut self, compress: CompressMode) -> Self {
+	pub fn compress(
+		mut self,
+		compress: CompressMode,
+	) -> Self {
 		self.compress = compress;
 		self
 	}
 
-	/// Setter for the [`content_version`](Leaf::content_version) field
-	pub fn version(mut self, content_version: u8) -> Self {
-		self.content_version = content_version;
-		self
-	}
-
 	/// Setter for the [`flags`](crate::builder::Flags) field
-	pub fn flags(mut self, flags: Flags) -> Self {
+	pub fn flags(
+		mut self,
+		flags: Flags,
+	) -> Self {
 		self.flags = flags;
 		self
 	}
 
 	/// Setter for the [`encrypt`](Leaf::encrypt) field
 	#[cfg(feature = "crypto")]
-	pub fn encrypt(mut self, encrypt: bool) -> Self {
+	pub fn encrypt(
+		mut self,
+		encrypt: bool,
+	) -> Self {
 		self.encrypt = encrypt;
 		self
 	}
 
 	/// Setter for the [`sign`](Leaf::sign) field
 	#[cfg(feature = "crypto")]
-	pub fn sign(mut self, sign: bool) -> Self {
+	pub fn sign(
+		mut self,
+		sign: bool,
+	) -> Self {
 		self.sign = sign;
 		self
 	}
 
 	/// Setter for the [`compression_algo`](Leaf::compression_algo) field
 	#[cfg(feature = "compression")]
-	pub fn compression_algo(mut self, compression_algo: CompressionAlgorithm) -> Self {
+	pub fn compression_algo(
+		mut self,
+		compression_algo: CompressionAlgorithm,
+	) -> Self {
 		self.compression_algo = compression_algo;
 		self
+	}
+
+	pub(crate) fn calculate_entry_bytes(
+		&self,
+		sign: bool,
+	) -> usize {
+		#[cfg(feature = "crypto")]
+		let sig_len = if sign && self.sign { crate::SIGNATURE_LENGTH } else { 0 };
+		#[cfg(not(feature = "crypto"))]
+		let sig_len = 0;
+
+		#[cfg(feature = "crypto")]
+		let nonce_len = if sign && self.encrypt { crate::NONCE_LENGTH } else { 0 };
+		#[cfg(not(feature = "crypto"))]
+		let nonce_len = 0;
+
+		self.id.len() + RegistryEntry::CONSTANT + sig_len + nonce_len
 	}
 }
 
@@ -149,7 +177,6 @@ impl<R> From<&mut Leaf<R>> for RegistryEntry {
 		RegistryEntry {
 			id: leaf.id.clone(),
 			flags: leaf.flags,
-			content_version: leaf.content_version,
 			..RegistryEntry::empty()
 		}
 	}
@@ -159,14 +186,14 @@ impl<R> From<&mut Leaf<R>> for RegistryEntry {
 pub(crate) struct ProcessedLeaf {
 	pub(crate) data: Vec<u8>,
 	pub(crate) entry: RegistryEntry,
-	#[cfg(feature = "crypto")]
-	pub(crate) sign: bool,
 }
 
 // Process Leaf into Prepared Data, externalised for multithreading purposes
 #[inline(never)]
 pub(crate) fn process_leaf<R: Read + Send + Sync>(
-	leaf: &mut Leaf<R>, _encryptor: Option<&Encryptor>,
+	leaf: &mut Leaf<R>,
+	config: &super::BuilderConfig,
+	_encryptor: Option<&Encryptor>,
 ) -> InternalResult<ProcessedLeaf> {
 	let mut entry: RegistryEntry = leaf.into();
 	let mut raw = Vec::new();
@@ -215,17 +242,32 @@ pub(crate) fn process_leaf<R: Read + Send + Sync>(
 
 	// Encryption comes second
 	#[cfg(feature = "crypto")]
-	if leaf.encrypt {
-		if let Some(ex) = _encryptor {
-			raw = ex.encrypt(&raw)?;
-			entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
-		}
+	if let Some(ex) = _encryptor
+		&& leaf.encrypt
+	{
+		entry.flags.force_set(Flags::ENCRYPTED_FLAG, true);
+		let (_raw, nonce) = ex.encrypt(&raw)?;
+
+		raw = _raw;
+		entry.nonce = Some(nonce);
 	}
 
-	Ok(ProcessedLeaf {
-		data: raw,
-		entry,
-		#[cfg(feature = "crypto")]
-		sign: leaf.sign,
-	})
+	// Sign final data as-is in binary
+	#[cfg(feature = "crypto")]
+	if let Some(keypair) = &config.signing_key
+		&& leaf.sign
+	{
+		entry.flags.force_set(Flags::SIGNED_FLAG, true);
+
+		let entry_bytes = entry.id.as_bytes();
+		raw.extend_from_slice(entry_bytes);
+
+		// Include entry id in the signature
+		entry.signature = Some(ed25519_dalek::Signer::sign(keypair, &raw));
+
+		// truncate leaf data as it's not indicative of serialized data
+		raw.truncate(raw.len() - entry.id.len());
+	};
+
+	Ok(ProcessedLeaf { data: raw, entry })
 }

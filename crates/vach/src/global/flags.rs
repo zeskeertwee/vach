@@ -1,5 +1,5 @@
-use std::fmt;
 use super::error::*;
+use std::fmt;
 
 /// Abstracted flag access and manipulation `struct`.
 /// Basically just a tiny, [`bitflags`](https://github.com/bitflags/bitflags)
@@ -49,7 +49,11 @@ impl Flags {
 
 	/// Set a bit into the underlying [`u32`], will fail if set into the reserved mask.
 	/// The `toggle` parameter specifies whether to insert the flags (when true), or to pop the flag, (when false).
-	pub const fn set(&mut self, bit: u32, toggle: bool) -> InternalResult<u32> {
+	pub const fn set(
+		&mut self,
+		bit: u32,
+		toggle: bool,
+	) -> InternalResult<u32> {
 		if (Flags::RESERVED_MASK & bit) != 0 {
 			return Err(InternalError::RestrictedFlagAccessError);
 		} else {
@@ -59,7 +63,11 @@ impl Flags {
 		Ok(self.bits)
 	}
 
-	pub(crate) const fn force_set(&mut self, mask: u32, toggle: bool) {
+	pub(crate) const fn force_set(
+		&mut self,
+		mask: u32,
+		toggle: bool,
+	) {
 		if toggle {
 			self.bits |= mask;
 		} else {
@@ -69,7 +77,10 @@ impl Flags {
 
 	#[inline(always)]
 	/// Checks whether the given flag is set.
-	pub const fn contains(&self, bit: u32) -> bool {
+	pub const fn contains(
+		&self,
+		bit: u32,
+	) -> bool {
 		(self.bits & bit) != 0
 	}
 }

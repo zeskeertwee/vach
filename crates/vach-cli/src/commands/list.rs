@@ -1,11 +1,11 @@
 use std::fs::File;
 
+use indicatif::HumanBytes;
 use tabled::{
 	Table, Tabled,
-	settings::{*, object::Columns},
+	settings::{object::Columns, *},
 };
 use vach::prelude::*;
-use indicatif::HumanBytes;
 
 use super::CommandTrait;
 use crate::cli;
@@ -26,7 +26,10 @@ impl CommandTrait for Subcommand {
 		"0.3"
 	}
 
-	fn evaluate(&self, cli: cli::CommandLine) -> anyhow::Result<()> {
+	fn evaluate(
+		&self,
+		cli: cli::CommandLine,
+	) -> anyhow::Result<()> {
 		let cli::Command::List { input, sort } = cli.command else {
 			anyhow::bail!("Wrong implementation invoked for subcommand")
 		};
@@ -39,10 +42,10 @@ impl CommandTrait for Subcommand {
 
 		let mut entries = archive.entries().values().collect::<Vec<_>>();
 		match sort {
-			None | Some(cli::SortSetting::Alphabetical) => entries.sort_by(|a, b| a.id.cmp(&b.id)),
-			Some(cli::SortSetting::AlphabeticalReversed) => entries.sort_by(|a, b| b.id.cmp(&a.id)),
-			Some(cli::SortSetting::SizeAscending) => entries.sort_by(|a, b| a.offset.cmp(&b.offset)),
-			Some(cli::SortSetting::SizeDescending) => entries.sort_by(|a, b| b.offset.cmp(&a.offset)),
+			None | Some(cli::SortSetting::Alphabetical) => entries.sort_by_key(|a| a.id.as_ref()),
+			Some(cli::SortSetting::AlphabeticalReversed) => entries.sort_by_key(|b| std::cmp::Reverse(b.id.as_ref())),
+			Some(cli::SortSetting::SizeAscending) => entries.sort_by_key(|a| a.offset),
+			Some(cli::SortSetting::SizeDescending) => entries.sort_by_key(|b| std::cmp::Reverse(b.offset)),
 		};
 
 		let table_entries: Vec<FileTableEntry> = entries
@@ -68,9 +71,7 @@ impl CommandTrait for Subcommand {
 			.collect();
 
 		let mut table = Table::new(table_entries);
-		table
-			.with(Style::rounded())
-			.with(Modify::list(Columns::new(..1), Alignment::left()));
+		table.with(Style::rounded()).with(Modify::list(Columns::new(..1), Alignment::left()));
 
 		println!("{}", table);
 

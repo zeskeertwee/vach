@@ -19,7 +19,7 @@ name = "vach"
 path = "src/main.rs"
 
 [dependencies]
-vach = { version = "0.7", features = ["all"] }
+vach = { path = "../../crates/vach", features = ["all"] }
 clap = { version = "4", features = ["derive"] }
 indicatif = "0.18"
 anyhow = "1"

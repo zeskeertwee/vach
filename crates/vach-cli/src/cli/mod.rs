@@ -1,5 +1,5 @@
-use std::{path::PathBuf, thread};
 use clap::{Parser, Subcommand, ValueEnum};
+use std::{path::PathBuf, thread};
 
 use crate::commands::{self, CommandTrait};
 
@@ -139,9 +139,6 @@ pub enum Command {
 		/// Whether to sign entries and include signatures in the header
 		#[arg(short, long)]
 		sign: bool,
-		/// A simple tag set in the header, can be used as a version eg
-		#[arg(short, long)]
-		tag: Option<u8>,
 		/// Flags to include in header section of archive
 		#[arg(short, long)]
 		flags: Option<u32>,

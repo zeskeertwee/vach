@@ -1,11 +1,12 @@
 #include "../bindings.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 void callback(void *userdata, const char *id, uintptr_t id_len,
               const char *data, uintptr_t len, uint64_t location) {
-  printf("Processed Leaf: ID=%s, Len=%llu, Location=%llu\n", id, len, location);
+  printf("Processed Leaf: ID=%s, Len=%lu, Location=%llu\n", id, len, location);
 }
 
 int main(int argc, char **argv) {
@@ -43,5 +44,5 @@ int main(int argc, char **argv) {
   // process leaves and write archive
   uintptr_t bytes =
       dump_leaves_to_file(ctx, out_path, callback, NULL, &error_p);
-  printf("Processed Archived: Path=%s, Bytes=%llu\n", out_path, bytes);
+  printf("Processed Archived: Path=%s, Bytes=%lu\n", out_path, bytes);
 }

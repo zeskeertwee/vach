@@ -1,7 +1,10 @@
-use std::{fs::File, io::Write, path::PathBuf, str::FromStr};
 use anyhow::{Result, bail};
+use std::{fs::File, io::Write, path::PathBuf, str::FromStr};
 
-pub fn create_and_write_to_file(path: &str, data: &[u8]) -> Result<()> {
+pub fn create_and_write_to_file(
+	path: &str,
+	data: &[u8],
+) -> Result<()> {
 	let path = PathBuf::from_str(path)?;
 
 	// Check if the file exists

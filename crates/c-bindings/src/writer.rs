@@ -1,6 +1,6 @@
-use std::{fs, io, slice, ffi};
-use vach::prelude::*;
 use super::errors;
+use std::{ffi, fs, io, slice};
+use vach::prelude::*;
 
 /// Archive Builder Context
 pub type v_builder_ctx = ffi::c_void;
@@ -8,16 +8,14 @@ type _builder_ctx_inner = (BuilderConfig, Vec<Leaf<super::DataSource>>);
 
 /// Create new Builder Context
 #[no_mangle]
-pub extern "C" fn new_builder_ctx(sk_bytes: *const [u8; super::V_SECRET_KEY_LENGTH], flags: u32) -> *mut v_builder_ctx {
+pub extern "C" fn new_builder_ctx(
+	sk_bytes: *const [u8; super::V_SECRET_KEY_LENGTH],
+	flags: u32,
+) -> *mut v_builder_ctx {
 	let signing_key = unsafe { sk_bytes.as_ref() }.map(SigningKey::from_bytes);
 	let flags = Flags::from_bits(flags);
 
-	let config = BuilderConfig {
-		flags,
-		signing_key,
-		..Default::default()
-	};
-
+	let config = BuilderConfig { flags, signing_key, num_threads: 1 };
 	Box::into_raw(Box::<_builder_ctx_inner>::new((config, Vec::new()))) as _
 }
 
@@ -31,7 +29,11 @@ pub extern "C" fn free_builder_ctx(ctx: *mut v_builder_ctx) {
 	}
 }
 
-fn new_leaf(id: *const ffi::c_char, data: super::DataSource, flags: u32) -> Option<Leaf<super::DataSource>> {
+fn new_leaf(
+	id: *const ffi::c_char,
+	data: super::DataSource,
+	flags: u32,
+) -> Option<Leaf<super::DataSource>> {
 	// get ID
 	let id = unsafe { std::ffi::CStr::from_ptr(id).to_str() }.ok()?;
 
@@ -62,7 +64,12 @@ fn new_leaf(id: *const ffi::c_char, data: super::DataSource, flags: u32) -> Opti
 /// Appends a new `v_builder_leaf` from a buffer
 #[no_mangle]
 pub extern "C" fn add_leaf_from_buffer(
-	ctx: *mut v_builder_ctx, id: *const ffi::c_char, data: *const u8, len: usize, flags: u32, error_p: *mut i32,
+	ctx: *mut v_builder_ctx,
+	id: *const ffi::c_char,
+	data: *const u8,
+	len: usize,
+	flags: u32,
+	error_p: *mut i32,
 ) {
 	if data.is_null() {
 		errors::report::<()>(error_p, errors::E_PARAMETER_IS_NULL);
@@ -87,7 +94,11 @@ pub extern "C" fn add_leaf_from_buffer(
 /// Creates a new `v_builder_leaf` from a file
 #[no_mangle]
 pub extern "C" fn add_leaf_from_file(
-	ctx: *mut v_builder_ctx, id: *const ffi::c_char, path: *const ffi::c_char, flags: u32, error_p: *mut i32,
+	ctx: *mut v_builder_ctx,
+	id: *const ffi::c_char,
+	path: *const ffi::c_char,
+	flags: u32,
+	error_p: *mut i32,
 ) {
 	if path.is_null() {
 		errors::report::<()>(error_p, errors::E_PARAMETER_IS_NULL);
@@ -120,22 +131,17 @@ pub extern "C" fn add_leaf_from_file(
 }
 
 /// callback for each newly created leaf node, use `userdata` to pass extra data
-pub type v_builder_callback = Option<
-	extern "C" fn(
-		userdata: *mut ffi::c_void,
-		id: *const ffi::c_char,
-		id_len: usize,
-		bytes: *const ffi::c_char,
-		len: usize,
-		location: u64,
-	),
->;
+pub type v_builder_callback = Option<extern "C" fn(userdata: *mut ffi::c_void, id: *const ffi::c_char, id_len: usize, bytes: *const ffi::c_char, len: usize, location: u64)>;
 
 /// process context and dump to a preallocated buffer, buffer must at least be big enough to fit data
 #[no_mangle]
 pub extern "C" fn dump_archive_to_buffer(
-	ctx: *mut v_builder_ctx, buffer: *mut u8, buf_size: usize, callback: v_builder_callback,
-	userdata: *mut ffi::c_void, error_p: *mut i32,
+	ctx: *mut v_builder_ctx,
+	buffer: *mut u8,
+	buf_size: usize,
+	callback: v_builder_callback,
+	userdata: *mut ffi::c_void,
+	error_p: *mut i32,
 ) -> u64 {
 	let slice = unsafe { slice::from_raw_parts_mut(buffer, buf_size) };
 	let target = io::Cursor::new(slice);
@@ -149,19 +155,12 @@ pub extern "C" fn dump_archive_to_buffer(
 		let id = entry.id.as_ref();
 
 		if let Some(cb) = callback {
-			cb(
-				userdata,
-				id.as_ptr() as _,
-				id.len(),
-				data.as_ptr() as _,
-				data.len(),
-				entry.location,
-			)
+			cb(userdata, id.as_ptr() as _, id.len(), data.as_ptr() as _, data.len(), entry.location)
 		}
 	};
 
 	// write
-	match dump(target, leaves, config, Some(&mut wrapper)) {
+	match dump(target, leaves, Some(config.clone()), Some(&mut wrapper)) {
 		Ok(written) => written,
 		Err(e) => errors::v_error_to_id::<()>(error_p, e) as _,
 	}
@@ -170,7 +169,10 @@ pub extern "C" fn dump_archive_to_buffer(
 /// processed context and write to a file on disk
 #[no_mangle]
 pub extern "C" fn dump_leaves_to_file(
-	ctx: *mut v_builder_ctx, path: *const ffi::c_char, callback: v_builder_callback, userdata: *mut ffi::c_void,
+	ctx: *mut v_builder_ctx,
+	path: *const ffi::c_char,
+	callback: v_builder_callback,
+	userdata: *mut ffi::c_void,
 	error_p: *mut i32,
 ) -> u64 {
 	let path = unsafe { ffi::CStr::from_ptr(path) }.to_str();
@@ -187,20 +189,13 @@ pub extern "C" fn dump_leaves_to_file(
 		let id = entry.id.as_ref();
 
 		if let Some(cb) = callback {
-			cb(
-				userdata,
-				id.as_ptr() as _,
-				id.len(),
-				data.as_ptr() as _,
-				data.len(),
-				entry.location,
-			)
+			cb(userdata, id.as_ptr() as _, id.len(), data.as_ptr() as _, data.len(), entry.location)
 		}
 	};
 
 	// write
 	let target = fs::File::create(path).unwrap();
-	match dump(target, leaves, config, Some(&mut wrapper)) {
+	match dump(target, leaves, Some(config.clone()), Some(&mut wrapper)) {
 		Ok(bytes_written) => bytes_written,
 		Err(e) => errors::v_error_to_id::<()>(error_p, e) as _,
 	}

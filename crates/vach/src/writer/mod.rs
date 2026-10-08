@@ -1,7 +1,4 @@
-use std::io::{Seek, SeekFrom, Write, Read};
-
-#[cfg(feature = "multithreaded")]
-use std::{thread, sync::mpsc};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 mod config;
 mod leaf;
@@ -10,16 +7,13 @@ pub use config::BuilderConfig;
 pub use leaf::Leaf;
 
 #[cfg(feature = "compression")]
-pub use {leaf::CompressMode, crate::global::compressor::Compressor};
+pub use {crate::global::compressor::Compressor, leaf::CompressMode};
 
 use crate::global::error::*;
 use crate::global::{header::Header, reg_entry::RegistryEntry};
 
 #[cfg(feature = "crypto")]
-use {
-	crate::{crypto::Encryptor, global::flags::Flags},
-	ed25519_dalek::Signer,
-};
+use crate::{crypto::Encryptor, global::flags::Flags};
 
 #[cfg(not(feature = "crypto"))]
 type Encryptor = ();
@@ -31,7 +25,10 @@ struct WriteCounter<W: Send> {
 }
 
 impl<W: Write + Send> Write for WriteCounter<W> {
-	fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+	fn write(
+		&mut self,
+		buf: &[u8],
+	) -> std::io::Result<usize> {
 		let len = self.inner.write(buf)?;
 		self.bytes += len as u64;
 		Ok(len)
@@ -43,26 +40,27 @@ impl<W: Write + Send> Write for WriteCounter<W> {
 }
 
 impl<W: Seek + Send> Seek for WriteCounter<W> {
-	fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+	fn seek(
+		&mut self,
+		pos: SeekFrom,
+	) -> std::io::Result<u64> {
 		self.inner.seek(pos)
 	}
 }
 
 /// iterates over all [`Leaf`], processes them and writes the output into the target. returns bytes written to `target`
-pub fn dump<'a, W, R>(
-	target: W, leaves: &mut [Leaf<R>], config: &BuilderConfig,
+pub fn dump<W, R>(
+	target: W,
+	leaves: &mut [Leaf<R>],
+	config: Option<BuilderConfig>,
 	mut callback: Option<&mut dyn FnMut(&RegistryEntry, &[u8])>,
 ) -> InternalResult<u64>
 where
 	W: Write + Seek + Send,
 	R: Read + Sync + Send,
 {
-	// init
-	let mut config = config.clone();
-	let mut target = WriteCounter {
-		bytes: 0,
-		inner: target,
-	};
+	let mut config = config.unwrap_or_default();
+	let mut target = WriteCounter { bytes: 0, inner: target };
 
 	// find duplicates
 	let mut set = std::collections::HashSet::with_capacity(leaves.len());
@@ -74,25 +72,15 @@ where
 
 	// Determines the offset at which to start writing leafs
 	let mut leaf_offset = {
-		leaves
-			.iter()
-			.map(|leaf| {
-				// The size of it's ID, the minimum size of an entry without a signature, and the size of a signature if present
-				leaf.id.len() + RegistryEntry::MIN_SIZE + {
-					#[cfg(feature = "crypto")]
-					if config.signing_key.is_some() && leaf.sign {
-						crate::SIGNATURE_LENGTH
-					} else {
-						0
-					}
-					#[cfg(not(feature = "crypto"))]
-					{
-						0
-					}
-				}
-			})
-			.sum::<usize>()
-			+ Header::BASE_SIZE
+		Header::BASE_SIZE + {
+			#[cfg(feature = "crypto")]
+			let sign = config.signing_key.is_some();
+
+			#[cfg(not(feature = "crypto"))]
+			let sign = false;
+
+			leaves.iter().map(|leaf| leaf.calculate_entry_bytes(sign)).sum::<usize>()
+		}
 	} as u64;
 
 	#[cfg(feature = "crypto")]
@@ -136,99 +124,68 @@ where
 	#[allow(unused_mut)]
 	// Callback for processing IO
 	let mut write = |result: InternalResult<leaf::ProcessedLeaf>| -> InternalResult<()> {
-		let mut result = result?;
-		let bytes = result.data.len() as u64;
+		let mut processed = result?;
+		let bytes = processed.data.len() as u64;
 
 		// write LEAF
-		target.write_all(&result.data)?;
+		target.write_all(&processed.data)?;
 
 		// update registry entry
-		result.entry.location = leaf_offset;
-		result.entry.offset = bytes;
+		processed.entry.location = leaf_offset;
+		processed.entry.offset = bytes;
 
 		// increment leaf offset
-		leaf_offset += result.data.len() as u64;
-
-		// write out registry entry
-		#[cfg(feature = "crypto")]
-		if result.sign {
-			if let Some(keypair) = &config.signing_key {
-				result.entry.flags.force_set(Flags::SIGNED_FLAG, true);
-
-				let entry_bytes = result.entry.to_bytes(true)?;
-				result.data.extend_from_slice(&entry_bytes);
-
-				// Include registry data in the signature
-				result.entry.signature = Some(keypair.sign(&result.data));
-			};
-		}
+		leaf_offset += processed.data.len() as u64;
 
 		// write to registry buffer, this one might include the Signature
-		let entry_bytes = result.entry.to_bytes(false)?;
+		let entry_bytes = processed.entry.to_bytes()?;
 		registry.write_all(&entry_bytes)?;
 
 		// Call the progress callback bound within the [`BuilderConfig`]
 		if let Some(callback) = callback.as_mut() {
-			callback(&result.entry, &result.data);
+			(*callback)(&processed.entry, &processed.data);
 		}
 
 		Ok(())
 	};
 
-	#[cfg(feature = "multithreaded")]
-	let (tx, rx) = mpsc::sync_channel(leaves.len());
+	if config.num_threads > 1 {
+		use std::{sync::mpsc, thread};
 
-	#[cfg(feature = "multithreaded")]
-	if !leaves.is_empty() {
+		let (tx, rx) = mpsc::sync_channel(leaves.len());
 		thread::scope(|s| -> InternalResult<()> {
 			let count = leaves.len();
 
 			#[rustfmt::skip]
 			// if we have an insane number of threads send leafs in chunks of 8
-			let chunk_size = if config.num_threads.get() > count { 8 } else { count / config.num_threads };
-
-			let chunks = leaves.chunks_mut(chunk_size);
+			let chunk_size = if config.num_threads > count { 8 } else { count / config.num_threads.max(1) };
 			let encryptor = encryptor.as_ref();
 
 			// Spawn CPU threads
-			for chunk in chunks {
+			for chunk in leaves.chunks_mut(chunk_size) {
 				let queue = tx.clone();
+				let _config = &config;
 
 				s.spawn(move || {
 					for leaf in chunk {
-						let res = leaf::process_leaf(leaf, encryptor);
+						let res = leaf::process_leaf(leaf, _config, encryptor);
 						queue.send(res).unwrap();
 					}
 				});
 			}
 
-			// Process IO, read results from
-			let mut results = 0;
-
-			loop {
-				match rx.try_recv() {
-					Ok(r) => {
-						results += 1;
-						write(r)?
-					},
-					Err(e) => match e {
-						mpsc::TryRecvError::Empty => {
-							if results >= count {
-								break Ok(());
-							}
-						},
-						mpsc::TryRecvError::Disconnected => break Ok(()),
-					},
-				}
+			// Process IO by waiting for each result instead of busy-polling the channel.
+			for _ in 0..count {
+				let result = rx.recv().map_err(|_| InternalError::OtherError("worker channel disconnected".into()))?;
+				write(result)?;
 			}
-		})?;
-	};
 
-	#[cfg(not(feature = "multithreaded"))]
-	leaves
-		.iter_mut()
-		.map(|l| leaf::process_leaf(l, encryptor.as_ref()))
-		.try_for_each(write)?;
+			Ok(())
+		})?;
+	} else {
+		// processed all on the main thread baby!
+		leaves.iter_mut().map(|l| leaf::process_leaf(l, &config, encryptor.as_ref())).try_for_each(write)?;
+	};
 
 	// write UPDATED REGISTRY
 	target.seek(SeekFrom::Start(Header::BASE_SIZE as _))?;

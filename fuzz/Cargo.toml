@@ -1,0 +1,26 @@
+[package]
+name = "c-bindings-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = { version = "0.4.0", features = ["arbitrary-derive"] }
+vach = { path = "../crates/vach", features = ["all"], default-features = false }
+
+[[bin]]
+name = "roundtrip"
+path = "fuzz_targets/roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "simple"
+path = "fuzz_targets/simple.rs"
+test = false
+doc = false
+bench = false

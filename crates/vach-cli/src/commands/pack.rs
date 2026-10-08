@@ -5,13 +5,13 @@ use std::{
 	path::PathBuf,
 };
 
+use indicatif::{ProgressBar, ProgressStyle};
 use tempfile::NamedTempFile;
 use vach::{crypto_utils, prelude::*};
-use indicatif::{ProgressBar, ProgressStyle};
 use walkdir;
 
 use super::CommandTrait;
-use crate::{cli};
+use crate::cli;
 
 struct FileAutoDropper(PathBuf, Option<File>);
 
@@ -27,7 +27,10 @@ impl FileAutoDropper {
 }
 
 impl Read for FileAutoDropper {
-	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+	fn read(
+		&mut self,
+		buf: &mut [u8],
+	) -> io::Result<usize> {
 		// open file if None
 		let file = match self.1.as_mut() {
 			Some(file) => file,
@@ -55,7 +58,10 @@ impl CommandTrait for Subcommand {
 		"0.6"
 	}
 
-	fn evaluate(&self, args: cli::CommandLine) -> anyhow::Result<()> {
+	fn evaluate(
+		&self,
+		args: cli::CommandLine,
+	) -> anyhow::Result<()> {
 		// 1: Assemble Input Settings
 		let cli::Command::Pack {
 			output,
@@ -66,7 +72,6 @@ impl CommandTrait for Subcommand {
 			compress_mode,
 			compression_algorithm,
 			sign,
-			tag,
 			flags,
 			jobs,
 			encrypt,
@@ -77,8 +82,7 @@ impl CommandTrait for Subcommand {
 			anyhow::bail!("Wrong implementation invoked for subcommand")
 		};
 
-		let flags = flags.clone().map(Flags::from_bits).unwrap_or_default();
-		let version = tag.unwrap_or(0);
+		let flags = flags.map(Flags::from_bits).unwrap_or_default();
 
 		let compress_mode = compress_mode
 			.map(|c| match c {
@@ -123,12 +127,7 @@ impl CommandTrait for Subcommand {
 		}
 
 		// combine leaf input-template
-		let template = Leaf::<&'static [u8]>::default()
-			.compress(compress_mode)
-			.compression_algo(compression_algo)
-			.encrypt(encrypt)
-			.sign(sign)
-			.version(version);
+		let template = Leaf::<&'static [u8]>::default().compress(compress_mode).compression_algo(compression_algo).encrypt(encrypt).sign(sign);
 
 		// 2: Assemble input files
 		let mut leaves = vec![];
@@ -140,11 +139,7 @@ impl CommandTrait for Subcommand {
 				.filter_map(|path| match path.canonicalize() {
 					Ok(path) => Some(path),
 					Err(err) => {
-						eprintln!(
-							"Failed to canonicalize: {}. Skipping due to error: {}",
-							path.to_string_lossy(),
-							err
-						);
+						eprintln!("Failed to canonicalize: {}. Skipping due to error: {}", path.to_string_lossy(), err);
 						None
 					},
 				})
@@ -156,39 +151,28 @@ impl CommandTrait for Subcommand {
 		let path_filter = |path: &PathBuf| match path.canonicalize() {
 			Ok(canonical) => !excludes.iter().any(|p| canonical.starts_with(p)) && canonical.is_file(),
 			Err(err) => {
-				eprintln!(
-					"Failed to canonicalize: {}. Skipping due to error: {}",
-					path.to_string_lossy(),
-					err
-				);
+				eprintln!("Failed to canonicalize: {}. Skipping due to error: {}", path.to_string_lossy(), err);
 				false
 			},
 		};
 
 		if let Some(f) = inputs {
-			let iter = f
-				.into_iter()
-				.filter(path_filter)
-				.filter_map(FileAutoDropper::new)
-				.map(|l| l.template(&template));
+			let iter = f.into_iter().filter(path_filter).filter_map(FileAutoDropper::new).map(|l| l.template(&template));
 
 			leaves.extend(iter);
 		};
 
 		// Extract directory inputs
 		if let Some(val) = directories {
-			let iter = val
-				.into_iter()
-				.map(|dir| {
-					walkdir::WalkDir::new(dir)
-						.max_depth(1)
-						.into_iter()
-						.map(|v| v.unwrap().into_path())
-						.filter(path_filter)
-						.filter_map(FileAutoDropper::new)
-						.map(|l| l.template(&template))
-				})
-				.flatten();
+			let iter = val.into_iter().flat_map(|dir| {
+				walkdir::WalkDir::new(dir)
+					.max_depth(1)
+					.into_iter()
+					.map(|v| v.unwrap().into_path())
+					.filter(path_filter)
+					.filter_map(FileAutoDropper::new)
+					.map(|l| l.template(&template))
+			});
 
 			leaves.extend(iter);
 		};
@@ -212,11 +196,7 @@ impl CommandTrait for Subcommand {
 		let mut temporary_file = NamedTempFile::new().unwrap();
 
 		// assemble configuration for builder
-		let config = BuilderConfig {
-			flags,
-			signing_key,
-			num_threads: jobs.try_into().expect("Number of threads cannot be zero"),
-		};
+		let config = BuilderConfig { flags, signing_key, num_threads: jobs };
 
 		// setup progress bar and callback to update it
 		let progress = ProgressBar::new(leaves.len() as _);
@@ -224,9 +204,7 @@ impl CommandTrait for Subcommand {
 			ProgressStyle::default_bar()
 				.template(super::PROGRESS_BAR_STYLE)?
 				.progress_chars("█░-")
-				.tick_chars(
-					"⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀",
-				),
+				.tick_chars("⢀ ⡀ ⠄ ⢂ ⡂ ⠅ ⢃ ⡃ ⠍ ⢋ ⡋ ⠍⠁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⢈⠩⡀⢙⠄⡙⢂⠩⡂⢘⠅⡘⢃⠨⡃⢐⠍⡐⢋⠠⡋⢀⠍⡁⢋⠁⡋⠁⠍⠉⠋⠉⠋⠉⠉⠙⠉⠙⠉⠩⠈⢙⠈⡙⠈⠩ ⢙ ⡙ ⠩ ⢘ ⡘ ⠨ ⢐ ⡐ ⠠ ⢀ ⡀"),
 		);
 
 		// increments progress-bar by one for each entry
@@ -237,15 +215,10 @@ impl CommandTrait for Subcommand {
 		};
 
 		// 4: Write
-		let bytes_written = dump(&mut temporary_file, &mut leaves, &config, Some(&mut callback))?;
+		let bytes_written = dump(&mut temporary_file, &mut leaves, Some(config), Some(&mut callback))?;
 		temporary_file.persist(&output)?;
 
-		progress.println(format!(
-			"Generated a new archive @ {}; Bytes written: {}",
-			output.display(),
-			bytes_written
-		));
-
+		progress.println(format!("Generated a new archive @ {}; Bytes written: {}", output.display(), bytes_written));
 		progress.finish();
 
 		Ok(())
